@@ -22,7 +22,7 @@ from pithy.io import read_bytes_from_path, read_from_path
 from pithy.path import Path
 
 
-_context_keywords_ = ['deploy', 'deployment', 'manifest', 'service', 'systemctl', 'systemd', 'timer', 'unit']
+_context_keywords_ = ['manifest', 'reconcile', 'service', 'systemctl', 'systemd', 'timer', 'unit']
 
 
 unit_mode = 0o644
@@ -32,7 +32,7 @@ unsupported_suffixes = frozenset({
   '.automount', '.device', '.mount', '.path', '.scope', '.slice', '.socket', '.swap', '.target'})
 
 
-class DeployError(Exception):
+class ReconciliationError(Exception):
   'Invalid deployment inputs, ownership conflicts, or a concurrent reconciliation.'
 
 
@@ -52,10 +52,10 @@ class Reconciliation:
     return [f'{label}: {name}' for label, names in groups for name in names]
 
 
-class Deploy(Cmd):
+class Reconcile(Cmd):
   'Install desired systemd units and stop, disable and remove obsolete managed units. Run as root.'
   source:str = pos(doc='Directory containing the complete desired set of .service and .timer files.')
-  manifest:str = opt(default='/service/manifest.json', doc='Persistent ownership manifest; one per host.')
+  manifest:str = opt(default='/service/systemd-units.json', doc='Persistent ownership manifest; one per host.')
   unit_dir:str = opt('-unit-dir', default='/etc/systemd/system', doc='Systemd unit installation directory.')
   adopt:list[str] = opt(default_factory=list, doc='Claim a previously installed unit by name; repeat for multiple units.')
   adopt_existing:bool = flag('-adopt-existing', doc='Claim existing files whose names occur in the desired source set.')
@@ -64,12 +64,12 @@ class Deploy(Cmd):
 
 
 def main() -> None:
-  args = Deploy.parse_or_exit()
+  args = Reconcile.parse_or_exit()
   try:
     reconcile(Path(args.source), Path(args.manifest), Path(args.unit_dir), adopt=args.adopt,
       adopt_existing=args.adopt_existing, allow_empty=args.allow_empty, dry_run=args.dry_run, on_plan=print_plan)
-  except (DeployError, OSError, CalledProcessError) as exc:
-    raise SystemExit(f'tap_ops.deploy: {exc}') from exc
+  except (ReconciliationError, OSError, CalledProcessError) as exc:
+    raise SystemExit(f'tap_ops.systemd.reconciliation: {exc}') from exc
 
 
 def print_plan(plan:Reconciliation) -> None:
@@ -79,7 +79,7 @@ def print_plan(plan:Reconciliation) -> None:
 def unit_name(value:object) -> str:
   'Accept only literal service and timer basenames, never paths, options or glob patterns.'
   if not isinstance(value, str) or not re.fullmatch(r'[A-Za-z0-9_:][A-Za-z0-9_.:-]*\.(service|timer)', value):
-    raise DeployError(f'Invalid unit name: {value!r}.')
+    raise ReconciliationError(f'Invalid unit name: {value!r}.')
   return value
 
 
@@ -90,11 +90,11 @@ def read_source(source:Path) -> dict[str,bytes]:
     path = source / name
     ext = path.ext
     if ext == '.d' and Path(path.name_stem).ext in ('.service', '.timer', *unsupported_suffixes):
-      raise DeployError(f'Drop-in directories are not supported: {path}.')
-    if ext in unsupported_suffixes: raise DeployError(f'Unsupported unit type: {path}.')
+      raise ReconciliationError(f'Drop-in directories are not supported: {path}.')
+    if ext in unsupported_suffixes: raise ReconciliationError(f'Unsupported unit type: {path}.')
     if ext not in ('.service', '.timer'): continue
     name = unit_name(name)
-    if is_link(path) or not is_file(path, follow=True): raise DeployError(f'Expected a regular source file: {path}.')
+    if is_link(path) or not is_file(path, follow=True): raise ReconciliationError(f'Expected a regular source file: {path}.')
     desired[name] = read_bytes_from_path(path)
   return desired
 
@@ -102,16 +102,17 @@ def read_source(source:Path) -> dict[str,bytes]:
 def read_manifest(path:Path, unit_dir:Path) -> set[str]:
   try: data = json.loads(read_from_path(path))
   except FileNotFoundError: return set()
-  except (ValueError, UnicodeError) as exc: raise DeployError(f'Invalid manifest: {path}: {exc}') from exc
-  if not isinstance(data, dict): raise DeployError(f'Manifest is not a JSON object: {path}.')
+  except (ValueError, UnicodeError) as exc: raise ReconciliationError(f'Invalid manifest: {path}: {exc}') from exc
+  if not isinstance(data, dict): raise ReconciliationError(f'Manifest is not a JSON object: {path}.')
   version = data.get('version')
-  if type(version) is not int or version != 1: raise DeployError(f'Unsupported manifest version: {path}: {version!r}.')
-  if set(data) != {'version', 'unit_dir', 'units'}: raise DeployError(f'Invalid manifest keys: {path}: {sorted(data)}.')
+  if type(version) is not int or version != 1: raise ReconciliationError(f'Unsupported manifest version: {path}: {version!r}.')
+  if set(data) != {'version', 'unit_dir', 'units'}: raise ReconciliationError(f'Invalid manifest keys: {path}: {sorted(data)}.')
   if data['unit_dir'] != str(unit_dir):
-    raise DeployError(f'Manifest unit directory mismatch: {path}: recorded {data['unit_dir']!r}; requested {str(unit_dir)!r}.')
-  if not isinstance(data['units'], list): raise DeployError(f'Manifest units is not a list: {path}.')
+    raise ReconciliationError(
+      f'Manifest unit directory mismatch: {path}: recorded {data['unit_dir']!r}; requested {str(unit_dir)!r}.')
+  if not isinstance(data['units'], list): raise ReconciliationError(f'Manifest units is not a list: {path}.')
   names = [unit_name(n) for n in data['units']]
-  if len(set(names)) != len(names): raise DeployError(f'Duplicate unit names in manifest: {path}.')
+  if len(set(names)) != len(names): raise ReconciliationError(f'Duplicate unit names in manifest: {path}.')
   return set(names)
 
 
@@ -152,7 +153,7 @@ def reconcile_lock(manifest:Path) -> Iterator[None]:
   make_dirs(manifest.parent)
   lock_path = str(manifest) + '.lock'
   try: fd = acquire_advisory_lock(lock_path, exclusive=True, blocking=False)
-  except AdvisoryLockBusy as exc: raise DeployError(f'Another reconciliation holds the lock: {lock_path}.') from exc
+  except AdvisoryLockBusy as exc: raise ReconciliationError(f'Another reconciliation holds the lock: {lock_path}.') from exc
   try: yield
   finally: release_advisory_lock(fd)
 
@@ -171,10 +172,11 @@ def reconcile(source:Path, manifest:Path, unit_dir:Path, *, adopt:Sequence[str]=
   unit_dir = Path(real_path(unit_dir))
   manifest = Path(abs_path(manifest))
   if not is_dir(source, follow=True) or not is_dir(unit_dir, follow=True):
-    raise DeployError('Source and unit directory must be directories.')
-  if source == unit_dir: raise DeployError('Source must differ from the unit installation directory.')
+    raise ReconciliationError('Source and unit directory must be directories.')
+  if source == unit_dir: raise ReconciliationError('Source must differ from the unit installation directory.')
   desired = read_source(source)
-  if not desired and not allow_empty: raise DeployError('No source units found; use -allow-empty for deliberate removal.')
+  if not desired and not allow_empty:
+    raise ReconciliationError('No source units found; use -allow-empty for deliberate removal.')
   claimed = {unit_name(n) for n in adopt}
   if adopt_existing: claimed.update(desired)
 
@@ -183,15 +185,15 @@ def reconcile(source:Path, manifest:Path, unit_dir:Path, *, adopt:Sequence[str]=
     return control(['show', '--property=ActiveState', '--value', '--', name]).strip()
 
   with nullcontext() if dry_run else reconcile_lock(manifest):
-    if is_link(manifest): raise DeployError(f'Manifest must not be a symlink: {manifest}.')
+    if is_link(manifest): raise ReconciliationError(f'Manifest must not be a symlink: {manifest}.')
     previous = read_manifest(manifest, unit_dir) | claimed
     names = set(desired)
     for name in previous | names:
       dest = unit_dir / name
       if is_link(dest) or (path_exists(dest, follow=True) and not is_file(dest, follow=True)):
-        raise DeployError(f'Expected a regular installed file: {dest}.')
+        raise ReconciliationError(f'Expected a regular installed file: {dest}.')
       if name not in previous and path_exists(dest, follow=True):
-        raise DeployError(f'Unmanaged unit exists: {dest}; use -adopt {name} to claim it.')
+        raise ReconciliationError(f'Unmanaged unit exists: {dest}; use -adopt {name} to claim it.')
     unchanged = [n for n in sorted(names) if is_installed(unit_dir / n, desired[n])]
     result = Reconciliation(
       installed=[n for n in sorted(names) if not path_exists(unit_dir / n, follow=True)],
