@@ -2,13 +2,12 @@
 
 from datetime import datetime
 
-from taptools.bin.watch_systemd_units import (classify_record, default_since, interrupt_exit_code, level_for_priority,
-  parse_message_key_specs, parse_ready_specs, parse_show_output, parse_systemd_timestamp, unit_name, UnitStatus,
-  WatchSystemdUnitsCmd)
+from tap_ops.systemd.watch import (classify_record, default_since, interrupt_exit_code, level_for_priority,
+  parse_message_key_specs, parse_ready_specs, parse_show_output, parse_systemd_timestamp, unit_name, UnitStatus, Watch)
 from utest import utest, utest_val
 
 
-cmd = WatchSystemdUnitsCmd.parse(['webapp.service', 'worker', '-ready', 'webapp=started', '-message-key', 'webapp=message',
+cmd = Watch.parse(['webapp.service', 'worker', '-ready', 'webapp=started', '-message-key', 'webapp=message',
   '-since=-5min', '-settle=10', '-timeout', '120', '-interval', '0.5'])
 utest_val(['webapp.service', 'worker'], cmd.units, 'parsed units')
 utest_val(['webapp=started'], cmd.ready, 'parsed ready spec')

@@ -12,7 +12,8 @@ from pithy.filestatus import file_stat, is_dir, is_link, path_exists
 from pithy.fs import list_dir, make_dir, make_link, real_path, remove_empty_dir, remove_file
 from pithy.io import read_from_path, write_to_path
 from pithy.path import Path
-from tap_ops.deploy import DeployError, read_manifest, reconcile, Reconciliation, unit_name, write_manifest
+from tap_ops.systemd.reconciliation import (read_manifest, reconcile, Reconciliation, ReconciliationError, unit_name,
+  write_manifest)
 from utest import utest_exc, utest_run, utest_val
 
 
@@ -62,7 +63,7 @@ def fixture() -> Iterator[tuple[Path,Path,Path,Systemd]]:
     units = root / 'units'
     make_dir(source)
     make_dir(units)
-    yield source, root / 'state' / 'manifest.json', units, Systemd(units)
+    yield source, root / 'state' / 'systemd-units.json', units, Systemd(units)
 
 
 @utest_run
@@ -166,7 +167,7 @@ def test_adoption_and_dry_run() -> None:
     write_to_path(source / 'web.service', 'New.')
     write_to_path(units / 'web.service', 'Old.')
     dest = units / 'web.service'
-    utest_exc(DeployError(f'Unmanaged unit exists: {dest}; use -adopt web.service to claim it.'),
+    utest_exc(ReconciliationError(f'Unmanaged unit exists: {dest}; use -adopt web.service to claim it.'),
       reconcile, source, manifest, units, control=control)
     utest_val(False, path_exists(manifest, follow=True))
 
@@ -191,7 +192,7 @@ def test_empty_source() -> None:
     write_to_path(units / 'unrelated.service', 'Unmanaged.')
     make_dir(manifest.parent)
     write_manifest(manifest, units, {'web.service'})
-    utest_exc(DeployError, reconcile, source, manifest, units, control=control)
+    utest_exc(ReconciliationError, reconcile, source, manifest, units, control=control)
     utest_val(True, path_exists(units / 'web.service', follow=True))
     reconcile(source, manifest, units, allow_empty=True, control=control)
     utest_val(set(), read_manifest(manifest, units))
@@ -203,23 +204,23 @@ def test_source_validation() -> None:
   with fixture() as (source, manifest, units, control):
     write_to_path(source / 'web.service', 'Web.')
 
-    def check(path:Path, exc:DeployError) -> None:
+    def check(path:Path, exc:ReconciliationError) -> None:
       utest_exc(exc, reconcile, source, manifest, units, control=control)
       if is_dir(path, follow=True) and not is_link(path): remove_empty_dir(path)
       else: remove_file(path)
 
     path = source / 'jobs.socket'
     write_to_path(path, 'Socket.')
-    check(path, DeployError(f'Unsupported unit type: {path}.'))
+    check(path, ReconciliationError(f'Unsupported unit type: {path}.'))
     path = source / 'web.service.d'
     make_dir(path)
-    check(path, DeployError(f'Drop-in directories are not supported: {path}.'))
+    check(path, ReconciliationError(f'Drop-in directories are not supported: {path}.'))
     path = source / 'jobs@.service'
     write_to_path(path, 'Template.')
-    check(path, DeployError("Invalid unit name: 'jobs@.service'."))
+    check(path, ReconciliationError("Invalid unit name: 'jobs@.service'."))
     path = source / 'link.service'
     make_link(source / 'web.service', link=path)
-    check(path, DeployError(f'Expected a regular source file: {path}.'))
+    check(path, ReconciliationError(f'Expected a regular source file: {path}.'))
     utest_val([], control.calls)
     utest_val(False, path_exists(manifest.parent, follow=True))
 
@@ -244,13 +245,13 @@ def test_manifest_and_destination_validation() -> None:
     ]
     for data, message in cases:
       write_to_path(manifest, json.dumps(data))
-      utest_exc(DeployError(message), reconcile, source, manifest, units, control=control, _utest_label=message)
+      utest_exc(ReconciliationError(message), reconcile, source, manifest, units, control=control, _utest_label=message)
     write_to_path(manifest, '{broken')
-    utest_exc(DeployError, reconcile, source, manifest, units, control=control)
+    utest_exc(ReconciliationError, reconcile, source, manifest, units, control=control)
     remove_file(manifest)
 
     make_link(source / 'web.service', link=units / 'web.service')
-    utest_exc(DeployError(f'Expected a regular installed file: {units / 'web.service'}.'),
+    utest_exc(ReconciliationError(f'Expected a regular installed file: {units / 'web.service'}.'),
       reconcile, source, manifest, units, adopt_existing=True, control=control)
     utest_val([], control.calls)
 
@@ -266,7 +267,7 @@ def test_lock_held_by_another_process() -> None:
     with Popen([sys.executable, '-c', holder_src, lock_path], stdin=PIPE, stdout=PIPE, text=True) as holder:
       assert holder.stdout is not None
       holder.stdout.readline() # Wait for the holder to acquire the lock.
-      utest_exc(DeployError(f'Another reconciliation holds the lock: {lock_path}.'),
+      utest_exc(ReconciliationError(f'Another reconciliation holds the lock: {lock_path}.'),
         reconcile, source, manifest, units, control=control)
       utest_val(False, path_exists(units / 'web.service', follow=True))
       holder.communicate() # Close stdin so that the holder exits and releases the lock.
@@ -276,4 +277,4 @@ def test_lock_held_by_another_process() -> None:
 
 for name in ('../jobs.service', '-jobs.service', '*.service', 'jobs.socket', 'jobs@.service', 'jobs@worker.service',
  '', '/jobs.service', 123):
-  utest_exc(DeployError, unit_name, name)
+  utest_exc(ReconciliationError, unit_name, name)

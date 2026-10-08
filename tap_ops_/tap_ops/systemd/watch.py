@@ -1,5 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+'''
+Watch systemd units until they are ready and stable, combining polled unit state with the journal stream.
+`tap_ops.deploy verify` uses the `Watcher`; run the module directly to watch arbitrary units.
+'''
+
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from json import loads as parse_json
@@ -19,10 +24,13 @@ from pithy.cmdparse import Cmd, opt, pos
 from pithy.logs import render_log_record_as_text
 
 
+_context_keywords_ = ['journalctl', 'readiness', 'systemctl', 'systemd']
+
+
 show_props = ('Id', 'ActiveState', 'SubState', 'Result', 'NRestarts', 'InactiveExitTimestamp')
 
 
-class WatchSystemdUnitsCmd(Cmd):
+class Watch(Cmd):
   '''
   Watch systemd units after a deploy until they are healthy.
 
@@ -61,7 +69,7 @@ class WatchSystemdUnitsCmd(Cmd):
 
 
 def main() -> None:
-  args = WatchSystemdUnitsCmd.parse_or_exit()
+  args = Watch.parse_or_exit()
 
   units = [unit_name(u) for u in args.units]
   ready_patterns = parse_ready_specs(args.ready)
@@ -321,7 +329,7 @@ class Watcher:
 
 
   def note(self, text:str) -> None:
-    self.pending.append(f'{TXT_N}watch-systemd-units{RST}: {text}')
+    self.pending.append(f'{TXT_N}watch{RST}: {text}')
 
 
   # Display.
@@ -356,7 +364,7 @@ class Watcher:
     return lines
 
 
-def read_lines(f:Any, queue:'Queue[str|None]') -> None:
+def read_lines(f:Any, queue:Queue[str|None]) -> None:
   for line in f: queue.put(line)
   queue.put(None)
 
