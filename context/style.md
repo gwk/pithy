@@ -28,6 +28,7 @@ filler, or marketing/casual/feel-good language.
   * `idx` for indices when passed as an argument (not just `i`).
 * Prefer single quotes for strings.
 * Use lowercase for constants and global vars, not all caps.
+* Treat acronyms as words in camel case names, e.g. `XmlParser`, not `XMLParser`.
 * Always ask before adding external dependencies.
 * Use proper capitalization and periods in comments, docstrings and commit messages.
 * Do not put non-ascii characters like em-dashes, arrows or fancy quotes in code comments or docstrings
