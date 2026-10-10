@@ -7,6 +7,7 @@
 # The archive and extracted files stay in ops/_build for inspection; the next run replaces them.
 
 set -euo pipefail
+shopt -s extglob # For the prune pattern below.
 
 fail() { echo "Error:" "$@" >&2; exit 1; }
 
@@ -45,6 +46,9 @@ uv_dl_dir="uv-${uv_target}"
 uv_dl_name="${uv_dl_dir}.tar.gz"
 uv_dl_url="https://github.com/astral-sh/uv/releases/download/${uv_version}/${uv_dl_name}"
 
+# Remove other versions and any previous extraction of this one, keeping only the current archive.
+rm -rf uv-!("${uv_dl_name#uv-}")
+
 [[ -f "$uv_dl_name" ]] || curl --proto '=https' --tlsv1.2 -fsSL -o "$uv_dl_name" "$uv_dl_url"
 
 if [[ "$machine_os" == Darwin ]]; then
@@ -53,7 +57,6 @@ else
   echo "${uv_sha256}  ${uv_dl_name}" | sha256sum -c -
 fi
 
-rm -rf "$uv_dl_dir"
 tar -xzf "$uv_dl_name"
 [[ -d "$uv_dl_dir" ]] || fail "Missing uv directory: $uv_dl_dir."
 "$uv_dl_dir/uv" --version

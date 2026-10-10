@@ -2,6 +2,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 set -euo pipefail
+shopt -s extglob # For the prune pattern below.
 
 fail() { echo "Error: $@" 1>&2; exit 1; }
 
@@ -23,6 +24,9 @@ sqlite_src_zip=$(basename "$sqlite_zip_remote_path")
 sqlite_src_url="https://www.sqlite.org/$sqlite_zip_remote_path"
 sqlite_src_dir="${sqlite_src_zip%.zip}"
 
+# Remove other versions and any previous extraction of this one, keeping only the current archive.
+rm -rf sqlite-src-!("${sqlite_src_zip#sqlite-src-}")
+
 [[ -f "$sqlite_src_zip" ]] || curl -f -o "$sqlite_src_zip" "$sqlite_src_url"
 
 dl_sha3=$(sha3sum -a 256 "$sqlite_src_zip" | cut -d' ' -f1)
@@ -31,7 +35,6 @@ if [[ "$dl_sha3" != "$sqlite_sha3" ]]; then
   fail "Downloaded SQLite source archive SHA3 does not match expected value: '$sqlite_sha3' != '$dl_sha3'."
 fi
 
-rm -rf "$sqlite_src_dir"
 unzip -q "$sqlite_src_zip"
 
 [[ -d "$sqlite_src_dir" ]] || fail "Missing SQLite source directory: '$sqlite_src_dir'."

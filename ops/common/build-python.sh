@@ -18,6 +18,7 @@
 # and rerun only the install steps against the existing build tree; useful for iterating on install/symlink changes.
 
 set -euo pipefail
+shopt -s extglob # For the prune pattern below.
 
 source "$(dirname "$0")/../versions.sh"
 
@@ -93,6 +94,10 @@ if [[ $reuse_build == 1 ]]; then
   echo "reusing existing build: $PWD."
 else
 
+  # Remove other versions and any previous extraction of this one, keeping only the current archive.
+  # No sudo needed for cleanup: because we never install as root, the source tree is never littered with root-owned files.
+  exe rm -rf Python-!("$py_point_version.tar.xz")
+
   # Download source.
 
   [[ -f "$python_xz" ]] || exe curl -fLO "$python_src_url"
@@ -102,8 +107,6 @@ else
     echo "$py_sha256  $python_xz" | sha256sum -c -
   fi
 
-  # No sudo needed for cleanup: because we never install as root, the source tree is never littered with root-owned files.
-  exe rm -rf "$python_src_dir"
   exe tar --xz -xf "$python_xz"
   [[ -d "$python_src_dir" ]] || fail "Missing Python source directory: $python_src_dir."
 

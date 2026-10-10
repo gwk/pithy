@@ -18,7 +18,9 @@ The service setup script remains Linux-only at `linux/vector/setup.bash`.
 The build and install scripts keep their downloaded archives and extracted or built trees in `ops/_build/`, which is gitignored.
 Archives are reused when present and their checksums are verified on every run.
 A checksum failure leaves the archive in place; delete it to download again.
-Extracted trees are removed and replaced at the start of the next run, never on exit, so that the evidence of a failed run remains available for inspection.
+At the start of a run, each script removes its component's other versions and any previous extraction of the current one, keeping only the current archive.
+Nothing is removed on exit, so that the evidence of a failed run remains available for inspection.
+The directory therefore holds one archive and one tree per component.
 
 
 ## Install uv
