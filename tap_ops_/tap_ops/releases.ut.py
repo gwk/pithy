@@ -73,6 +73,27 @@ def test_github_tool() -> None:
 
 
 @utest_run
+def test_uv_platform_releases() -> None:
+  tags = 'abc refs/tags/0.12.19\nabc refs/tags/0.13.0\n'
+  assets = [
+    dict(name='uv-x86_64-unknown-linux-gnu.tar.gz', digest=f'sha256:{sha_a}'),
+    dict(name='uv-aarch64-unknown-linux-gnu.tar.gz', digest=f'sha256:{sha_b}'),
+    dict(name='uv-aarch64-apple-darwin.tar.gz', digest=f'sha256:{"c" * 64}'),
+    dict(name='uv-x86_64-apple-darwin.tar.gz', digest=f'sha256:{"d" * 64}')]
+  release = dict(tag_name='0.13.0', draft=False, prerelease=False, assets=assets)
+  with patch('tap_ops.releases.run', return_value=CompletedProcess([], 0, stdout=tags)):
+    with patch('tap_ops.releases.github_json', return_value=release) as request:
+      expected = Upstream({'0.12.19', '0.13.0'},
+        {'uv_version': '0.13.0', 'uv_sha256_linux_x86_64': sha_a, 'uv_sha256_linux_aarch64': sha_b,
+         'uv_sha256_macos_arm64': 'c' * 64, 'uv_sha256_macos_x86_64': 'd' * 64})
+      utest(expected, components[3].lookup, '0.12.19')
+      assert request.call_args.args[0].endswith('/releases/tags/0.13.0')
+    # A release cannot be approved with checksums missing for a supported platform.
+    with patch('tap_ops.releases.github_json', return_value={**release, 'assets': assets[:2]}):
+      utest_exc(ValueError, components[3].lookup, '0.12.19')
+
+
+@utest_run
 def test_python() -> None:
   release = [dict(name='Python 3.14.8', is_published=True, pre_release=False,
     resource_uri='https://www.python.org/api/v2/downloads/release/1117/')]

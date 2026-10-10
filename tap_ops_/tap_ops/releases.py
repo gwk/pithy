@@ -248,7 +248,9 @@ components = (
   Component('uv', 'uv_version', 'uv',
     partial(github_tool, 'astral-sh/uv', r'(\d+\.\d+\.\d+)', '{version}', 'uv',
       {'linux_x86_64': 'uv-x86_64-unknown-linux-gnu.tar.gz',
-       'linux_aarch64': 'uv-aarch64-unknown-linux-gnu.tar.gz'}),
+       'linux_aarch64': 'uv-aarch64-unknown-linux-gnu.tar.gz',
+       'macos_arm64': 'uv-aarch64-apple-darwin.tar.gz',
+       'macos_x86_64': 'uv-x86_64-apple-darwin.tar.gz'}),
     'https://github.com/astral-sh/uv/releases'),
 )
 

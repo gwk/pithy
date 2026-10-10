@@ -38,6 +38,5 @@ _prompt.md
 _todo.md
 pithy_/pithy/web/static/fonts/*.ttf
 
-## Ops script downloads.
-ops/linux/uv/download/
-ops/linux/vector/download/
+## Ops downloads.
+ops/common/download

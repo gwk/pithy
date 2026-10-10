@@ -1,5 +1,8 @@
 # Pithy uv Setup
 
+Install the approved uv release with `ops/common/install-uv.sh` on macOS and Linux, and add `/opt/uv/bin` to `PATH`.
+See [the ops instructions](../ops/readme.md#install-uv) for permissions, upgrades and migration from Homebrew.
+
 Pithy is a uv virtual workspace. Its root `pyproject.toml` lists the package directories, such as `pithy_`, `tolkien_`, and `utest_`, as workspace members. Package dependencies name other pithy packages normally in `[project.dependencies]`, then map them to the local workspace in `[tool.uv.sources]`:
 
 ```toml
