@@ -9,8 +9,16 @@ Shell scripts for setting up computers: macOS developer machines and Fedora Linu
 Run `common/install-rust.sh` to install Rust for building native Python packages.
 The invoking user maintains the shared toolchain; each build user keeps a private Cargo cache.
 
-Run `common/vector/install.bash` to install the approved Vector release on Linux (x86_64 or aarch64) or macOS (Apple Silicon).
+Run `common/install-vector.sh` to install the approved Vector release on Linux (x86_64 or aarch64) or macOS (Apple Silicon).
 The service setup script remains Linux-only at `linux/vector/setup.bash`.
+
+
+## Downloads and build trees
+
+The build and install scripts keep their downloaded archives and extracted or built trees in `ops/_build/`, which is gitignored.
+Archives are reused when present and their checksums are verified on every run.
+A checksum failure leaves the archive in place; delete it to download again.
+Extracted trees are removed and replaced at the start of the next run, never on exit, so that the evidence of a failed run remains available for inspection.
 
 
 ## Install uv
@@ -18,7 +26,6 @@ The service setup script remains Linux-only at `linux/vector/setup.bash`.
 From the repository root, run `ops/common/install-uv.sh` on macOS or Linux (ARM64 or x86_64).
 It downloads the approved release from GitHub, verifies its SHA-256 checksum, and installs root-owned binaries in `/opt/uv/bin` using sudo.
 The directories and binaries are readable and executable by all users; updates require sudo.
-Downloads use a temporary directory that is removed on exit.
 
 Add this to your shell profile and the environment used to launch agents:
 

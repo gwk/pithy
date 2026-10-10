@@ -29,11 +29,12 @@ esac
 
 set -x
 
-mkdir -p download
-cd download
+cd .. # The ops directory.
+mkdir -p _build
+cd _build
 
 vector_dl_name="vector-${vector_version}-${vector_target}.tar.gz"
-curl --proto '=https' --tlsv1.2 -sSfLO \
+[[ -f "$vector_dl_name" ]] || curl --proto '=https' --tlsv1.2 -sSfLO \
   "https://github.com/vectordotdev/vector/releases/download/v${vector_version}/${vector_dl_name}"
 if [[ "$machine_os" == Darwin ]]; then
   echo "${vector_sha256}  ${vector_dl_name}" | shasum -a 256 -c -
@@ -41,8 +42,10 @@ else
   echo "${vector_sha256}  ${vector_dl_name}" | sha256sum -c -
 fi
 
-tar -xzf "${vector_dl_name}"
-
 vector_dl_dir="vector-${vector_target}"
+rm -rf "$vector_dl_dir"
+tar -xzf "${vector_dl_name}"
+[[ -d "$vector_dl_dir" ]] || fail "Missing Vector directory: $vector_dl_dir."
+
 [[ -d /usr/local/bin ]] || sudo mkdir -p /usr/local/bin
 sudo install "${vector_dl_dir}/bin/vector" /usr/local/bin

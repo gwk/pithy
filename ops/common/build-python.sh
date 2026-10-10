@@ -76,7 +76,7 @@ exe sudo chmod 2775 "$prefix" # setgid so descendants inherit the group; group-w
 
 # Download, configure, and build, unless -reuse-build was passed.
 
-cd "$(dirname "$0")/../.." # Repo root.
+cd "$(dirname "$0")/.." # The ops directory.
 mkdir -p _build
 cd _build
 
@@ -88,7 +88,7 @@ python_src_dir="Python-$py_point_version"
 
 if [[ $reuse_build == 1 ]]; then
   [[ $# -eq 0 ]] || fail "-reuse-build: configure arguments are unused when reusing the existing build: $*."
-  [[ -f "$python_src_dir/_build/Makefile" ]] || fail "-reuse-build: no existing build at _build/$python_src_dir/_build."
+  [[ -f "$python_src_dir/_build/Makefile" ]] || fail "-reuse-build: no existing build at ops/_build/$python_src_dir/_build."
   cd "$python_src_dir/_build"
   echo "reusing existing build: $PWD."
 else

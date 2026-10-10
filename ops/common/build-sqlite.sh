@@ -7,7 +7,7 @@ fail() { echo "Error: $@" 1>&2; exit 1; }
 
 source "$(dirname "$0")/../versions.sh"
 
-cd "$(dirname "$0")/../.." # Repo root.
+cd "$(dirname "$0")/.." # The ops directory.
 mkdir -p _build
 cd _build
 

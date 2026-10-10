@@ -4,6 +4,7 @@
 # Install the approved uv release on macOS or Linux into /opt/uv/bin.
 # Downloads and verification run as the invoking user; sudo installs root-owned, shared binaries.
 # Rerun after updating versions.sh to upgrade. No shell startup files are edited.
+# The archive and extracted files stay in ops/_build for inspection; the next run replaces them.
 
 set -euo pipefail
 
@@ -15,10 +16,10 @@ for path in "$prefix" "$prefix/bin" "$prefix/bin/uv" "$prefix/bin/uvx"; do
   [[ ! -L "$path" ]] || fail "Install path must not be a symlink: $path."
 done
 
-src_dir=$(dirname "$0")
-cd "$src_dir"
-
-source ../versions.sh
+cd "$(dirname "$0")/.." # The ops directory.
+source versions.sh
+mkdir -p _build
+cd _build
 
 machine_os=$(uname -s)
 machine_arch=$(uname -m)
@@ -44,11 +45,7 @@ uv_dl_dir="uv-${uv_target}"
 uv_dl_name="${uv_dl_dir}.tar.gz"
 uv_dl_url="https://github.com/astral-sh/uv/releases/download/${uv_version}/${uv_dl_name}"
 
-download_dir=$(mktemp -d)
-trap 'rm -rf "$download_dir"' EXIT
-cd "$download_dir"
-
-curl --proto '=https' --tlsv1.2 -fsSL -o "$uv_dl_name" "$uv_dl_url"
+[[ -f "$uv_dl_name" ]] || curl --proto '=https' --tlsv1.2 -fsSL -o "$uv_dl_name" "$uv_dl_url"
 
 if [[ "$machine_os" == Darwin ]]; then
   echo "${uv_sha256}  ${uv_dl_name}" | shasum -a 256 -c -
@@ -56,7 +53,9 @@ else
   echo "${uv_sha256}  ${uv_dl_name}" | sha256sum -c -
 fi
 
+rm -rf "$uv_dl_dir"
 tar -xzf "$uv_dl_name"
+[[ -d "$uv_dl_dir" ]] || fail "Missing uv directory: $uv_dl_dir."
 "$uv_dl_dir/uv" --version
 
 sudo install -d -o root -m 755 "$prefix" "$prefix/bin"
