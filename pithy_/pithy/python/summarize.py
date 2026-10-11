@@ -10,14 +10,16 @@ import ast
 from ast import parse as parse_ast
 
 from ..cmdparse import Cmd, flag, pos
-from .package import resolve_spec_paths, SpecResolutionError
+from .package import resolve_spec_paths, safe_path_help, SpecResolutionError, target_resolution_help
 
 
 class SummarizeCmd(Cmd):
   'Summarize Python package contents.'
 
+  help_addenda = (target_resolution_help, safe_path_help)
+
   targets:list[str] = pos(doc='File paths, directories, and/or dotted module names to summarize.')
-  safe_path:bool = flag('-P', doc='Omit the implicit Python search directory; also enabled by PYTHONSAFEPATH.')
+  safe_path:bool = flag('-P', doc='Use safe-path target resolution.')
 
 
   def run(self) -> None:

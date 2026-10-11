@@ -37,7 +37,7 @@ from ..fs import abs_path
 from ..io import outL
 from .ast_utils import fmt_syntax_error
 from .package import (module_name_for_path, qualname_rel_to, resolve_module_in_dirs, resolve_module_installed,
-  resolve_spec_paths, SpecResolutionError)
+  resolve_spec_paths, safe_path_help, SpecResolutionError, target_resolution_help)
 from .sem import (Sem, sem_for_source, SemAsyncFunctionDef, SemClassDef, SemFunctionDef, SemImport, SemImportFrom, SemName,
   SemScope)
 from .sem.scopes import build_scope_info, ScopeInfo
@@ -53,8 +53,10 @@ class DepsCmd(Cmd):
   The targets form the universe for the summary and for dependents queries; a dependencies query parses only the named module.
   '''
 
+  help_addenda = (target_resolution_help, safe_path_help)
+
   targets:list[str] = pos(doc='File paths, directories, and/or dotted module names to analyze.')
-  safe_path:bool = flag('-P', doc='Omit the implicit Python search directory; also enabled by PYTHONSAFEPATH.')
+  safe_path:bool = flag('-P', doc='Use safe-path target resolution.')
   dependencies:str|None = opt(default=None, metavar='NAME', doc='Show dependencies of a module or module.symbol.')
   dependents:str|None = opt(default=None, metavar='NAME', doc='Show dependents of a module or module.symbol.')
 

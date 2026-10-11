@@ -22,6 +22,18 @@ _context_keywords_ = ['PYTHONSAFEPATH', 'discovery', 'find_spec', 'importlib', '
   'pkgutil', 'py.typed', 'resolve', 'sys.path', 'walk']
 
 
+target_resolution_help = '''
+Dotted module names resolve through the running Python environment without loading target modules or their parents.
+Resolution is static: dynamic package paths, custom submodule finders, and source inside archives are unsupported.
+'''
+
+safe_path_help = '''
+-P or a nonempty PYTHONSAFEPATH enables safe-path mode, omitting the implicit Python search directory.
+Explicit PYTHONPATH entries remain searchable; Python's -E and -I ignore PYTHONSAFEPATH.
+Explicit paths still work in safe-path mode: use ./pkg to select a local directory instead of the module name pkg.
+'''
+
+
 class SpecResolutionError(Exception):
   'A target spec could not be resolved to Python files.'
 
