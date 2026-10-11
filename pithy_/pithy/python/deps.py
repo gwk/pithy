@@ -31,7 +31,7 @@ from typing import Iterable
 from tolkien import Source
 
 from ..ansi import BOLD_OUT, RST_OUT, TXT_B_OUT, TXT_G_OUT, TXT_Y_OUT
-from ..argparser import ArgParser
+from ..cmdparse import Cmd, flag, opt, pos
 from ..dict import dict_dag_inverse_with_all_keys
 from ..fs import abs_path
 from ..io import outL
@@ -43,24 +43,35 @@ from .sem import (Sem, sem_for_source, SemAsyncFunctionDef, SemClassDef, SemFunc
 from .sem.scopes import build_scope_info, ScopeInfo
 
 
-def main() -> None:
-  parser = ArgParser(description='Analyze Python module and symbol dependencies.')
-  parser.add_argument('targets', nargs='+', help='File paths, directories, and/or dotted module names to analyze.')
-  parser.add_argument('-P', dest='safe_path', action='store_true',
-    help='Omit the implicit Python search directory; also enabled by PYTHONSAFEPATH.')
-  parser.add_argument('-dependencies', metavar='NAME', help='Show dependencies of a module or module.symbol.')
-  parser.add_argument('-dependents', metavar='NAME', help='Show dependents of a module or module.symbol.')
-  args = parser.parse_args()
+_context_keywords_ = ['call graph', 'callers', 'dependencies', 'dependents', 'import graph', 'imports', 'references',
+  'symbols', 'usages', 'who calls']
 
-  graph = DepGraph(safe_path=args.safe_path)
-  try:
-    for target in args.targets:
-      graph.add_target(target)
-    if args.dependencies: print_dependencies(graph, args.dependencies)
-    elif args.dependents: print_dependents(graph, args.dependents)
-    else: print_summary(graph)
-  except DepsError as e:
-    exit(f'pithy.python.deps error: {e}')
+
+class DepsCmd(Cmd):
+  '''
+  Analyze Python module and symbol dependencies.
+  The targets form the universe for the summary and for dependents queries; a dependencies query parses only the named module.
+  '''
+
+  targets:list[str] = pos(doc='File paths, directories, and/or dotted module names to analyze.')
+  safe_path:bool = flag('-P', doc='Omit the implicit Python search directory; also enabled by PYTHONSAFEPATH.')
+  dependencies:str|None = opt(default=None, metavar='NAME', doc='Show dependencies of a module or module.symbol.')
+  dependents:str|None = opt(default=None, metavar='NAME', doc='Show dependents of a module or module.symbol.')
+
+
+  def run(self) -> None:
+    graph = DepGraph(safe_path=self.safe_path)
+    try:
+      for target in self.targets:
+        graph.add_target(target)
+      if self.dependencies: print_dependencies(graph, self.dependencies)
+      elif self.dependents: print_dependents(graph, self.dependents)
+      else: print_summary(graph)
+    except DepsError as e:
+      exit(f'pithy.python.deps error: {e}')
+
+
+def main() -> None: DepsCmd.main()
 
 
 DEP_RANK_COLORS = (TXT_B_OUT, TXT_Y_OUT, TXT_G_OUT) # Stdlib, third-party, first-party.
