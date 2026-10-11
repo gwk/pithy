@@ -1,5 +1,7 @@
 # Pithy
 
+These are instructions for working on the pithy project specifically.
+
 ## Python Environment
 * Routine recipes use `python3` and tools from the caller's `PATH`. They must not silently select or synchronize a project venv.
 * The environment depends on the project and the worktree:
