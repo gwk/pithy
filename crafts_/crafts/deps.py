@@ -17,6 +17,9 @@ from subprocess import run
 from typing import Any
 
 
+_context_keywords_ = ['checkouts', 'dependencies', 'local repositories', 'os.symlink', 'repos', 'symlinks']
+
+
 deps_config_name = '_deps.json'
 deps_local_config_name = '_deps.local.json'
 deps_dir_name = 'deps'

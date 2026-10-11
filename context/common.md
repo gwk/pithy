@@ -36,6 +36,23 @@ Shared project skills belong in `context/skills`.
 `.agents/skills` and `.claude/skills` are symlinks to that directory.
 Keep the directory and both links committed so fresh checkouts do not require sandboxed agents to create them.
 
+## Local Dependency Sources
+
+Projects expose related local directories through symlinks under `deps/`, managed by `craft-deps`.
+Pithy is available at `deps/pithy` in dependent projects.
+Use these paths to inspect dependency implementations, tests, documentation, and instructions.
+Targets may also be documentation or data directories rather than Git checkouts.
+
+Edits through `deps/` modify the original directory and may affect other projects using it.
+Before editing a dependency, read its applicable instructions and inspect its Git state; run its checks and manage its changes in that repository.
+Respect its `writable` setting in `_deps.local.json`, which defaults to false.
+This is an advisory permission for consuming tools; the symlink itself does not enforce it or grant filesystem access.
+
+Commit dependency names in `_deps.json`; keep `deps/` and the machine-local path mapping `_deps.local.json` gitignored.
+Relative paths in `_deps.local.json` resolve from the project root.
+Use `craft-deps [project]` to configure or repair links; it prompts for missing locations and write permissions, and does not clone repositories or install packages.
+Configure the links before invoking uv if its workspace depends on them.
+
 ## Find Existing Functionality
 
 From the working project's root, query for existing solutions using `craft-context query [keywords...]`.

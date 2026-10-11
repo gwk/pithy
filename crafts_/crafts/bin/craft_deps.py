@@ -8,6 +8,9 @@ from crafts.deps import (DepLocation, deps_local_config_name, deps_local_config_
   write_deps_local_config)
 
 
+_context_keywords_ = ['checkouts', 'dependencies', 'local repositories', 'repos', 'symlinks']
+
+
 def main() -> None:
   '''
   `craft-deps` configures named symlinks to machine-local directories in a project's `deps/` directory.
