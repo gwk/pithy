@@ -1,10 +1,25 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+'''
+Python module resolution and package discovery.
+
+Resolve filesystem targets and dotted module names, discover package roots, and walk Python source files.
+Environment-based resolution is static; see `resolve_module_installed` for search policy and limitations.
+'''
+
+import sys
+from importlib.machinery import (BYTECODE_SUFFIXES, EXTENSION_SUFFIXES, ExtensionFileLoader, FileFinder, ModuleSpec, PathFinder,
+  SOURCE_SUFFIXES, SourceFileLoader, SourcelessFileLoader)
+from os import environ
 from typing import Callable, Iterable, Iterator
 
 from ..filestatus import is_dir, is_file, is_link
 from ..fs import abs_path, list_dir, path_exists, path_join, real_path, walk_dirs_up, walk_files
 from ..path import norm_path, path_dir
+
+
+_context_keywords_ = ['PYTHONSAFEPATH', 'discovery', 'find_spec', 'importlib', 'module name', 'module path', 'package root',
+  'pkgutil', 'py.typed', 'resolve', 'sys.path', 'walk']
 
 
 class SpecResolutionError(Exception):
@@ -65,31 +80,74 @@ def find_package_root(path:str, *, package_roots:set[str]|None=None) -> str|None
 
 
 def resolve_module_in_dirs(name:str, search_dirs:Iterable[str]) -> str|None:
-  'Resolve a dotted module name to a file path by searching `search_dirs`; returns None if not found.'
-  if not name: return None
-  rel = name.replace('.', '/')
-  for search_dir in search_dirs:
-    base = path_join(search_dir, rel)
-    for cand in (base + '.py', path_join(base, '__init__.py')):
-      if path_exists(cand, follow=True): return cand
+  '''
+  Resolve a dotted name within explicit filesystem roots without loading modules.
+  Select each package before searching its children; regular packages shadow later copies.
+  Namespace portions are combined, and packages take precedence over same-named module files.
+  Native and bytecode-only modules can shadow source files, but return None.
+  '''
+  parts = name.split('.')
+  if not all(parts): return None
+  locations = list(search_dirs)
+  for idx in range(len(parts)):
+    spec = _find_spec_in_dirs('.'.join(parts[:idx+1]), locations)
+    if spec is None: return None
+    if idx == len(parts)-1: return _source_path(spec)
+    if spec.submodule_search_locations is None: return None
+    locations = list(spec.submodule_search_locations)
   return None
 
 
-def resolve_spec_paths(spec:str, resolve_module:Callable[[str],str|None]|None=None) -> list[str]:
+def resolve_module_installed(name:str, *, safe_path:bool=False) -> str|None:
+  '''
+  Resolve a dotted name in the running Python environment without loading target modules or their parents.
+  `safe_path=True` acts like Python's `-P`: omit the interpreter's automatically prepended search directory.
+  Python's own safe-path flag and nonempty PYTHONSAFEPATH are also respected; -E/-I ignore the environment variable.
+  Explicit entries from PYTHONPATH or installation configuration remain searchable, even if they name the current directory.
+  This assumes sys.path still has its interpreter-initialized leading entry when Python was started without -P.
+
+  Consult top-level meta-path finders in their registered order, including editable-install finders.
+  Finders execute their lookup code, but this function never invokes loaders or imports target packages.
+  Resolve descendants statically within the selected package's filesystem locations.
+  Package initialization that changes __path__, custom submodule finders, and source inside archives are not supported.
+  Returns None for unresolved names, namespace packages themselves, and modules without a regular Python source file.
+  '''
+  if not name or not all(name.split('.')): return None
+  search_dirs = list(sys.path)
+  if _safe_path_enabled(safe_path) and not sys.flags.safe_path:
+    search_dirs = search_dirs[1:]
+  top, _, rest = name.partition('.')
+  spec = None
+  for finder in sys.meta_path:
+    try:
+      spec = finder.find_spec(top, search_dirs if finder is PathFinder else None)
+    except (ImportError, ValueError): return None
+    if spec is not None: break
+  if spec is None: return None
+  if not rest: return _source_path(spec)
+  if spec.submodule_search_locations is None: return None
+  return resolve_module_in_dirs(rest, spec.submodule_search_locations)
+
+
+def resolve_spec_paths(spec:str, resolve_module:Callable[[str],str|None]|None=None, *, safe_path:bool=False) -> list[str]:
   '''
   Resolve a target spec to a sorted list of Python file paths.
-  A spec is interpreted as a path if it ends in `.py`, contains a slash, or exists on the filesystem;
-  otherwise it is treated as a dotted module name and resolved with `resolve_module`,
-  which defaults to a search of the current directory.
+  A spec is interpreted as a path if it ends in `.py`, contains a slash, or is `.` or `..`.
+  Outside safe-path mode, other existing filesystem entries are also interpreted as paths.
+  Otherwise it is treated as a dotted module name and resolved with `resolve_module`,
+  which defaults to `resolve_module_installed` with the given `safe_path` setting.
+  Safe-path mode follows `resolve_module_installed`; explicit paths remain usable in that mode.
+  A custom resolver is responsible for its own module search policy.
   A dotted name that resolves to a package `__init__` file includes all of the package's submodule files.
   Raises SpecResolutionError if the spec cannot be resolved to any Python files.
   '''
-  if spec.endswith('.py') or '/' in spec or path_exists(spec, follow=True):
+  is_path = spec.endswith('.py') or '/' in spec or spec in ('.', '..')
+  if is_path or (not _safe_path_enabled(safe_path) and path_exists(spec, follow=True)):
     try: paths = sorted(walk_files(spec, file_exts=['.py']))
     except FileNotFoundError: raise SpecResolutionError(f'target path not found: {spec!r}') from None
     if not paths: raise SpecResolutionError(f'target path contains no Python files: {spec!r}')
     return paths
-  mod_path = resolve_module(spec) if resolve_module is not None else resolve_module_in_dirs(spec, ('.',))
+  mod_path = resolve_module(spec) if resolve_module is not None else resolve_module_installed(spec, safe_path=safe_path)
   if mod_path is None: raise SpecResolutionError(f'cannot resolve module {spec!r}.')
   if mod_path.endswith('__init__.py'): # A package spec includes all of its submodules.
     return sorted(walk_files(path_dir(mod_path), file_exts=['.py']))
@@ -115,3 +173,28 @@ def qualname_rel_to(base:str, qual:str) -> str:
   if not common: return qual
   dots = max(1, len(base_parts) - common)
   return '.'*dots + '.'.join(qual_parts[common:])
+
+
+def _safe_path_enabled(safe_path:bool) -> bool:
+  return safe_path or sys.flags.safe_path or (not sys.flags.ignore_environment and bool(environ.get('PYTHONSAFEPATH')))
+
+
+def _source_path(spec:ModuleSpec) -> str|None:
+  origin = spec.origin
+  return origin if origin and origin.endswith('.py') and is_file(origin, follow=True) else None
+
+
+def _find_spec_in_dirs(name:str, search_dirs:Iterable[str]) -> ModuleSpec|None:
+  # FileFinder returns plain namespace locations without requiring parent packages in sys.modules.
+  namespaces:list[str] = []
+  for directory in search_dirs:
+    finder = FileFinder(directory or '.', (ExtensionFileLoader, EXTENSION_SUFFIXES), (SourceFileLoader, SOURCE_SUFFIXES),
+      (SourcelessFileLoader, BYTECODE_SUFFIXES))
+    spec = finder.find_spec(name)
+    if spec is None: continue
+    if spec.loader is not None: return spec
+    if spec.submodule_search_locations is not None: namespaces.extend(spec.submodule_search_locations)
+  if not namespaces: return None
+  spec = ModuleSpec(name, loader=None, is_package=True)
+  spec.submodule_search_locations = namespaces
+  return spec

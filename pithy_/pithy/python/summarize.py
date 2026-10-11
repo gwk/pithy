@@ -1,6 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-'A simple Python analysis tool that outputs information about package contents.'
+'''
+A simple Python analysis tool that outputs information about package contents.
+
+Dotted targets resolve statically through the running Python environment; see `pithy.python.package.resolve_module_installed`.
+'''
 
 import ast
 from ast import parse as parse_ast
@@ -13,9 +17,11 @@ def main() -> None:
   parser = ArgParser(description='Summarize Python package contents.')
   parser.add_argument('targets', nargs='+', help='File paths, directories, and/or dotted module names to summarize.')
 
+  parser.add_argument('-P', dest='safe_path', action='store_true',
+    help='Omit the implicit Python search directory; also enabled by PYTHONSAFEPATH.')
   args = parser.parse_args()
 
-  try: paths = [path for spec in args.targets for path in resolve_spec_paths(spec)]
+  try: paths = [path for spec in args.targets for path in resolve_spec_paths(spec, safe_path=args.safe_path)]
   except SpecResolutionError as e: exit(f'pithy.python.summarize error: {e}')
 
   for path in paths:

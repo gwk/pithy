@@ -21,8 +21,8 @@ TODO: attribute chains through plain module imports (e.g. `import os; os.path.jo
 are recorded as a dependency on the module only, not on the accessed attribute.
 TODO: module-level statements (assignments and expressions) are not attributed to symbols;
 only top-level `def`, `async def`, and `class` symbols are analyzed.
-TODO: dotted module name targets resolve against the current directory and roots discovered from path targets;
-installed packages are not searched.
+Dotted targets resolve statically through the running Python environment; see `pithy.python.package.resolve_module_installed`.
+The import and symbol layers resolve against the target roots only.
 '''
 
 from sys import stdlib_module_names
@@ -37,7 +37,7 @@ from ..fs import abs_path, path_exists, path_join
 from ..io import outL
 from ..path import path_dir, path_name
 from .ast_utils import fmt_syntax_error
-from .package import qualname_rel_to, resolve_module_in_dirs, resolve_spec_paths, SpecResolutionError
+from .package import qualname_rel_to, resolve_module_in_dirs, resolve_module_installed, resolve_spec_paths, SpecResolutionError
 from .sem import (Sem, sem_for_source, SemAsyncFunctionDef, SemClassDef, SemFunctionDef, SemImport, SemImportFrom, SemName,
   SemScope)
 from .sem.scopes import build_scope_info, ScopeInfo
@@ -46,11 +46,13 @@ from .sem.scopes import build_scope_info, ScopeInfo
 def main() -> None:
   parser = ArgParser(description='Analyze Python module and symbol dependencies.')
   parser.add_argument('targets', nargs='+', help='File paths, directories, and/or dotted module names to analyze.')
+  parser.add_argument('-P', dest='safe_path', action='store_true',
+    help='Omit the implicit Python search directory; also enabled by PYTHONSAFEPATH.')
   parser.add_argument('-dependencies', metavar='NAME', help='Show dependencies of a module or module.symbol.')
   parser.add_argument('-dependents', metavar='NAME', help='Show dependents of a module or module.symbol.')
   args = parser.parse_args()
 
-  graph = DepGraph()
+  graph = DepGraph(safe_path=args.safe_path)
   try:
     for target in args.targets:
       graph.add_target(target)
@@ -154,8 +156,9 @@ class DepGraph:
   modules are parsed and analyzed on demand and cached.
   '''
 
-  def __init__(self) -> None:
-    self.search_dirs:list[str] = [abs_path('.')] # Dirs against which dotted module names are resolved.
+  def __init__(self, *, safe_path:bool=False) -> None:
+    self.safe_path = safe_path
+    self.search_dirs:list[str] = [] # Explicit target roots used for dependency analysis.
     self.targets:dict[str,str] = {} # Target module name -> file path.
     self.paths:dict[str,str] = {} # Resolved module name -> file path; superset of `targets`.
     self._scopes:dict[str,ScopeInfo] = {}
@@ -165,7 +168,7 @@ class DepGraph:
 
   def add_target(self, spec:str) -> None:
     'Add a target: a file path, a directory of Python files, or a dotted module name.'
-    try: paths = resolve_spec_paths(spec, self.resolve_module)
+    try: paths = resolve_spec_paths(spec, self.resolve_target_module, safe_path=self.safe_path)
     except SpecResolutionError as e: raise DepsError(str(e)) from None
     for path in paths:
       self.add_file(path)
@@ -177,6 +180,14 @@ class DepGraph:
     if search_dir not in self.search_dirs: self.search_dirs.append(search_dir)
     self.paths.setdefault(name, path)
     self.targets.setdefault(name, path)
+
+
+  def resolve_target_module(self, name:str) -> str|None:
+    '''
+    Resolve a dotted target module name through the Python environment, independent of earlier targets.
+    Installed packages are only consulted for targets, so that the dependency layers resolve against the target roots alone.
+    '''
+    return resolve_module_installed(name, safe_path=self.safe_path)
 
 
   def resolve_module(self, name:str) -> str|None:
