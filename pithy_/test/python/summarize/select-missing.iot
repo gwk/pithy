@@ -1,0 +1,5 @@
+{
+  'args': ['fixtures/sample/mod.py:nope,plain'],
+  'code': 1,
+  'err_val': "pithy.python.summarize error: fixtures/sample/mod.py: no definition matches ['nope'].\n",
+}

@@ -1,0 +1,4 @@
+{
+  'args': ['-docs=none', 'sample.mod:Point'],
+  'links': {'pithy_/test/python/summarize/fixtures/sample': 'sample'},
+}

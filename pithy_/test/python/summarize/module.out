@@ -1,0 +1,41 @@
+fixtures/sample/mod.py: sample.mod, 82 lines.
+      A sample module.
+      It has a multi-line docstring.
+10: type Pair = tuple[int,int]
+12: limit = 10
+14: table = { ...
+19: _private_const = 'hidden'
+22: def plain(x:int) -> int:
+      Return x doubled.
+27: def undocumented(a, b): return a + b
+30: def multi_line_sig(a:int,
+31:   b:str) -> str:
+      Join a and b.
+
+      The blank line above is preserved.
+41: @overload
+42: def over(x:int) -> int: ...
+43: @overload
+44: def over(x:str) -> str: ...
+45: def over(x): return x
+48: async def fetch(url:str) -> bytes:
+      Fetch a url.
+53: def _helper() -> None: pass
+56: @dataclass
+57: class Point:
+      A point.
+59:   x:int
+60:   y:int = 0
+62:   def norm(self) -> float:
+        The L1 norm.
+66:   @property
+67:   def is_origin(self) -> bool: return self.x == 0 and self.y == 0
+69:   @staticmethod
+70:   def _secret() -> None:
+        Private method.
+73:   class Nested:
+        Nested class.
+75:     def method(self) -> None: pass
+79:   def conditional() -> None:
+        Defined conditionally.
+82:   def conditional() -> None: pass

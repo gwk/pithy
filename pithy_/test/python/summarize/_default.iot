@@ -1,0 +1,6 @@
+{
+  'cmd': 'python3 -m pithy.python.summarize',
+  'links': {
+    'pithy_/test/python/summarize/fixtures',
+  },
+}

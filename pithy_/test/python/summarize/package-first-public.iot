@@ -1,0 +1,3 @@
+{
+  'args': ['-docs=first', '-public', '-no-assigns', 'fixtures/sample'],
+}

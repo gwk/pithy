@@ -1,0 +1,3 @@
+{
+  'args': ['-full', 'fixtures/sample/mod.py:multi_line_sig,Point.is_origin'],
+}
