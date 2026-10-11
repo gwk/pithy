@@ -1,0 +1,3 @@
+{
+  'args': ['-uses', '-docs=none', '-no-assigns', 'fixtures/sample/mod.py:Point,multi_line_sig'],
+}

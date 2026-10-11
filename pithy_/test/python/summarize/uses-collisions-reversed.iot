@@ -1,0 +1,5 @@
+{
+  'args': ['-uses', '-P',
+    'fixtures/collisions/b/pkg/__init__.py:f', 'fixtures/collisions/b/mod.py:f',
+    'fixtures/collisions/a/pkg/__init__.py:f', 'fixtures/collisions/a/mod.py:f'],
+}

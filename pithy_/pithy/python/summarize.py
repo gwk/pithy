@@ -20,6 +20,9 @@ Selecting a class includes its members; selecting a member also prints the enclo
 `-full` prints the complete source of the selected definitions, decorators included, instead of the summary.
 Without selectors it prints the whole module with line numbers.
 
+`-uses` appends a `uses:` line to each top-level definition, listing the modules and symbols that it references,
+as analyzed by `pithy.python.deps`. Callers are not shown here; query them with `pithy.python.deps -dependents`.
+
 Dotted targets resolve statically through the running Python environment; see `pithy.python.package.resolve_module_installed`.
 '''
 
@@ -33,6 +36,7 @@ from typing import Iterator, Literal
 from ..cmdparse import Cmd, flag, opt, pos
 from ..fs import path_rel_to_current_or_abs
 from .ast_utils import fmt_syntax_error
+from .deps import DepGraph, DepsError, fmt_deps
 from .package import module_name_for_path, resolve_spec_paths, safe_path_help, SpecResolutionError, target_resolution_help
 
 
@@ -62,6 +66,7 @@ class SummarizeCmd(Cmd):
   docs:DocsMode = opt(default='full', doc='How much of each docstring to show: all lines, the first line only, or none.')
   public:bool = flag(doc='Omit definitions whose names begin with an underscore.')
   assigns:bool = flag(default=True, doc='Show module and class level assignments; `-no-assigns` omits them.')
+  uses:bool = flag(doc='Append a `uses:` line to each top-level definition, listing the modules and symbols it references.')
 
 
   def run(self) -> None:
@@ -84,7 +89,17 @@ class SummarizeCmd(Cmd):
             print(f'pithy.python.summarize error: {path}: no definition matches {unmatched!r}.', file=stderr)
             ok = False
         if self.full: summary.print_full(selectors, public=self.public)
-        else: summary.print_summary(selectors, docs=self.docs, public=self.public, assigns=self.assigns)
+        else:
+          uses = None
+          if self.uses:
+            # Analyze each file independently: unrelated paths can have the same dotted module name.
+            graph = DepGraph(safe_path=self.safe_path)
+            graph.add_file(path)
+            try: uses = {sym: fmt_deps(graph, summary.name, deps) for sym, deps in graph.symbol_deps(summary.name).items() if deps}
+            except DepsError as e:
+              print(f'pithy.python.summarize error: {e}', file=stderr)
+              ok = False
+          summary.print_summary(selectors, docs=self.docs, public=self.public, assigns=self.assigns, uses=uses)
     if not ok: exit(1)
 
 
@@ -109,7 +124,12 @@ class ModuleSummary:
     return cls(path, text)
 
 
-  def print_summary(self, selectors:list[str], *, docs:DocsMode, public:bool, assigns:bool) -> None:
+  def print_summary(self, selectors:list[str], *, docs:DocsMode, public:bool, assigns:bool, uses:dict[str,str]|None=None
+   ) -> None:
+    '''
+    Print the summary of the selected definitions.
+    `uses` optionally maps top-level symbol names to preformatted dependency text, printed after each docstring.
+    '''
     print(f'{self.path}: {self.name}, {len(self.lines)} lines.')
     if not selectors: self.print_doc(self.tree, indent=2, mode=docs)
     for member, qualname, selected in self.walk(self.tree.body, '', selectors, public=public, assigns=assigns):
@@ -117,6 +137,8 @@ class ModuleSummary:
         if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
           self.print_lines(self.header_range(member))
           self.print_doc(member, indent=member.col_offset+2, mode=docs)
+          if uses and (text := uses.get(qualname)):
+            print(' ' * (self.width + 2 + member.col_offset + 2) + 'uses: ' + text)
         else:
           self.print_assign(member)
       elif isinstance(member, ast.ClassDef): # An unselected class containing selected members is shown for context.
