@@ -33,11 +33,11 @@ from tolkien import Source
 from ..ansi import BOLD_OUT, RST_OUT, TXT_B_OUT, TXT_G_OUT, TXT_Y_OUT
 from ..argparser import ArgParser
 from ..dict import dict_dag_inverse_with_all_keys
-from ..fs import abs_path, path_exists, path_join
+from ..fs import abs_path
 from ..io import outL
-from ..path import path_dir, path_name
 from .ast_utils import fmt_syntax_error
-from .package import qualname_rel_to, resolve_module_in_dirs, resolve_module_installed, resolve_spec_paths, SpecResolutionError
+from .package import (module_name_for_path, qualname_rel_to, resolve_module_in_dirs, resolve_module_installed,
+  resolve_spec_paths, SpecResolutionError)
 from .sem import (Sem, sem_for_source, SemAsyncFunctionDef, SemClassDef, SemFunctionDef, SemImport, SemImportFrom, SemName,
   SemScope)
 from .sem.scopes import build_scope_info, ScopeInfo
@@ -351,24 +351,6 @@ def _collect_outer_refs(node:SemScope, names:set[str]) -> None:
   for el in outer_els:
     for sub in el.walk():
       if isinstance(sub, SemName) and sub.ctx == 'load': names.add(sub.id)
-
-
-def module_name_for_path(path:str) -> tuple[str,str]:
-  '''
-  Derive the dotted module name for a Python file by walking up through package directories (those containing __init__.py).
-  Returns (module name, search dir), where the search dir is the parent of the topmost package directory.
-  '''
-  path = abs_path(path)
-  dir = path_dir(path)
-  parts = [path_name(path).removesuffix('.py')]
-  while path_exists(path_join(dir, '__init__.py'), follow=True):
-    parts.append(path_name(dir))
-    parent = path_dir(dir)
-    if parent == dir: break
-    dir = parent
-  parts.reverse()
-  if len(parts) > 1 and parts[-1] == '__init__': parts.pop()
-  return '.'.join(parts), dir
 
 
 if __name__ == '__main__': main()

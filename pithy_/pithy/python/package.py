@@ -15,7 +15,7 @@ from typing import Callable, Iterable, Iterator
 
 from ..filestatus import is_dir, is_file, is_link
 from ..fs import abs_path, list_dir, path_exists, path_join, real_path, walk_dirs_up, walk_files
-from ..path import norm_path, path_dir
+from ..path import norm_path, path_dir, path_name
 
 
 _context_keywords_ = ['PYTHONSAFEPATH', 'discovery', 'find_spec', 'importlib', 'module name', 'module path', 'package root',
@@ -77,6 +77,24 @@ def find_package_root(path:str, *, package_roots:set[str]|None=None) -> str|None
     except PermissionError: break # An ancestor that we cannot traverse bounds the search.
     if dir_path in abs_roots: return dir_path
   return None
+
+
+def module_name_for_path(path:str) -> tuple[str,str]:
+  '''
+  Derive the dotted module name for a Python file by walking up through package directories (those containing __init__.py).
+  Returns (module name, search dir), where the search dir is the parent of the topmost package directory.
+  '''
+  path = abs_path(path)
+  dir = path_dir(path)
+  parts = [path_name(path).removesuffix('.py')]
+  while path_exists(path_join(dir, '__init__.py'), follow=True):
+    parts.append(path_name(dir))
+    parent = path_dir(dir)
+    if parent == dir: break
+    dir = parent
+  parts.reverse()
+  if len(parts) > 1 and parts[-1] == '__init__': parts.pop()
+  return '.'.join(parts), dir
 
 
 def resolve_module_in_dirs(name:str, search_dirs:Iterable[str]) -> str|None:
