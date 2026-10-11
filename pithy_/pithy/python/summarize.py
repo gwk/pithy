@@ -6,12 +6,15 @@ Summarize Python modules for fast orientation.
 For each module the summary prints a header line naming the file, its dotted module name and its length,
 then the module docstring, then one entry per definition in source order:
 * The source lines of the definition header, including every decorator and multi-line signature, each prefixed with its line number.
-* The docstring, indented beneath the header without line numbers.
+* The docstring source, including quotes and indentation, with line numbers.
 Module-level and class-level assignments are shown by their first source line.
 Methods and nested classes are shown beneath their class; functions nested inside functions are not.
 
-Line numbers are the gutter: every numbered line is verbatim source, so `path:line` references and `sed -n` ranges
-taken from the summary are exact. Unnumbered lines are docstring text.
+Numbered lines preserve source text and positions, except that `-docs=first` drops the docstring quotes;
+truncated assignments have an appended ` ...` marker.
+Generated module headers and dependency annotations are unnumbered.
+`-docs=full` is the default; `first` shows the first nonblank line of docstring content without its quotes, and `none` omits docstrings.
+Docstrings on definition header lines remain visible with any mode.
 
 A target is a file, a directory, or a dotted module name, optionally followed by `:` and a comma-separated list of selectors.
 A selector is a definition name, a dotted qualified name such as `Class.method`, or a glob pattern over either.
@@ -30,7 +33,7 @@ import ast
 from fnmatch import fnmatchcase
 from io import StringIO
 from sys import exit, stderr
-from tokenize import COMMENT, DEDENT, generate_tokens, INDENT, NEWLINE, NL, OP
+from tokenize import COMMENT, DEDENT, generate_tokens, INDENT, NEWLINE, NL, OP, STRING
 from typing import Iterator, Literal
 
 from ..cmdparse import Cmd, flag, opt, pos
@@ -55,7 +58,7 @@ class SummarizeCmd(Cmd):
   Summarize Python modules: the line-numbered header and docstring of every definition.
   A target is a file, directory or dotted module name, optionally followed by `:` and comma-separated selectors,
   e.g. `pithy.iterable:first_el,chunk*` or `pkg/mod.py:Cls.method`.
-  Numbered lines are verbatim source; unnumbered lines are docstrings.
+  Definition headers and docstrings are shown as line-numbered source.
   '''
 
   help_addenda = (target_resolution_help, safe_path_help)
@@ -63,7 +66,8 @@ class SummarizeCmd(Cmd):
   targets:list[str] = pos(doc='File paths, directories, or dotted module names, each with optional `:selectors`.')
   safe_path:bool = flag('-P', doc='Use safe-path target resolution.')
   full:bool = flag(doc='Print the complete source of the selected definitions, or the whole module, instead of a summary.')
-  docs:DocsMode = opt(default='full', doc='How much of each docstring to show: all lines, the first line only, or none.')
+  docs:DocsMode = opt(default='full',
+    doc='Docstring source: full (default), first nonblank content line without quotes, or none. Header lines are always shown.')
   public:bool = flag(doc='Omit definitions whose names begin with an underscore.')
   assigns:bool = flag(default=True, doc='Show module and class level assignments; `-no-assigns` omits them.')
   uses:bool = flag(doc='Append a `uses:` line to each top-level definition, listing the modules and symbols it references.')
@@ -112,7 +116,9 @@ class ModuleSummary:
   def __init__(self, path:str, text:str) -> None:
     self.path = path_rel_to_current_or_abs(path)
     self.name = module_name_for_path(path)[0]
-    self.lines = text.splitlines()
+    self.text = text
+    self.lines = text.split('\n')
+    if self.lines[-1] == '': self.lines.pop()
     self.tree = ast.parse(text, filename=path)
     self.width = len(str(len(self.lines)))
     self.header_ranges = definition_header_ranges(text)
@@ -131,12 +137,12 @@ class ModuleSummary:
     `uses` optionally maps top-level symbol names to preformatted dependency text, printed after each docstring.
     '''
     print(f'{self.path}: {self.name}, {len(self.lines)} lines.')
-    if not selectors: self.print_doc(self.tree, indent=2, mode=docs)
+    if not selectors: self.print_doc(self.tree, mode=docs)
     for member, qualname, selected in self.walk(self.tree.body, '', selectors, public=public, assigns=assigns):
       if selected:
         if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
           self.print_lines(self.header_range(member))
-          self.print_doc(member, indent=member.col_offset+2, mode=docs)
+          self.print_doc(member, mode=docs)
           if uses and (text := uses.get(qualname)):
             print(' ' * (self.width + 2 + member.col_offset + 2) + 'uses: ' + text)
         else:
@@ -236,19 +242,42 @@ class ModuleSummary:
     print(f'{node.lineno:>{self.width}}: {self.lines[node.lineno-1]}{suffix}')
 
 
-  def print_doc(self, node:ast.Module|Def, *, indent:int, mode:DocsMode) -> None:
+  def print_doc(self, node:ast.Module|Def, *, mode:DocsMode) -> None:
     if mode == 'none': return
-    doc = ast.get_docstring(node, clean=True)
-    if not doc: return
-    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-      doc_node = node.body[0]
-      # Suppress only docstrings that were printed in full as part of the header.
-      if doc_node.end_lineno is not None and doc_node.end_lineno <= self.header_range(node)[1]: return
-    lines = doc.splitlines()
-    if mode == 'first': lines = lines[:1]
-    pad = ' ' * (self.width + 2 + indent)
-    for line in lines:
-      print(pad + line if line else '')
+    if ast.get_docstring(node) is None: return
+    doc_node = node.body[0]
+    start, end = doc_node.lineno, doc_node.end_lineno or doc_node.lineno
+    header_end = self.header_range(node)[1] if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) else 0
+    if mode == 'first':
+      assert isinstance(doc_node, ast.Expr) and isinstance(doc_node.value, ast.Constant)
+      first = self.first_doc_line(doc_node.value)
+      if first is None: return
+      lineno, text = first
+      if lineno > header_end: print(f'{lineno:>{self.width}}: {text}')
+      return
+    self.print_lines((max(start, header_end + 1), end))
+
+
+  def first_doc_line(self, value:ast.Constant) -> tuple[int,str]|None:
+    '''
+    Locate the first nonblank content line of a docstring without decoding escapes.
+    Returns the line number and the line text with any string prefix and quotes removed, preserving indentation.
+    '''
+    source = ast.get_source_segment(self.text, value)
+    assert source is not None
+    # Parentheses allow adjacent literals on separate lines, including their original indentation.
+    for token in generate_tokens(StringIO('(' + source + ')').readline):
+      if token.type != STRING: continue
+      literal = token.string.lstrip('rRuU')
+      quote = literal[:3] if literal.startswith(('"""', "'''")) else literal[:1]
+      for offset, line in enumerate(literal[len(quote):-len(quote)].split('\n')):
+        if not line.strip(): continue
+        lineno = value.lineno + token.start[0] - 1 + offset
+        if offset == 0: # The opening quote line: restore the indentation that precedes the literal.
+          src = self.lines[lineno-1]
+          line = src[:len(src) - len(src.lstrip())] + line
+        return lineno, line
+    return None
 
 
 def definition_header_ranges(text:str) -> dict[int,tuple[int,int]]:

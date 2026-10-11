@@ -148,15 +148,15 @@ sample.py: sample, 3 lines.
 1: def f(): """First line.
 '''
 
-utest(inline_doc_header + '     First line.\n     Second line.\n', summary_output, inline_doc_source, [], 'full')
-utest(inline_doc_header + '     First line.\n', summary_output, inline_doc_source, [], 'first')
+utest(inline_doc_header + '2: Second line.\n3: """\n', summary_output, inline_doc_source, [], 'full')
+utest(inline_doc_header, summary_output, inline_doc_source, [], 'first')
 utest(inline_doc_header, summary_output, inline_doc_source, [], 'none')
 
 utest('''\
 sample.py: sample, 3 lines.
 1: class C: """Class docs.
-     Class docs.
-     More docs.
+2: More docs.
+3: """
 ''', summary_output, '''\
 class C: """Class docs.
 More docs.
@@ -179,8 +179,8 @@ sample.py: sample, 5 lines.
 1: async def f(
 2:   value:int,
 3: ): """First line.
-     First line.
-     More docs.
+4: More docs.
+5: """
 ''', summary_output, '''\
 async def f(
   value:int,
@@ -191,3 +191,50 @@ More docs.
 
 utest("sample.py: sample, 1 lines.\n1: def f(): 'Already printed.'\n", summary_output,
   "def f(): 'Already printed.'\n", [], 'full')
+
+
+module_doc_source = '''\
+"""
+
+Module documentation.
+
+More details.
+"""
+'''
+utest('sample.py: sample, 6 lines.\n1: """\n2: \n3: Module documentation.\n4: \n5: More details.\n6: """\n',
+  summary_output, module_doc_source, [], 'full')
+utest('sample.py: sample, 6 lines.\n3: Module documentation.\n', summary_output, module_doc_source, [], 'first')
+utest('sample.py: sample, 6 lines.\n', summary_output, module_doc_source, [], 'none')
+
+# Escaped newlines stay on their actual source line.
+utest('sample.py: sample, 1 lines.\n1: "One\\nTwo"\n', summary_output, '"One\\nTwo"\n', [], 'full')
+utest('sample.py: sample, 1 lines.\n1: One\\nTwo\n', summary_output, '"One\\nTwo"\n', [], 'first')
+
+concatenated_doc_source = '''\
+def f():
+  (
+    ''
+    r"First line."
+    "More details."
+  )
+'''
+utest('''\
+sample.py: sample, 6 lines.
+1: def f():
+2:   (
+3:     ''
+4:     r"First line."
+5:     "More details."
+6:   )
+''', summary_output, concatenated_doc_source, [], 'full')
+utest('''\
+sample.py: sample, 6 lines.
+1: def f():
+4:     First line.
+''', summary_output, concatenated_doc_source, [], 'first')
+
+utest('sample.py: sample, 1 lines.\n1: ""\n', summary_output, '""\n', [], 'full')
+utest('sample.py: sample, 1 lines.\n', summary_output, '""\n', [], 'first')
+
+# Unicode line separators in a string do not change Python source line numbers.
+utest('sample.py: sample, 1 lines.\n1: "One\u2028Two"\n', summary_output, '"One\u2028Two"\n', [], 'full')

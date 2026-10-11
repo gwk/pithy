@@ -8,7 +8,7 @@ fixtures/sample/mod.py: sample.mod, 82 lines.
 56: @dataclass
 57: class Point:
 62:   def norm(self) -> float:
-        The L1 norm.
+63:     'The L1 norm.'
 73:   class Nested:
-        Nested class.
+74:     'Nested class.'
 75:     def method(self) -> None: pass
