@@ -1,16 +1,18 @@
 # Pithy Common Instructions
 
-The following applies to both the pithy project itself and dependents of that project.
+This applies to both the Pithy project and dependents of that project.
 
-## Agent Development Flow
+
+# Agent Development Workflow
+
 * In general, run `just check` before declaring done. When the checks pass simply say "Checks pass."
-  This can be omitted for changes where the agent is sure that the actions performed by `check` are irrelevant or unchanged.
+  Skip this step for changes where the actions performed by `check` are clearly irrelevant or unchanged.
 * Verify file changes with `git status` and `git diff`.
 
-## Find Existing Functionality Before Implementing From Scratch
+## Find Existing Functionality
 
 From the working project's root, query for existing solutions using `craft-context query [keywords...]`.
-This searches for keywords that modules advertise, for both the local project and each immediate dependency under `deps/`.
+This searches for keywords that modules advertise in both the current project and each immediate dependency under `deps/`.
 Do this even when the task does not explicitly mention a library or dependency.
 
 When you find candidates, assess the tradeoffs of using existing solutions and discuss any concerns.
@@ -34,20 +36,22 @@ Queries show the status in parentheses after the module path; take it into accou
 Read relevant returned source files before deciding whether new code is necessary.
 An empty result does not establish that functionality is absent: keywords are curated and may be incomplete.
 If no indexes are available or the query reports an error, report the lookup limitation; do not silently skip discovery.
-The context query exists primarily to aid agents so they must report failures and degradation.
+The context query exists primarily to aid agents so please report failures, degradation, and bad content.
 
-Providers build their index with `craft-context index` (included in `craft-context all`).
-Queries only read existing indexes. Each project maintains its own index through build recipes or precommit hooks; indexing does not refresh dependencies.
+Providers build their index with `craft-context index` (included in `craft-context all`). Queries only read existing indexes.
+Each project maintains its own index through build recipes or precommit hooks;
+indexing one project does not trigger indexing of dependencies.
+
 Keyword lists must contain unique, nonempty strings in Python's sorted order. A status must be a nonblank single-line string.
 Run `craft-context validate` to check source metadata without generating files; Pithy's `just check` includes this validation.
 
-# Git State
+## Git State
 
 Note the presence of staged changes, unstaged changes and untracked files before making edits.
 Operators should commit or at least stage prior changes before asking you to work,
 so if unreleated changes are lying around it is often an oversight worth mentioning.
 
-# Git Commits
+## Git Commits
 
 Do not commit unless instructed to do so. Never push or pull work unless explicitly told.
 If you are asked to commit and are currently on `main`, you can make a new branch at your discretion.
@@ -70,6 +74,33 @@ When writing commit messages:
 ## Platform Support
 This project targets Python 3.14+ on modern Unix platforms. Windows is not supported.
 
+## Unit Tests
+* Write unit tests using our own library `utest`.
+* Read the entirety of `utest/__init__.py` as context for writing tests.
+* Unit tests have the compound suffix `.ut.py` and should be placed in the source tree next to the module under test.
+* If there is no sensible place in the source tree they can be placed somewhere reasonable in `test/` instead.
+* Individual unit tests can be executed with `python` directly; use `python -m utest [directories...]` to find and run tests.
+* When tests are executed with the `utest` program, they will be run from `_build/_utest` as a simple precaution against working directory mistakes.
+* Unit tests should not emit stdout/stderr unless they are failing. Add log suppression flags to functions if necessary.
+
+## IOTest
+* `iotest` is a program for running file-based input/output tests.
+* IO tests are recognizable as one or more files with the extensions `.iot`, `.out` and `.err`.
+* Each test is run in its own directory rooted in `_build/` plus the path stem for the test.
+* The stdout and stderr are captured as `.out` and `.err`; ather file outputs are presumed to be relative to the test directory.
+* The outputs are left in place so that if a test fails the user can inspect them.
+
+## Command Line Parsing
+* Use `pithy.cmdparse` for new command-line interfaces. Do not introduce new uses of `argparse` or `pithy.argparser`.
+* When modifying an existing command-line interface, migrate it to `pithy.cmdparse` when practical and within task scope.
+* Read the `pithy.cmdparse` module documentation and tests for its grammar and examples.
+* Preserve the existing command-line interface during migration. If `pithy.cmdparse` cannot express required behavior, discuss extending it instead of silently changing behavior or falling back to `argparse`. Look out for:
+  * `choices=`
+  * option values using `nargs`
+  * `FileType`
+  * `action='version'`
+  * potentially mutually exclusive options and custom actions
+
 ## Package Management and Dependencies
 
 We try to keep our total dependency count low to reduce our supply chain risks.
@@ -77,7 +108,8 @@ We depend on some node tooling.
 *DO NOT* use or recommend `uvx` or `npx`. Those are irresponsible because they dynamically install latest versions on invocation.
 For many stable dev tools global installation is a viable option.
 
-## Pithy Contents
+
+# Pithy Contents
 
 The pithy repository contains code for several python packages:
 * pithy: general purpose utility library.
@@ -102,7 +134,7 @@ The repository also contains `ops/`, a tree of shell scripts for setting up macO
 It is not a python package; see `ops/readme.md`.
 
 
-# Pithy Project Layout
+## Pithy Project Layout
 
 The pithy project houses multiple Python packages. In order to prevent namespace shadowing in the current working directory,
 each package is wrapped in an intermediate directory with an underscore suffix to isolate pyproject.toml files:
@@ -143,34 +175,6 @@ The wrappers of a merged interface `n` are exported as `n__f`,
 so that interfaces cannot collide; the `.py` re-exports restore the declared names.
 To change an interface, edit the `.pyi`, run `just gen-py-rust-exts`, then fill in the `.rs` implementation bodies. Existing `.rs` files receive stdout guidance instead of edits.
 Never edit a `.gen.rs` manually. See `pyrrhus_/readme.md` for the layout and its ramifications.
-
-
-## Unit Tests
-* Write unit tests using our own library `utest`.
-* Read the entirety of `utest/__init__.py` as context for writing tests.
-* Unit tests have the compound suffix `.ut.py` and should be placed in the source tree next to the module under test.
-* If there is no sensible place in the source tree they can be placed somewhere reasonable in `test/` instead.
-* Individual unit tests can be executed with `python` directly; use `python -m utest [directories...]` to find and run tests.
-* When tests are executed with the `utest` program, they will be run from `_build/_utest` as a simple precaution against working directory mistakes.
-* Unit tests should not emit stdout/stderr unless they are failing. Add log suppression flags to functions if necessary.
-
-## IOTest
-* `iotest` is a program for running file-based input/output tests.
-* IO tests are recognizable as one or more files with the extensions `.iot`, `.out` and `.err`.
-* Each test is run in its own directory rooted in `_build/` plus the path stem for the test.
-* The stdout and stderr are captured as `.out` and `.err`; ather file outputs are presumed to be relative to the test directory.
-* The outputs are left in place so that if a test fails the user can inspect them.
-
-## Command Line Parsing
-* Use `pithy.cmdparse` for new command-line interfaces. Do not introduce new uses of `argparse` or `pithy.argparser`.
-* When modifying an existing command-line interface, migrate it to `pithy.cmdparse` when practical and within task scope.
-* Read the `pithy.cmdparse` module documentation and tests for its grammar and examples.
-* Preserve the existing command-line interface during migration. If `pithy.cmdparse` cannot express required behavior, discuss extending it instead of silently changing behavior or falling back to `argparse`. Look out for:
-  * `choices=`
-  * option values using `nargs`
-  * `FileType`
-  * `action='version'`
-  * potentially mutually exclusive options and custom actions
 
 
 @./style.md
