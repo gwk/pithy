@@ -9,34 +9,16 @@ This applies to both the Pithy project and dependents of that project.
   Skip this step for changes where the actions performed by `check` are clearly irrelevant or unchanged.
 * Verify file changes with `git status` and `git diff`.
 
-## Agent Context Files
+## Finding and Using Context
+
+### Agent Instructions
 
 All projects use `craft-context` to maintain agent instructions.
+`CTX.md` and its imported files are the instruction sources.
+Each `CTX.md` produces a sibling `AGENTS.md` containing the expanded instructions and a sibling `CLAUDE.md` symlink to `CTX.md`.
+`CTX.md` files can appear in subdirectories. Check for applicable local instructions when working in a subtree.
 
-* `CTX.md` and its imported files are the instruction sources. Edit these sources when changing instructions.
-* Each `CTX.md` produces a sibling `AGENTS.md` containing the expanded instructions and a sibling `CLAUDE.md` symlink to `CTX.md`. Do not edit generated `AGENTS.md` files or replace the symlinks.
-* `CTX.md` files can appear in subdirectories. Check for applicable local instructions when working in a subtree.
-* Put instructions shared by Pithy and its dependent projects in Pithy's `context/common.md` or the shared files it imports.
-
-Imports use `@./path.md` syntax. Relative paths resolve from the importing file's directory.
-When using `@path` imports, never reference generated `AGENTS.md` files: their retained import paths can resolve relative to the wrong directory, so `craft-context` rejects them.
-Do not reference `CLAUDE.md` symlinks either; prefer `CTX.md` instead.
-Imports expand recursively, with a maximum of four hops; repeated files are included only once.
-
-Write imports as standalone tokens, preferably on their own lines, without backticks or trailing punctuation.
-Enclose literal uses of `@`, including email addresses and import examples, in code spans or fenced code blocks.
-Use fenced code blocks in context instruction files; `craft-context` rejects indented code blocks to avoid ambiguous import parsing.
-Close all code spans and fences.
-
-After changing instruction sources, run `craft-context instructions` from the project root to regenerate the instructions.
-`craft-context all` also refreshes the project's keyword index.
-`craft-context validate` checks Python sources and keyword metadata; it does not validate instruction Markdown.
-
-Shared project skills belong in `context/skills`.
-`.agents/skills` and `.claude/skills` are symlinks to that directory.
-Keep the directory and both links committed so fresh checkouts do not require sandboxed agents to create them.
-
-## Local Dependency Sources
+### Local Dependency Sources
 
 Projects expose related local directories through symlinks under `deps/`, managed by `craft-deps`.
 Pithy is available at `deps/pithy` in dependent projects.
@@ -53,7 +35,7 @@ Relative paths in `_deps.local.json` resolve from the project root.
 Use `craft-deps [project]` to configure or repair links; it prompts for missing locations and write permissions, and does not clone repositories or install packages.
 Configure the links before invoking uv if its workspace depends on them.
 
-## Find Existing Functionality
+### Find Existing Functionality
 
 From the working project's root, query for existing solutions using `craft-context query [keywords...]`.
 This searches for keywords that modules advertise in both the current project and each immediate dependency under `deps/`.
@@ -61,23 +43,16 @@ Do this even when the task does not explicitly mention a library or dependency.
 
 When you find candidates, assess the tradeoffs of using existing solutions and discuss any concerns.
 
-Modules advertise keywords via the special `_context_keywords_` documentation variable. These should include:
-* well-known technical terms, including both problem and solution terms;
-* significant standard library identifiers for which the module either offers a replacement or a higher-level alternative.
-
-Therefore when agents make queries they should include such terms.
+Modules advertise keywords via the special `_context_keywords_` documentation variable.
+Search for technical terms describing both the problem and possible solutions, including relevant standard library identifiers.
 Example: For a file concurrency problem; `craft-context query locking concurrency mutex advisory fcntl.flock`
 
-Keywords can be single words or short phrases of up to three words.
-The words of every indexed module's name match automatically, even without metadata, so keywords need not repeat them.
-
+The words of every indexed module's name match automatically, even without metadata.
 Queries match individual words without regard to case; any matching word can return a module.
 Quoted phrases and separate words behave identically.
 
 A module can also declare a free-form `_context_status_` string, such as 'experimental' or 'obsolete'.
 Queries show the status in parentheses after the module path; take it into account when assessing candidates.
-
-Metadata declarations must be top-level literal assignments; `craft-context` parses them statically and without importing.
 
 Read relevant returned source files before deciding whether new code is necessary.
 An empty result does not establish that functionality is absent: keywords are curated and may be incomplete.
@@ -87,10 +62,49 @@ The context query exists primarily to aid agents so please report failures, degr
 Providers build their index with `craft-context index` (included in `craft-context all`). Queries only read existing indexes.
 Each project maintains its own index through build recipes or precommit hooks;
 indexing one project does not trigger indexing of dependencies.
-`context/index.json` and `context/index.lock` are build products and should be gitignored.
 
+## Maintaining Context
+
+### Instruction Files
+
+The following rules apply when editing context instruction files.
+
+* Edit `CTX.md` or its imported sources. Do not edit generated `AGENTS.md` files or replace `CLAUDE.md` symlinks.
+* Put instructions shared by Pithy and its dependent projects in Pithy's `context/common.md` or the shared files it imports.
+
+Imports use `@./path.md` syntax. Relative paths resolve from the importing file's directory.
+When using `@path` imports, never reference generated `AGENTS.md` files: their retained import paths can resolve relative to the wrong directory, so `craft-context` rejects them.
+Do not reference `CLAUDE.md` symlinks either; prefer `CTX.md` instead.
+Imports expand recursively, with a maximum of four hops; repeated files are included only once.
+
+Write imports as standalone tokens, preferably on their own lines, without backticks or trailing punctuation.
+Enclose literal uses of `@`, including email addresses and import examples, in code spans or fenced code blocks.
+Use fenced code blocks in context instruction files; `craft-context` rejects indented code blocks to avoid ambiguous import parsing.
+Close all code spans and fences.
+
+After changing instruction sources, run `craft-context instructions` from the project root to regenerate the instructions.
+`craft-context all` also refreshes the project's keyword index.
+`craft-context validate` checks Python sources and keyword metadata; it does not validate instruction Markdown.
+
+### Module Discovery Metadata
+
+Docstrings and context metadata must be top-level literal syntax; our tools parse them statically and without importing.
+
+Include the following in `_context_keywords_`:
+* well-known technical terms, including both problem and solution terms;
+* significant standard library identifiers for which the module either offers a replacement or a higher-level alternative.
+
+Keywords can be single words or short phrases of up to three words.
+Module names match automatically, so keywords need not repeat them.
 Keyword lists must contain unique, nonempty strings in Python's sorted order. A status must be a nonblank single-line string.
 Run `craft-context validate` to check source metadata without generating files; Pithy's `just check` includes this validation.
+`context/index.json` and `context/index.lock` are build products and should be gitignored.
+
+### Shared Skills
+
+When adding or maintaining shared project skills, put them in `context/skills`.
+`.agents/skills` and `.claude/skills` are symlinks to that directory.
+Keep the directory and both links committed so fresh checkouts do not require sandboxed agents to create them.
 
 ## Git State
 
