@@ -9,24 +9,25 @@ Dotted targets resolve statically through the running Python environment; see `p
 import ast
 from ast import parse as parse_ast
 
-from pithy.argparser import ArgParser
-from pithy.python.package import resolve_spec_paths, SpecResolutionError
+from ..cmdparse import Cmd, flag, pos
+from .package import resolve_spec_paths, SpecResolutionError
 
 
-def main() -> None:
-  parser = ArgParser(description='Summarize Python package contents.')
-  parser.add_argument('targets', nargs='+', help='File paths, directories, and/or dotted module names to summarize.')
+class SummarizeCmd(Cmd):
+  'Summarize Python package contents.'
 
-  parser.add_argument('-P', dest='safe_path', action='store_true',
-    help='Omit the implicit Python search directory; also enabled by PYTHONSAFEPATH.')
-  args = parser.parse_args()
+  targets:list[str] = pos(doc='File paths, directories, and/or dotted module names to summarize.')
+  safe_path:bool = flag('-P', doc='Omit the implicit Python search directory; also enabled by PYTHONSAFEPATH.')
 
-  try: paths = [path for spec in args.targets for path in resolve_spec_paths(spec, safe_path=args.safe_path)]
-  except SpecResolutionError as e: exit(f'pithy.python.summarize error: {e}')
 
-  for path in paths:
-    summarize_path(path)
+  def run(self) -> None:
+    try: paths = [path for spec in self.targets for path in resolve_spec_paths(spec, safe_path=self.safe_path)]
+    except SpecResolutionError as e: exit(f'pithy.python.summarize error: {e}')
+    for path in paths:
+      summarize_path(path)
 
+
+def main() -> None: SummarizeCmd.main()
 
 
 def summarize_path(path:str) -> None:
