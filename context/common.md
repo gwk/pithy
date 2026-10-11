@@ -52,7 +52,7 @@ Therefore when agents make queries they should include such terms.
 Example: For a file concurrency problem; `craft-context query locking concurrency mutex advisory fcntl.flock`
 
 Keywords can be single words or short phrases of up to three words.
-The words of the module name match automatically, so keywords need not repeat them.
+The words of every indexed module's name match automatically, even without metadata, so keywords need not repeat them.
 
 Queries match individual words without regard to case; any matching word can return a module.
 Quoted phrases and separate words behave identically.

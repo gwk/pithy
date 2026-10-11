@@ -169,6 +169,32 @@ with TemporaryDirectory() as tmp:
 
 with TemporaryDirectory() as tmp:
   root = Path(tmp)
+  dependency = root / 'deps/library'
+  make_dirs(root / 'web_server')
+  make_dirs(dependency / 'server_tool')
+  write_to_path(root / 'web_server/__init__.py', 'raise RuntimeError("Do not import")\n')
+  write_to_path(root / 'server_pool.py', '_context_keywords_ = []\n')
+  write_to_path(root / 'unrelated.py', '')
+  write_to_path(dependency / 'server_tool/__main__.py', '')
+  write_to_path(dependency / 'server.py', '_context_keywords_ = ["http"]\n')
+  with patch('crafts.bin.craft_context.outL'):
+    Index(root=root).run()
+    Index(root=dependency).run()
+
+  # Name matching includes modules without metadata in both the project and its dependencies.
+  # Package names and empty keyword lists work, and name and keyword matches share the same ranking.
+  with patch('crafts.bin.craft_context.outL') as output:
+    Query(root=root, words=['SERVER', 'http']).run()
+    utest([
+      ((f'{dependency}/server.py: http',), {}),
+      ((f'{dependency}/server_tool/__main__.py',), {}),
+      ((f'{root}/server_pool.py',), {}),
+      ((f'{root}/web_server/__init__.py',), {}),
+    ], lambda: output.call_args_list)
+
+
+with TemporaryDirectory() as tmp:
+  root = Path(tmp)
   skills = root / 'context/skills'
   links = [root / '.claude/skills', root / '.agents/skills']
 
@@ -324,9 +350,10 @@ with TemporaryDirectory() as tmp:
   utest(moved_build, read_bytes_from_path, index)
   utest(['index.json', 'index.lock'], list_dir, str(index.parent))
 
-  # Rebuilding drops keywords whose source no longer advertises them.
+  # Rebuilding drops keywords whose source no longer advertises them, but retains the module for name matching.
+  plain_lock = ContextModule(path='lock.py', keywords=[], status='')
   with patch('crafts.bin.craft_context.outL'):
-    utest(([], True), refresh_context_index, moved_root, [Path('.')], command='index')
+    utest(([plain_lock], True), refresh_context_index, moved_root, [Path('.')], command='index')
 
   # A status alone is enough for a module to be returned.
   write_source(moved_root / 'lock.py', '_context_status_ = "obsolete"\n')
@@ -349,7 +376,7 @@ with TemporaryDirectory() as tmp:
       utest_exc(ValueError, load_context_index, index)
       utest(0, lambda: errors.call_count)
       utest(invalid, read_from_path, index)
-      utest(([], True), refresh_context_index, moved_root, [Path('.')], command='index')
+      utest(([plain_lock], True), refresh_context_index, moved_root, [Path('.')], command='index')
       utest(1, lambda: errors.call_count)
     utest(['lock.py'], lambda: list(load_context_index(index)[0]['files']))
   with patch('crafts.bin.craft_context.load_context_index', side_effect=PermissionError('Cannot read')):

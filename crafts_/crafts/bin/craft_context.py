@@ -70,7 +70,7 @@ Dependency symlinks are followed and duplicate project roots are searched once. 
 Results are ranked together across all indexes.
 Matching uses case-insensitive whole words, splitting punctuation and underscores into word boundaries.
 The words of each module name also match, as if they were keywords (`__init__` and `__main__` modules use the package name).
-Only modules that declare keywords or a status appear in results.
+All indexed modules can match by name, including modules without keywords or a status.
 Quoted phrases and separate words behave identically.
 Any matching word includes a module in the results; more distinct matching query words rank first.
 '''
@@ -277,7 +277,7 @@ def refresh_context_index(root:Path, paths:list[Path], *, command:str) -> tuple[
   Refresh the records under `paths` in the index at `root` while holding an exclusive lock on context/index.lock.
   Prior records outside of `paths` are preserved; records under `paths` for files that no longer exist are dropped.
   Missing or invalid indexes are rebuilt. Source errors exit without writing.
-  Return the modules with keywords or status, relative to `root`, and whether the index was written.
+  Return all indexed modules, relative to `root`, and whether the index was written.
   '''
   dest = root / index_path
   paths = [(path if path.is_abs else root / path).collapse_dotdot() for path in paths]
@@ -297,7 +297,7 @@ def refresh_context_index(root:Path, paths:list[Path], *, command:str) -> tuple[
     written = read_any or files != prior
     if written: write_context_index(dest, ContextIndex(version=index_version, files=files))
   modules = [ContextModule(path=rel, keywords=record['keywords'], status=record['status'])
-    for rel, record in files.items() if record['keywords'] or record['status']]
+    for rel, record in files.items()]
   return modules, written
 
 
@@ -346,7 +346,7 @@ def load_project_context(root:Path) -> list[ContextModule]:
     found = True
     modules.extend(
       ContextModule(path=str((project / rel).collapse_dotdot()), keywords=record['keywords'], status=record['status'])
-      for rel, record in index['files'].items() if record['keywords'] or record['status'])
+      for rel, record in index['files'].items())
   if not found:
     raise ValueError(f'no indexes found in {root!s} or its deps/ directories; use source search instead.')
   return modules
