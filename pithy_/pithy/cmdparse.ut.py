@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Literal
+from typing import ClassVar, Literal
 
 from pithy import ansi
 from pithy.cmdparse import (Cmd, CmdDeclError, CmdError, CmdHelp, Completion, CompletionResult, flag, format_help, format_usage,
@@ -408,6 +408,82 @@ commands:
 
 For help with a specific command, pass '-h' to that command.''',
   format_help(Tool, 'tool'), desc='help text')
+
+
+@utest_run
+def test_help_addenda_and_epilog() -> None:
+  shared_help = '''
+    Shared target rules.
+      Indented detail.
+
+    Another paragraph.
+  '''
+
+  class Analyze(Cmd):
+    'Analyze sources.'
+    help_addenda:ClassVar[tuple[str,...]] = ('', shared_help, ' \n ', '''
+      Analysis rules.
+        A separate detail.
+    ''')
+    epilog = '''
+      Examples:
+        analyze ./src
+    '''
+    target:str = pos(doc='The source target.')
+    verbose:bool = flag(doc='Log verbosely.')
+
+  expected = '''\
+usage: analyze [options] TARGET
+
+Analyze sources.
+
+Shared target rules.
+  Indented detail.
+
+Another paragraph.
+
+Analysis rules.
+  A separate detail.
+
+positional arguments:
+  TARGET  The source target.
+
+options:
+  -verbose   Log verbosely.
+  -h, -help  Show this help.
+
+Examples:
+  analyze ./src'''
+  utest(expected, format_help, Analyze)
+  utest_val(expected, ansi.strip_ctrl_seq(format_help(Analyze, color=True)))
+  utest_val('Analyze sources.', Analyze.__doc__)
+  try: Analyze.parse(['-help'])
+  except CmdHelp as help: utest_val(expected, help.text)
+  else: raise AssertionError('Expected CmdHelp.')
+
+  class AnalyzeAgain(Analyze):
+    'Analyze again.'
+
+  utest(expected.replace('usage: analyze ', 'usage: analyze-again ').replace('Analyze sources.', 'Analyze again.'),
+    format_help, AnalyzeAgain)
+
+  class Suite(Cmd):
+    'A suite of commands.'
+    epilog = 'Suite examples.'
+    cmd:Analyze = sub()
+
+  suite_help = format_help(Suite)
+  assert suite_help.endswith("For help with a specific command, pass '-h' to that command.\n\nSuite examples.")
+  assert 'Shared target rules.' not in suite_help
+  utest_val(CompletionResult((Completion('analyze', 'Analyze sources.', group='commands'),)), Suite.complete(['ana']))
+
+  # Empty blocks add no whitespace, and changing text takes effect even after the schema has been cached.
+  for addenda, epilog in (((), ''), (('', ' \n  \t\n'), ' \n  \t\n')):
+    Analyze.help_addenda = addenda
+    Analyze.epilog = epilog
+    utest(expected.replace('\n\nShared target rules.\n  Indented detail.\n\nAnother paragraph.', '')
+      .replace('\n\nAnalysis rules.\n  A separate detail.', '')
+      .removesuffix('\n\nExamples:\n  analyze ./src'), format_help, Analyze)
 
 
 @utest_run
