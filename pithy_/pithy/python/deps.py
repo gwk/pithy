@@ -146,9 +146,10 @@ def print_dependents(graph:'DepGraph', spec:str) -> None:
   outL(BOLD_OUT, f'Modules importing {mod}:', RST_OUT)
   outL('  '.join(importers) if importers else '*none*')
 
-  # The symbol layer analyzes only the candidate modules whose imports relate to the target module.
+  # The symbol layer analyzes the target module itself, for same-module references,
+  # plus the candidate modules whose imports relate to the target module.
   candidates = [name for name, deps in module_deps.items()
-    if name != mod and any(d == mod or d.startswith(mod + '.') or mod.startswith(d + '.') for d in deps)]
+    if name == mod or any(d == mod or d.startswith(mod + '.') or mod.startswith(d + '.') for d in deps)]
   outL('\n', BOLD_OUT, f'Symbol dependents of {target}:', RST_OUT)
   found = False
   for name in candidates:

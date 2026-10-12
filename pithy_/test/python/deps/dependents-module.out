@@ -3,5 +3,6 @@ alpha  alpha.attr  alpha.mid  alpha.tip
 
 Symbol dependents of alpha.base:
 alpha.attr.via_attr: .base
+alpha.base.helper: .CONST
 alpha.mid.Mid: .base.Base  .base.helper
 alpha.tip.run: .base.CONST
