@@ -1,0 +1,3 @@
+{
+  'args': ['-include-utests', '-docs=none', 'fixtures/sample'],
+}

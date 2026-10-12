@@ -19,6 +19,7 @@ so that locations survive filtering with grep and are recognized by editors.
 Docstrings on definition header lines remain visible with any mode.
 
 A target is a file, a directory, or a dotted module name, optionally followed by `:` and a comma-separated list of selectors.
+Directory and package targets omit `.ut.py` unit test files unless `-include-utests` is given.
 A selector is a definition name, a dotted qualified name such as `Class.method`, or a glob pattern over either.
 Selecting a class includes its members; selecting a member also prints the enclosing class header for context.
 When selectors are given for a directory or package, files in which nothing matches are omitted entirely.
@@ -75,6 +76,7 @@ class SummarizeCmd(Cmd):
   public:bool = flag(doc='Omit definitions whose names begin with an underscore.')
   assigns:bool = flag(default=True, doc='Show module and class level assignments; `-no-assigns` omits them.')
   locs:bool = flag(doc='Prefix numbered lines with `path:line: ` so that locations survive grep filtering.')
+  include_utests:bool = flag(doc='Include `.ut.py` unit test files when walking directories and packages.')
   uses:bool = flag(doc='Append a `uses:` line to each top-level definition, listing the modules and symbols it references.')
 
 
@@ -84,7 +86,7 @@ class SummarizeCmd(Cmd):
       target, _, sel_text = spec.rpartition(':')
       if not target: target, sel_text = sel_text, ''
       selectors = [s for s in sel_text.split(',') if s]
-      try: paths = resolve_spec_paths(target, safe_path=self.safe_path)
+      try: paths = resolve_spec_paths(target, safe_path=self.safe_path, include_utests=self.include_utests)
       except SpecResolutionError as e: exit(f'pithy.python.summarize error: {e}')
       unmatched_all = set(selectors) # Selectors that match in none of the files.
       for path in paths:

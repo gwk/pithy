@@ -51,18 +51,20 @@ class DepsCmd(Cmd):
   '''
   Analyze Python module and symbol dependencies.
   The targets form the universe for the summary and for dependents queries; a dependencies query parses only the named module.
+  Directory and package targets omit `.ut.py` unit test files unless `-include-utests` is given.
   '''
 
   help_addenda = (target_resolution_help, safe_path_help)
 
   targets:list[str] = pos(doc='File paths, directories, and/or dotted module names to analyze.')
   safe_path:bool = flag('-P', doc='Use safe-path target resolution.')
+  include_utests:bool = flag(doc='Include `.ut.py` unit test files when walking directories and packages.')
   dependencies:str|None = opt(default=None, metavar='NAME', doc='Show dependencies of a module or module.symbol.')
   dependents:str|None = opt(default=None, metavar='NAME', doc='Show dependents of a module or module.symbol.')
 
 
   def run(self) -> None:
-    graph = DepGraph(safe_path=self.safe_path)
+    graph = DepGraph(safe_path=self.safe_path, include_utests=self.include_utests)
     try:
       for target in self.targets:
         graph.add_target(target)
@@ -169,8 +171,9 @@ class DepGraph:
   modules are parsed and analyzed on demand and cached.
   '''
 
-  def __init__(self, *, safe_path:bool=False) -> None:
+  def __init__(self, *, safe_path:bool=False, include_utests:bool=False) -> None:
     self.safe_path = safe_path
+    self.include_utests = include_utests
     self.search_dirs:list[str] = [] # Explicit target roots used for dependency analysis.
     self.targets:dict[str,str] = {} # Target module name -> file path.
     self.paths:dict[str,str] = {} # Resolved module name -> file path; superset of `targets`.
@@ -181,7 +184,7 @@ class DepGraph:
 
   def add_target(self, spec:str) -> None:
     'Add a target: a file path, a directory of Python files, or a dotted module name.'
-    try: paths = resolve_spec_paths(spec, self.resolve_target_module, safe_path=self.safe_path)
+    try: paths = resolve_spec_paths(spec, self.resolve_target_module, safe_path=self.safe_path, include_utests=self.include_utests)
     except SpecResolutionError as e: raise DepsError(str(e)) from None
     for path in paths:
       self.add_file(path)

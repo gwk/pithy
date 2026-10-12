@@ -159,7 +159,8 @@ def resolve_module_installed(name:str, *, safe_path:bool=False) -> str|None:
   return resolve_module_in_dirs(rest, spec.submodule_search_locations)
 
 
-def resolve_spec_paths(spec:str, resolve_module:Callable[[str],str|None]|None=None, *, safe_path:bool=False) -> list[str]:
+def resolve_spec_paths(spec:str, resolve_module:Callable[[str],str|None]|None=None, *, safe_path:bool=False,
+ include_utests:bool=False) -> list[str]:
   '''
   Resolve a target spec to a sorted list of Python file paths.
   A spec is interpreted as a path if it ends in `.py`, contains a slash, or is `.` or `..`.
@@ -169,19 +170,28 @@ def resolve_spec_paths(spec:str, resolve_module:Callable[[str],str|None]|None=No
   Safe-path mode follows `resolve_module_installed`; explicit paths remain usable in that mode.
   A custom resolver is responsible for its own module search policy.
   A dotted name that resolves to a package `__init__` file includes all of the package's submodule files.
+  Directory and package walks omit `.ut.py` unit test files unless `include_utests` is set; an explicit file path is always used.
   Raises SpecResolutionError if the spec cannot be resolved to any Python files.
   '''
   is_path = spec.endswith('.py') or '/' in spec or spec in ('.', '..')
   if is_path or (not _safe_path_enabled(safe_path) and path_exists(spec, follow=True)):
-    try: paths = sorted(walk_files(spec, file_exts=['.py']))
+    try: paths = _walk_py_files(spec, include_utests=include_utests)
     except FileNotFoundError: raise SpecResolutionError(f'target path not found: {spec!r}') from None
     if not paths: raise SpecResolutionError(f'target path contains no Python files: {spec!r}')
     return paths
   mod_path = resolve_module(spec) if resolve_module is not None else resolve_module_installed(spec, safe_path=safe_path)
   if mod_path is None: raise SpecResolutionError(f'cannot resolve module {spec!r}.')
   if mod_path.endswith('__init__.py'): # A package spec includes all of its submodules.
-    return sorted(walk_files(path_dir(mod_path), file_exts=['.py']))
+    return _walk_py_files(path_dir(mod_path), include_utests=include_utests)
   return [mod_path]
+
+
+def _walk_py_files(path:str, *, include_utests:bool) -> list[str]:
+  'Sorted Python files under `path`; a file path is returned as is, while walks omit `.ut.py` files unless `include_utests`.'
+  if is_file(path, follow=True): return [path]
+  paths = walk_files(path, file_exts=['.py'])
+  if not include_utests: paths = (p for p in paths if not p.endswith('.ut.py'))
+  return sorted(paths)
 
 
 def qualname_rel_to(base:str, qual:str) -> str:

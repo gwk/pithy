@@ -77,14 +77,20 @@ utest(None, resolve_module_in_dirs, '', [fixtures_dir])
 # A file path spec.
 utest([this_file], resolve_spec_paths, this_file)
 
-# A directory path spec walks all Python files.
+# A directory path spec walks all Python files, omitting unit tests unless requested.
 utest(alpha_files, resolve_spec_paths, alpha_dir)
+utest(sorted(alpha_files + [path_join(alpha_dir, 'base.ut.py')]), resolve_spec_paths, alpha_dir, include_utests=True)
+
+# An explicit unit test file path is always used.
+utest([path_join(alpha_dir, 'base.ut.py')], resolve_spec_paths, path_join(alpha_dir, 'base.ut.py'))
 
 # A module name spec resolves to a single file.
 utest([path_join(alpha_dir, 'tip.py')], resolve_spec_paths, 'alpha.tip', resolve_module=fixture_resolver)
 
-# A package name spec includes all of its submodules.
+# A package name spec includes all of its submodules, omitting unit tests unless requested.
 utest(alpha_files, resolve_spec_paths, 'alpha', resolve_module=fixture_resolver)
+utest(sorted(alpha_files + [path_join(alpha_dir, 'base.ut.py')]), resolve_spec_paths, 'alpha', resolve_module=fixture_resolver,
+  include_utests=True)
 
 # Unresolvable module name.
 utest_exc(SpecResolutionError("cannot resolve module 'nonexistent'."), resolve_spec_paths, 'nonexistent',
