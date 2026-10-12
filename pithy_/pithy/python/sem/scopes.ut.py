@@ -1,9 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pithy.python.sem import sem_for_source, SemExpr, SemModule, SemName, SemRef
-from pithy.python.sem.scopes import build_import_map, build_scope_info, dependencies, dotted_name, ScopeInfo
+from pithy.python.sem import sem_for_source, SemModule, SemName
+from pithy.python.sem.scopes import build_scope_info, ScopeInfo
 from tolkien import Source
-from utest import utest, utest_run, utest_seq, utest_val
+from utest import utest_run, utest_seq, utest_val
 
 
 def parse(code:str) -> SemModule:
@@ -15,37 +15,6 @@ def scope_info_for(code:str) -> ScopeInfo:
   return build_scope_info(sem_for_source(source), source=source)
 
 
-def first_expr_ref(module:SemModule) -> SemRef:
-  el = module.els[0]
-  assert isinstance(el, SemExpr)
-  ref = el.els[0]
-  assert isinstance(ref, SemRef)
-  return ref
-
-
-# dotted_name: simple name, attribute chain, and non-simple ref (subscript).
-
-utest('x', dotted_name, first_expr_ref(parse('x')))
-utest('a.b.c', dotted_name, first_expr_ref(parse('a.b.c')))
-utest(None, dotted_name, first_expr_ref(parse('a[0]')))
-
-
-# build_import_map: various import forms.
-
-utest({'os': 'os'}, build_import_map, parse('import os'))
-utest({'os': 'os'}, build_import_map, parse('import os.path'))  # `os` is the local binding, not `os.path`.
-utest({'o': 'os'}, build_import_map, parse('import os as o'))
-utest({'p': 'os.path'}, build_import_map, parse('import os.path as p'))
-utest({'join': 'os.path.join'}, build_import_map, parse('from os.path import join'))
-utest({'j': 'os.path.join'}, build_import_map, parse('from os.path import join as j'))
-utest({'foo': '.foo'}, build_import_map, parse('from . import foo'))  # Relative imports kept with leading dots.
-
-utest(
-  {'walk_files': 'pithy.fs.walk_files', 'ArgParser': 'pithy.argparser.ArgParser'},
-  build_import_map,
-  parse('from pithy.fs import walk_files\nfrom pithy.argparser import ArgParser'))
-
-
 # iter_refs: explicit scope boundary — refs inside a nested function are not yielded.
 
 _scope_mod = parse('x = 1\ndef foo():\n  y = x\nx + 1')
@@ -53,33 +22,6 @@ utest_seq(
   sorted(['x', 'x']),
   lambda m: sorted(r.ast_name.id for r in m.iter_refs() if isinstance(r, SemName)),
   _scope_mod)
-
-
-# dependencies: from-import style.
-
-_from_import_mod = parse('from pithy.fs import walk_files\nwalk_files(".")')
-utest(
-  frozenset({'pithy.fs.walk_files'}),
-  dependencies,
-  _from_import_mod, build_import_map(_from_import_mod))
-
-
-# dependencies: bare import with attribute access; prefix-filtering collapses `os` and `os.path`.
-
-_bare_import_mod = parse('import os\nos.path.join("a", "b")')
-utest(
-  frozenset({'os.path.join'}),
-  dependencies,
-  _bare_import_mod, build_import_map(_bare_import_mod))
-
-
-# dependencies: two independent attribute chains from same import.
-
-_multi_mod = parse('import os\nos.path.join("a", "b")\nos.getcwd()')
-utest(
-  frozenset({'os.path.join', 'os.getcwd'}),
-  dependencies,
-  _multi_mod, build_import_map(_multi_mod))
 
 
 # build_scope_info with symtable attachment: nested function free variable classification.

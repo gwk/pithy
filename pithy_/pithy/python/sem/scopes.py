@@ -22,10 +22,10 @@ from typing import Iterator, Literal
 
 from tolkien import Source
 
-from . import (Sem, SemAlias, SemAnnAssign, SemArg, SemArguments, SemAsyncFunctionDef, SemAttribute, SemAugAssign, SemClassDef,
+from . import (Sem, SemAlias, SemAnnAssign, SemArg, SemArguments, SemAsyncFunctionDef, SemAugAssign, SemClassDef,
   SemComprehension, SemDictComp, SemExceptHandler, SemFunctionDef, SemGeneratorExp, SemGlobal, SemImport, SemImportFrom,
   SemLambda, SemListComp, SemMatchAs, SemMatchMapping, SemMatchStar, SemModule, SemName, SemNamedExpr, SemNode, SemNonlocal,
-  SemRef, SemScope, SemSetComp)
+  SemScope, SemSetComp)
 
 
 type ScopeKind = Literal['module', 'class', 'def', 'async def', 'lambda', 'comprehension', 'generator']
@@ -483,59 +483,3 @@ def iter_scope_tree(root:ScopeInfo, *, kinds:set[ScopeKind]|None=None) -> Iterat
   for child in root.children:
     yield from iter_scope_tree(child, kinds=kinds)
 
-
-# -- Legacy helpers (kept for backward compatibility with existing tests) --
-
-def dotted_name(ref:SemRef) -> str|None:
-  'Return the dotted name for a simple name or attribute-chain ref, or None if the chain is not simple.'
-  if isinstance(ref, SemName):
-    return ref.id
-  if isinstance(ref, SemAttribute):
-    if isinstance(ref.value, SemRef):
-      prefix = dotted_name(ref.value)
-      if prefix is not None:
-        return f'{prefix}.{ref.attr}'
-  return None
-
-
-def build_import_map(module:SemModule) -> dict[str,str]:
-  '''
-  Return a mapping of local alias to fully-qualified name for all imports in `module`.
-  Relative imports are represented with leading dots, e.g. `from ..sem import Foo` -> `{'Foo': '..sem.Foo'}`.
-  '''
-  result:dict[str,str] = {}
-  for el in module.body:
-    if isinstance(el, SemImport):
-      for alias in el.names:
-        if isinstance(alias, SemAlias):
-          root = alias.name.split('.')[0]
-          local = alias.asname if alias.asname else root
-          qualified = alias.name if alias.asname else root
-          result[local] = qualified
-    elif isinstance(el, SemImportFrom):
-      dot_prefix = '.' * (el.level or 0)
-      mod = el.module or ''
-      for alias in el.names:
-        if isinstance(alias, SemAlias):
-          if alias.name == '*': continue
-          local = alias.asname if alias.asname else alias.name
-          qualified = f'{dot_prefix}{mod}.{alias.name}' if mod else f'{dot_prefix}{alias.name}'
-          result[local] = qualified
-  return result
-
-
-def dependencies(node:SemNode, import_map:dict[str,str]) -> frozenset[str]:
-  'Return fully-qualified names that `node` depends on, resolved via `import_map`.'
-  deps:set[str] = set()
-  for ref in node.iter_refs():
-    if ref.ctx != 'load':
-      continue
-    name = dotted_name(ref)
-    if name is None:
-      continue
-    root = name.split('.')[0]
-    qualified_root = import_map.get(root)
-    if qualified_root is None:
-      continue
-    deps.add(qualified_root + name[len(root):])
-  return frozenset(d for d in deps if not any(other.startswith(d + '.') for other in deps))
