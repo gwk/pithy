@@ -1,0 +1,8 @@
+Modules importing alpha.base:
+alpha  alpha.attr  alpha.mid  alpha.tip
+
+Symbol dependents of alpha.base.helper:
+alpha.attr.via_attr: .base.helper
+  fixtures/alpha/attr.py:8:   return alpha.base.helper(base.CONST)
+alpha.mid.Mid.value: .base.helper
+  fixtures/alpha/mid.py:9:     return helper(1)

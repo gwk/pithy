@@ -25,20 +25,23 @@ The import and symbol layers resolve against the target roots only.
 '''
 
 from sys import stdlib_module_names
-from typing import Iterable, NamedTuple
+from typing import Callable, Iterable, NamedTuple
 
 from tolkien import Source
 
 from ..ansi import BOLD_OUT, RST_OUT, TXT_B_OUT, TXT_G_OUT, TXT_Y_OUT
 from ..cmdparse import Cmd, flag, opt, pos
 from ..dict import dict_dag_inverse_with_all_keys
+from ..filestatus import is_dir
 from ..fs import abs_path, path_rel_to_current_or_abs
 from ..io import outL
+from ..path import path_join
 from .ast_utils import fmt_syntax_error
 from .package import (module_name_for_path, qualname_rel_to, resolve_module_in_dirs, resolve_module_installed,
   resolve_spec_paths, safe_path_help, SpecResolutionError, target_resolution_help)
-from .sem import (Sem, sem_for_source, SemArguments, SemAsyncFunctionDef, SemAttribute, SemClassDef, SemDictComp, SemFunctionDef,
-  SemGeneratorExp, SemImport, SemImportFrom, SemLambda, SemListComp, SemModule, SemName, SemNode, SemScope, SemSetComp)
+from .sem import (Sem, sem_for_source, SemArguments, SemAsyncFunctionDef, SemAttribute, SemClassDef, SemDictComp,
+  SemFunctionDef, SemGeneratorExp, SemImport, SemImportFrom, SemLambda, SemListComp, SemModule, SemName, SemNode, SemScope,
+  SemSetComp)
 from .sem.scopes import build_scope_info, iter_scope_tree, ScopeInfo
 
 
@@ -50,12 +53,15 @@ class DepsCmd(Cmd):
   '''
   Analyze Python module and symbol dependencies.
   The targets form the universe for the summary and for dependents queries; a dependencies query parses only the named module.
+  Without targets, a query's universe defaults to the top-level package containing the queried module,
+  resolved through the Python environment; uses in other packages, test trees or dependent projects need explicit targets.
   Directory and package targets omit `.ut.py` unit test files unless `-include-utests` is given.
   '''
 
   help_addenda = (target_resolution_help, safe_path_help)
 
-  targets:list[str] = pos(doc='File paths, directories, and/or dotted module names to analyze.')
+  targets:list[str] = pos(default_factory=list,
+    doc='File paths, directories, and/or dotted module names to analyze; a query defaults to the package of the queried module.')
   safe_path:bool = flag('-P', doc='Use safe-path target resolution.')
   include_utests:bool = flag(doc='Include `.ut.py` unit test files when walking directories and packages.')
   sites:bool = flag(default=True, doc='For a symbol dependents query, show each referencing source line; `-no-sites` omits them.')
@@ -66,7 +72,12 @@ class DepsCmd(Cmd):
   def run(self) -> None:
     graph = DepGraph(safe_path=self.safe_path, include_utests=self.include_utests)
     try:
-      for target in self.targets:
+      targets = self.targets
+      if not targets:
+        spec = self.dependencies or self.dependents
+        if not spec: raise DepsError('a summary requires targets.')
+        targets = [default_universe(spec, safe_path=self.safe_path)]
+      for target in targets:
         graph.add_target(target)
       if self.dependencies: print_dependencies(graph, self.dependencies)
       elif self.dependents: print_dependents(graph, self.dependents, sites=self.sites)
@@ -76,6 +87,23 @@ class DepsCmd(Cmd):
 
 
 def main() -> None: DepsCmd.main()
+
+
+def default_universe(spec:str, *, safe_path:bool=False, resolve_module:Callable[[str],str|None]|None=None) -> str:
+  '''
+  The default target universe for a query: the top-level package directory containing the module of `spec`,
+  or the module file itself when it is not in a package.
+  The module is the longest dotted prefix of `spec` that resolves, through the Python environment by default.
+  '''
+  if resolve_module is None: resolve_module = lambda name: resolve_module_installed(name, safe_path=safe_path)
+  parts = spec.split('.')
+  for i in range(len(parts), 0, -1):
+    path = resolve_module('.'.join(parts[:i]))
+    if path is None: continue
+    name, search_dir = module_name_for_path(path)
+    top_dir = path_join(search_dir, name.partition('.')[0])
+    return top_dir if is_dir(top_dir, follow=True) else path
+  raise DepsError(f'cannot resolve module for {spec!r}; give targets explicitly.')
 
 
 DEP_RANK_COLORS = (TXT_B_OUT, TXT_Y_OUT, TXT_G_OUT) # Stdlib, third-party, first-party.

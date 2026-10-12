@@ -1,0 +1,4 @@
+{
+  'args': ['-dependents', 'alpha.base.helper'],
+  'env': {'PYTHONPATH': 'fixtures'},
+}

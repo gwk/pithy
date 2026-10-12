@@ -1,0 +1,5 @@
+{
+  'args': [],
+  'code': 1,
+  'err_val': 'pithy.python.deps error: a summary requires targets.\n',
+}
