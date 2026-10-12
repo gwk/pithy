@@ -21,6 +21,8 @@ Docstrings on definition header lines remain visible with any mode.
 A target is a file, a directory, or a dotted module name, optionally followed by `:` and a comma-separated list of selectors.
 A selector is a definition name, a dotted qualified name such as `Class.method`, or a glob pattern over either.
 Selecting a class includes its members; selecting a member also prints the enclosing class header for context.
+When selectors are given for a directory or package, files in which nothing matches are omitted entirely.
+A selector that matches nothing across all of a target's files is an error.
 
 `-full` prints the complete source of the selected definitions, decorators included, instead of the summary.
 Without selectors it prints the whole module with line numbers.
@@ -84,17 +86,17 @@ class SummarizeCmd(Cmd):
       selectors = [s for s in sel_text.split(',') if s]
       try: paths = resolve_spec_paths(target, safe_path=self.safe_path)
       except SpecResolutionError as e: exit(f'pithy.python.summarize error: {e}')
+      unmatched_all = set(selectors) # Selectors that match in none of the files.
       for path in paths:
         try: summary = ModuleSummary.from_path(path, locs=self.locs)
         except SyntaxError as e:
           print(f'pithy.python.summarize error: {fmt_syntax_error(path, e)}', file=stderr)
           ok = False
           continue
-        if selectors and len(paths) == 1:
+        if selectors:
           unmatched = summary.check_selectors(selectors)
-          if unmatched:
-            print(f'pithy.python.summarize error: {path}: no definition matches {unmatched!r}.', file=stderr)
-            ok = False
+          unmatched_all.intersection_update(unmatched)
+          if len(paths) > 1 and len(unmatched) == len(selectors): continue # Omit files where nothing matches.
         if self.full: summary.print_full(selectors, public=self.public)
         else:
           uses = None
@@ -107,6 +109,11 @@ class SummarizeCmd(Cmd):
               print(f'pithy.python.summarize error: {e}', file=stderr)
               ok = False
           summary.print_summary(selectors, docs=self.docs, public=self.public, assigns=self.assigns, uses=uses)
+      if unmatched_all:
+        desc = paths[0] if len(paths) == 1 else f'{target} ({len(paths)} files)'
+        print(f'pithy.python.summarize error: {desc}: no definition matches {[s for s in selectors if s in unmatched_all]!r}.',
+          file=stderr)
+        ok = False
     if not ok: exit(1)
 
 

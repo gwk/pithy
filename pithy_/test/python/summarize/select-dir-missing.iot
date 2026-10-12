@@ -1,0 +1,5 @@
+{
+  'args': ['-docs=none', 'fixtures/sample:norm,nope'],
+  'code': 1,
+  'err_val': "pithy.python.summarize error: fixtures/sample (2 files): no definition matches ['nope'].\n",
+}
