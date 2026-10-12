@@ -14,10 +14,10 @@ def full_output(text:str, selectors:list[str]) -> str:
   return out.getvalue()
 
 
-def summary_output(text:str, selectors:list[str], docs:DocsMode='none', locs:bool=False) -> str:
+def summary_output(text:str, selectors:list[str], docs:DocsMode='none', locs:bool=False, members:bool=False) -> str:
   summary = ModuleSummary('sample.py', text, locs=locs)
   with redirect_stdout(out := StringIO()):
-    summary.print_summary(selectors, docs=docs, public=False, assigns=True)
+    summary.print_summary(selectors, docs=docs, public=False, assigns=True, members=members)
   return out.getvalue()
 
 
@@ -246,7 +246,7 @@ sample.py: sample, 4 lines.
 sample.py:1: class C:
 sample.py:2:   'Docs.'
 sample.py:4:   def m(self): pass
-''', summary_output, "class C:\n  'Docs.'\n\n  def m(self): pass\n", [], 'full', True)
+''', summary_output, "class C:\n  'Docs.'\n\n  def m(self): pass\n", [], 'full', True, True)
 
 
 # Elisions are marked with the Unicode ellipsis, which is never a Python token.
@@ -312,3 +312,41 @@ sample.py: sample, 11 lines.
  6: def f():
  8:   'Summary.'…
 """, summary_output, "'''\nModule intro.\n\nModule details.\n'''\ndef f():\n  '''\n  Summary.\n\n  Details.\n  '''\n", [], 'default')
+
+
+# Without selectors or -members, a class shows a counts line for its direct members instead of listing them.
+members_source = '''\
+class Outer:
+  value = 1
+  other:int = 2
+  def method(self): return self.value
+  class Inner:
+    def nested(self): pass
+    def again(self): pass
+class Empty: pass
+'''
+utest('''\
+sample.py: sample, 8 lines.
+1: class Outer:
+     members: 1 method, 1 class, 2 attributes
+8: class Empty: pass
+''', summary_output, members_source, [])
+utest('''\
+sample.py: sample, 8 lines.
+1: class Outer:
+2:   value = 1
+3:   other:int = 2
+4:   def method(self): …
+5:   class Inner:
+6:     def nested(self): pass
+7:     def again(self): pass
+8: class Empty: pass
+''', summary_output, members_source, [], 'none', False, True)
+# Selecting a class implies its members; a nested class selected alone is shown under its context header.
+utest('''\
+sample.py: sample, 8 lines.
+1: class Outer:
+5:   class Inner:
+6:     def nested(self): pass
+7:     def again(self): pass
+''', summary_output, members_source, ['Outer.Inner'])

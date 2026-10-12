@@ -8,7 +8,8 @@ then the module docstring, then one entry per definition in source order:
 * The source lines of the definition header, including every decorator and multi-line signature, each prefixed with its line number.
 * The docstring source, including quotes and indentation, with line numbers.
 Module-level and class-level assignments are shown by their first source line.
-Methods and nested classes are shown beneath their class; functions nested inside functions are not.
+By default a class is followed by a `members:` line counting its methods, nested classes and class-level assignments;
+`-members` lists them beneath the class instead, as does selecting the class. Functions nested inside functions are never shown.
 
 Numbered lines preserve source text and positions, with the Unicode ellipsis marking the tool's own elisions:
 * A multi-line assignment shows its first line followed by ` …`.
@@ -94,6 +95,7 @@ class SummarizeCmd(Cmd):
     doc='Docstrings: default (full module docstring, summary block per definition), first (summary blocks only), full, or none.')
   public:bool = flag(doc='Omit definitions whose names begin with an underscore.')
   assigns:bool = flag(default=True, doc='Show module and class level assignments; `-no-assigns` omits them.')
+  members:bool = flag(doc='Show class members: methods, nested classes and class-level assignments. Selected classes always show them.')
   locs:bool = flag(doc='Prefix numbered lines with `path:line: ` so that locations survive grep filtering.')
   include_utests:bool = flag(doc='Include `.ut.py` unit test files when walking directories and packages.')
   uses:bool = flag(doc='Append a `uses:` line to each top-level definition, listing the modules and symbols it references.')
@@ -129,7 +131,8 @@ class SummarizeCmd(Cmd):
             except DepsError as e:
               print(f'pithy.python.summarize error: {e}', file=stderr)
               ok = False
-          summary.print_summary(selectors, docs=self.docs, public=self.public, assigns=self.assigns, uses=uses)
+          summary.print_summary(selectors, docs=self.docs, public=self.public, assigns=self.assigns, members=self.members,
+            uses=uses)
       if unmatched_all:
         desc = paths[0] if len(paths) == 1 else f'{target} ({len(paths)} files)'
         print(f'pithy.python.summarize error: {desc}: no definition matches {[s for s in selectors if s in unmatched_all]!r}.',
@@ -165,21 +168,27 @@ class ModuleSummary:
     return cls(path, text, locs=locs)
 
 
-  def print_summary(self, selectors:list[str], *, docs:DocsMode, public:bool, assigns:bool, uses:dict[str,str]|None=None
-   ) -> None:
+  def print_summary(self, selectors:list[str], *, docs:DocsMode, public:bool, assigns:bool, members:bool=False,
+   uses:dict[str,str]|None=None) -> None:
     '''
     Print the summary of the selected definitions.
+    Class members are listed when `members` is set or when selectors are given, since a selected class implies its members;
+    otherwise each class shows a `members:` line counting them.
     `uses` optionally maps top-level symbol names to preformatted dependency text, printed after each docstring.
     '''
     print(f'{self.path}: {self.name}, {len(self.lines)} lines.')
     if not selectors: self.print_doc(self.tree, mode=docs)
-    for member, qualname, selected in self.walk(self.tree.body, '', selectors, public=public, assigns=assigns):
+    expand = members or bool(selectors)
+    for member, qualname, selected in self.walk(self.tree.body, '', selectors, public=public, assigns=assigns, members=expand):
       if selected:
         if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
           self.print_header(member)
           self.print_doc(member, mode=docs)
+          note_indent = ' ' * (len(self.prefix(member.lineno)) + member.col_offset + 2)
+          if isinstance(member, ast.ClassDef) and not expand and (counts := self.member_counts(member, public=public, assigns=assigns)):
+            print(f'{note_indent}members: {counts}')
           if uses and (text := uses.get(qualname)):
-            print(' ' * (len(self.prefix(member.lineno)) + member.col_offset + 2) + 'uses: ' + text)
+            print(f'{note_indent}uses: {text}')
         else:
           self.print_assign(member)
       elif isinstance(member, ast.ClassDef): # An unselected class containing selected members is shown for context.
@@ -201,17 +210,17 @@ class ModuleSummary:
       printed_through = max(printed_through, end)
 
 
-  def walk(self, body:list[ast.stmt], prefix:str, selectors:list[str], *, public:bool, assigns:bool
+  def walk(self, body:list[ast.stmt], prefix:str, selectors:list[str], *, public:bool, assigns:bool, members:bool=True
    ) -> Iterator[tuple[Member,str,bool]]:
     '''
     Yield (member, qualname, selected) for each definition and assignment, in source order.
-    A selected class is yielded, and all of its members are yielded as selected.
+    A selected class is yielded, and if `members` is set all of its members are yielded as selected.
     An unselected class is yielded as unselected only if it contains selected members, and only those members follow.
     '''
     for stmt in body:
       if isinstance(stmt, (ast.If, ast.Try, ast.TryStar, ast.With)): # Conditional definitions are summarized in place.
         for sub_body in sub_bodies(stmt):
-          yield from self.walk(sub_body, prefix, selectors, public=public, assigns=assigns)
+          yield from self.walk(sub_body, prefix, selectors, public=public, assigns=assigns, members=members)
         continue
       names = member_names(stmt)
       if not names: continue
@@ -220,18 +229,32 @@ class ModuleSummary:
         qualname = prefix + stmt.name
         if is_selected(qualname, stmt.name, selectors):
           yield stmt, qualname, True
-          yield from self.walk(stmt.body, qualname + '.', [], public=public, assigns=assigns)
+          if members: yield from self.walk(stmt.body, qualname + '.', [], public=public, assigns=assigns)
         else:
-          members = list(self.walk(stmt.body, qualname + '.', selectors, public=public, assigns=assigns))
-          if members:
+          inner = list(self.walk(stmt.body, qualname + '.', selectors, public=public, assigns=assigns))
+          if inner:
             yield stmt, qualname, False
-            yield from members
+            yield from inner
         continue
       if not isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
         if not assigns: continue
       assert isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Assign, ast.AnnAssign, ast.TypeAlias))
       if any(is_selected(prefix + n, n, selectors) for n in names):
         yield stmt, prefix + names[0], True
+
+
+  def member_counts(self, node:ast.ClassDef, *, public:bool, assigns:bool) -> str:
+    '''
+    Describe the direct members of a class that `-members` would list, e.g. `3 methods, 1 class, 2 attributes`.
+    Empty if the class has no listed members.
+    '''
+    kinds = (('method', 'methods'), ('class', 'classes'), ('attribute', 'attributes'))
+    counts = [0, 0, 0]
+    for member, _, _ in self.walk(node.body, '', [], public=public, assigns=assigns, members=False):
+      if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)): counts[0] += 1
+      elif isinstance(member, ast.ClassDef): counts[1] += 1
+      else: counts[2] += 1
+    return ', '.join(f'{n} {plural if n > 1 else singular}' for (singular, plural), n in zip(kinds, counts) if n)
 
 
   def check_selectors(self, selectors:list[str]) -> list[str]:

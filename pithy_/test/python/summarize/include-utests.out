@@ -17,15 +17,7 @@ fixtures/sample/mod.py: sample.mod, 82 lines.
 53: def _helper() -> None: pass
 56: @dataclass
 57: class Point:
-59:   x:int
-60:   y:int = 0
-62:   def norm(self) -> float:
-66:   @property
-67:   def is_origin(self) -> bool: …
-69:   @staticmethod
-70:   def _secret() -> None:
-73:   class Nested:
-75:     def method(self) -> None: pass
+      members: 3 methods, 1 class, 2 attributes
 79:   def conditional() -> None:
 82:   def conditional() -> None: pass
 fixtures/sample/mod.ut.py: sample.mod.ut, 5 lines.

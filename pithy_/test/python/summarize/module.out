@@ -24,18 +24,7 @@ fixtures/sample/mod.py: sample.mod, 82 lines.
 56: @dataclass
 57: class Point:
 58:   'A point.'
-59:   x:int
-60:   y:int = 0
-62:   def norm(self) -> float:
-63:     'The L1 norm.'
-66:   @property
-67:   def is_origin(self) -> bool: …
-69:   @staticmethod
-70:   def _secret() -> None:
-71:     'Private method.'
-73:   class Nested:
-74:     'Nested class.'
-75:     def method(self) -> None: pass
+      members: 3 methods, 1 class, 2 attributes
 79:   def conditional() -> None:
 80:     'Defined conditionally.'
 82:   def conditional() -> None: pass
