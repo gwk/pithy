@@ -2,30 +2,30 @@ fixtures/sample/__init__.py: sample, 1 lines.
 fixtures/sample/mod.py: sample.mod, 82 lines.
 10: type Pair = tuple[int,int]
 12: limit = 10
-14: table = { ...
+14: table = { …
 19: _private_const = 'hidden'
 22: def plain(x:int) -> int:
-27: def undocumented(a, b): return a + b
+27: def undocumented(a, b): …
 30: def multi_line_sig(a:int,
 31:   b:str) -> str:
 41: @overload
-42: def over(x:int) -> int: ...
+42: def over(x:int) -> int: …
 43: @overload
-44: def over(x:str) -> str: ...
-45: def over(x): return x
+44: def over(x:str) -> str: …
+45: def over(x): …
 48: async def fetch(url:str) -> bytes:
-53: def _helper() -> None: pass
+53: def _helper() -> None: …
 56: @dataclass
 57: class Point:
 59:   x:int
 60:   y:int = 0
 62:   def norm(self) -> float:
 66:   @property
-67:   def is_origin(self) -> bool: return self.x == 0 and self.y == 0
+67:   def is_origin(self) -> bool: …
 69:   @staticmethod
 70:   def _secret() -> None:
 73:   class Nested:
-75:     def method(self) -> None: pass
+75:     def method(self) -> None: …
 79:   def conditional() -> None:
-82:   def conditional() -> None: pass
+82:   def conditional() -> None: …
 fixtures/sample/mod.ut.py: sample.mod.ut, 5 lines.

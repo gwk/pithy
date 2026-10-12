@@ -5,8 +5,8 @@ sample/mod.py: sample.mod, 82 lines.
 60:   y:int = 0
 62:   def norm(self) -> float:
 66:   @property
-67:   def is_origin(self) -> bool: return self.x == 0 and self.y == 0
+67:   def is_origin(self) -> bool: …
 69:   @staticmethod
 70:   def _secret() -> None:
 73:   class Nested:
-75:     def method(self) -> None: pass
+75:     def method(self) -> None: …

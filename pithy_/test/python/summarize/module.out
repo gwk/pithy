@@ -5,11 +5,11 @@ fixtures/sample/mod.py: sample.mod, 82 lines.
  4: '''
 10: type Pair = tuple[int,int]
 12: limit = 10
-14: table = { ...
+14: table = { …
 19: _private_const = 'hidden'
 22: def plain(x:int) -> int:
 23:   'Return x doubled.'
-27: def undocumented(a, b): return a + b
+27: def undocumented(a, b): …
 30: def multi_line_sig(a:int,
 31:   b:str) -> str:
 32:   '''
@@ -18,13 +18,13 @@ fixtures/sample/mod.py: sample.mod, 82 lines.
 35:   The blank line above is preserved.
 36:   '''
 41: @overload
-42: def over(x:int) -> int: ...
+42: def over(x:int) -> int: …
 43: @overload
-44: def over(x:str) -> str: ...
-45: def over(x): return x
+44: def over(x:str) -> str: …
+45: def over(x): …
 48: async def fetch(url:str) -> bytes:
 49:   'Fetch a url.'
-53: def _helper() -> None: pass
+53: def _helper() -> None: …
 56: @dataclass
 57: class Point:
 58:   'A point.'
@@ -33,13 +33,13 @@ fixtures/sample/mod.py: sample.mod, 82 lines.
 62:   def norm(self) -> float:
 63:     'The L1 norm.'
 66:   @property
-67:   def is_origin(self) -> bool: return self.x == 0 and self.y == 0
+67:   def is_origin(self) -> bool: …
 69:   @staticmethod
 70:   def _secret() -> None:
 71:     'Private method.'
 73:   class Nested:
 74:     'Nested class.'
-75:     def method(self) -> None: pass
+75:     def method(self) -> None: …
 79:   def conditional() -> None:
 80:     'Defined conditionally.'
-82:   def conditional() -> None: pass
+82:   def conditional() -> None: …

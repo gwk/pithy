@@ -94,7 +94,7 @@ sample.py: sample, 14 lines.
  3: )
  4: class C:
  5:   @property
- 6:   def first(self): return 1
+ 6:   def first(self): …
  7:   @(
  8:     decorator
  9:   )
@@ -203,12 +203,12 @@ More details.
 '''
 utest('sample.py: sample, 6 lines.\n1: """\n2: \n3: Module documentation.\n4: \n5: More details.\n6: """\n',
   summary_output, module_doc_source, [], 'full')
-utest('sample.py: sample, 6 lines.\n3: Module documentation.\n', summary_output, module_doc_source, [], 'first')
+utest("sample.py: sample, 6 lines.\n3: 'Module documentation.'…\n", summary_output, module_doc_source, [], 'first')
 utest('sample.py: sample, 6 lines.\n', summary_output, module_doc_source, [], 'none')
 
 # Escaped newlines stay on their actual source line.
 utest('sample.py: sample, 1 lines.\n1: "One\\nTwo"\n', summary_output, '"One\\nTwo"\n', [], 'full')
-utest('sample.py: sample, 1 lines.\n1: One\\nTwo\n', summary_output, '"One\\nTwo"\n', [], 'first')
+utest("sample.py: sample, 1 lines.\n1: 'One'…\n", summary_output, '"One\\nTwo"\n', [], 'first')
 
 concatenated_doc_source = '''\
 def f():
@@ -230,8 +230,8 @@ sample.py: sample, 6 lines.
 utest('''\
 sample.py: sample, 6 lines.
 1: def f():
-4:     First line.
-''', summary_output, concatenated_doc_source, [], 'first')
+4:   'First line.More details.'
+''', summary_output, concatenated_doc_source, [], 'first') # Adjacent literals concatenate without a newline.
 
 utest('sample.py: sample, 1 lines.\n1: ""\n', summary_output, '""\n', [], 'full')
 utest('sample.py: sample, 1 lines.\n', summary_output, '""\n', [], 'first')
@@ -245,5 +245,31 @@ utest('''\
 sample.py: sample, 4 lines.
 sample.py:1: class C:
 sample.py:2:   'Docs.'
-sample.py:4:   def m(self): pass
+sample.py:4:   def m(self): …
 ''', summary_output, "class C:\n  'Docs.'\n\n  def m(self): pass\n", [], 'full', True)
+
+
+# Elisions are marked with the Unicode ellipsis, which is never a Python token.
+elision_source = '''\
+def one(): return 1
+def stub(): ...
+def commented():  # Trailing comment.
+  return 1
+def doc(): 'Header docstring.'
+class C: pass
+value = {
+  'key': 1,
+}
+'''
+utest('''\
+sample.py: sample, 9 lines.
+1: def one(): …
+2: def stub(): …
+3: def commented():  # Trailing comment.
+5: def doc(): 'Header docstring.'
+6: class C: …
+7: value = { …
+''', summary_output, elision_source, [], 'first')
+
+# A complete one-line docstring has no ellipsis; its repr form is quoted consistently regardless of source quoting.
+utest("sample.py: sample, 2 lines.\n1: def f():\n2:   'One line.'\n", summary_output, 'def f():\n  """One line."""\n', [], 'first')

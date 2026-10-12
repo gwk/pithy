@@ -10,12 +10,15 @@ then the module docstring, then one entry per definition in source order:
 Module-level and class-level assignments are shown by their first source line.
 Methods and nested classes are shown beneath their class; functions nested inside functions are not.
 
-Numbered lines preserve source text and positions, except that `-docs=first` drops the docstring quotes;
-truncated assignments have an appended ` ...` marker.
+Numbered lines preserve source text and positions, with the Unicode ellipsis marking the tool's own elisions:
+* A multi-line assignment shows its first line followed by ` …`.
+* A body that begins on the header line is clipped after the colon, followed by ` …`; a header-line docstring is kept.
+* `-docs=first` shows the first nonblank docstring line as a quoted literal, followed by `…` when more content follows.
+Because `…` is not a Python token, these markers are never confused with a literal `...` in the source.
 Generated module headers and dependency annotations are unnumbered.
 `-locs` prefixes each numbered line with `path:line: ` instead of the bare line number,
 so that locations survive filtering with grep and are recognized by editors.
-`-docs=full` is the default; `first` shows the first nonblank line of docstring content without its quotes, and `none` omits docstrings.
+`-docs=full` is the default; `first` shows the quoted first line of each docstring, and `none` omits docstrings.
 Docstrings on definition header lines remain visible with any mode.
 
 A target is a file, a directory, or a dotted module name, optionally followed by `:` and a comma-separated list of selectors.
@@ -39,7 +42,7 @@ from fnmatch import fnmatchcase
 from io import StringIO
 from sys import exit, stderr
 from tokenize import COMMENT, DEDENT, generate_tokens, INDENT, NEWLINE, NL, OP, STRING
-from typing import Iterator, Literal
+from typing import Iterator, Literal, NamedTuple
 
 from ..cmdparse import Cmd, flag, opt, pos
 from ..fs import path_rel_to_current_or_abs
@@ -57,6 +60,15 @@ type Def = ast.FunctionDef|ast.AsyncFunctionDef|ast.ClassDef
 type Assign = ast.Assign|ast.AnnAssign|ast.TypeAlias
 type Member = Def|Assign
 
+ellipsis = '…' # The Unicode ellipsis marks elisions; unlike `...` it is never a Python token.
+
+
+class HeaderRange(NamedTuple):
+  'The inclusive line range of a definition header, and the column of the colon that ends its signature.'
+  start:int
+  end:int
+  colon_col:int
+
 
 class SummarizeCmd(Cmd):
   '''
@@ -72,7 +84,7 @@ class SummarizeCmd(Cmd):
   safe_path:bool = flag('-P', doc='Use safe-path target resolution.')
   full:bool = flag(doc='Print the complete source of the selected definitions, or the whole module, instead of a summary.')
   docs:DocsMode = opt(default='full',
-    doc='Docstring source: full (default), first nonblank content line without quotes, or none. Header lines are always shown.')
+    doc='Docstring source: full (default), first nonblank line as a quoted literal, or none. Header lines are always shown.')
   public:bool = flag(doc='Omit definitions whose names begin with an underscore.')
   assigns:bool = flag(default=True, doc='Show module and class level assignments; `-no-assigns` omits them.')
   locs:bool = flag(doc='Prefix numbered lines with `path:line: ` so that locations survive grep filtering.')
@@ -157,14 +169,14 @@ class ModuleSummary:
     for member, qualname, selected in self.walk(self.tree.body, '', selectors, public=public, assigns=assigns):
       if selected:
         if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-          self.print_lines(self.header_range(member))
+          self.print_header(member)
           self.print_doc(member, mode=docs)
           if uses and (text := uses.get(qualname)):
             print(' ' * (len(self.prefix(member.lineno)) + member.col_offset + 2) + 'uses: ' + text)
         else:
           self.print_assign(member)
       elif isinstance(member, ast.ClassDef): # An unselected class containing selected members is shown for context.
-        self.print_lines(self.header_range(member))
+        self.print_header(member)
 
 
   def print_full(self, selectors:list[str], *, public:bool) -> None:
@@ -230,11 +242,9 @@ class ModuleSummary:
 
 
   def header_range(self, node:Def) -> tuple[int,int]:
-    '''
-    The inclusive line range of a definition header: from its first decorator through the line that ends the signature.
-    If the body begins on the signature line, that whole line is included.
-    '''
-    return self.header_ranges[node.lineno]
+    'The inclusive line range of a definition header: from its first decorator through the line that ends the signature.'
+    r = self.header_ranges[node.lineno]
+    return r.start, r.end
 
 
   def full_range(self, node:Member) -> tuple[int,int]:
@@ -258,33 +268,48 @@ class ModuleSummary:
       print(f'{self.prefix(lineno)}{self.lines[lineno-1]}')
 
 
+  def print_header(self, node:Def) -> None:
+    '''
+    Print the header lines of a definition.
+    A body that begins on the signature line is clipped after the colon and marked with an ellipsis,
+    unless it is the docstring, which remains visible in every docs mode. A trailing comment is kept.
+    '''
+    start, end, colon_col = self.header_ranges[node.lineno]
+    self.print_lines((start, end - 1))
+    line = self.lines[end-1]
+    rest = line[colon_col+1:].strip()
+    doc_on_header = node.body[0].lineno == end and ast.get_docstring(node) is not None
+    if rest and not rest.startswith('#') and not doc_on_header:
+      line = f'{line[:colon_col+1]} {ellipsis}'
+    print(f'{self.prefix(end)}{line}')
+
+
   def print_assign(self, node:Assign) -> None:
-    'Print the first source line of an assignment, marking truncation of multi-line statements.'
-    suffix = ' ...' if node.end_lineno and node.end_lineno > node.lineno else ''
+    'Print the first source line of an assignment, marking a multi-line statement with an ellipsis.'
+    suffix = f' {ellipsis}' if node.end_lineno and node.end_lineno > node.lineno else ''
     print(f'{self.prefix(node.lineno)}{self.lines[node.lineno-1]}{suffix}')
 
 
   def print_doc(self, node:ast.Module|Def, *, mode:DocsMode) -> None:
     if mode == 'none': return
-    if ast.get_docstring(node) is None: return
+    doc = ast.get_docstring(node)
+    if doc is None: return
     doc_node = node.body[0]
     start, end = doc_node.lineno, doc_node.end_lineno or doc_node.lineno
     header_end = self.header_range(node)[1] if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) else 0
     if mode == 'first':
       assert isinstance(doc_node, ast.Expr) and isinstance(doc_node.value, ast.Constant)
-      first = self.first_doc_line(doc_node.value)
-      if first is None: return
-      lineno, text = first
-      if lineno > header_end: print(f'{self.prefix(lineno)}{text}')
+      content = [line for line in doc.split('\n') if line.strip()]
+      lineno = self.first_doc_line(doc_node.value)
+      if not content or lineno is None or lineno <= header_end: return
+      text = repr(content[0]) + (ellipsis if len(content) > 1 else '')
+      print(f'{self.prefix(lineno)}{" " * doc_node.col_offset}{text}')
       return
     self.print_lines((max(start, header_end + 1), end))
 
 
-  def first_doc_line(self, value:ast.Constant) -> tuple[int,str]|None:
-    '''
-    Locate the first nonblank content line of a docstring without decoding escapes.
-    Returns the line number and the line text with any string prefix and quotes removed, preserving indentation.
-    '''
+  def first_doc_line(self, value:ast.Constant) -> int|None:
+    'Locate the source line of the first nonblank content line of a docstring literal, without decoding escapes.'
     source = ast.get_source_segment(self.text, value)
     assert source is not None
     # Parentheses allow adjacent literals on separate lines, including their original indentation.
@@ -293,18 +318,13 @@ class ModuleSummary:
       literal = token.string.lstrip('rRuU')
       quote = literal[:3] if literal.startswith(('"""', "'''")) else literal[:1]
       for offset, line in enumerate(literal[len(quote):-len(quote)].split('\n')):
-        if not line.strip(): continue
-        lineno = value.lineno + token.start[0] - 1 + offset
-        if offset == 0: # The opening quote line: restore the indentation that precedes the literal.
-          src = self.lines[lineno-1]
-          line = src[:len(src) - len(src.lstrip())] + line
-        return lineno, line
+        if line.strip(): return value.lineno + token.start[0] - 1 + offset
     return None
 
 
-def definition_header_ranges(text:str) -> dict[int,tuple[int,int]]:
+def definition_header_ranges(text:str) -> dict[int,HeaderRange]:
   'Map each definition line to its header range, including decorators and ending at the signature colon.'
-  ranges:dict[int,tuple[int,int]] = {}
+  ranges:dict[int,HeaderRange] = {}
   tokens = generate_tokens(StringIO(text).readline)
   statement_start = True
   decorator_start = 0
@@ -329,7 +349,7 @@ def definition_header_ranges(text:str) -> dict[int,tuple[int,int]]:
       if token.string in ('(', '[', '{'): depth += 1
       elif token.string in (')', ']', '}'): depth -= 1
       elif token.string == ':' and depth == 0:
-        ranges[lineno] = start, token.start[0]
+        ranges[lineno] = HeaderRange(start, token.start[0], token.start[1])
         break
   return ranges
 
