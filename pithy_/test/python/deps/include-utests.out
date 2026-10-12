@@ -3,4 +3,5 @@ alpha  alpha.attr  alpha.base.ut  alpha.mid  alpha.tip
 
 Symbol dependents of alpha.base.helper:
 alpha.attr.via_attr: .base.helper
+alpha.base.ut.<module>: .helper
 alpha.mid.Mid.value: .base.helper

@@ -18,10 +18,8 @@ each name or attribute chain loaded within a definition is resolved through the 
 `pithy.python.sem.scopes` to a scope-local import, a module-level import or a module-level binding.
 Attribute chains through module imports resolve to the accessed symbol, e.g. `import pkg.mod; pkg.mod.f()` records `pkg.mod.f`.
 Methods and nested classes are separate symbols such as `Cls.method`; each reference keeps its source position.
+Module-level statements outside any definition belong to the pseudo-symbol `<module>`.
 Names in string annotations are not analyzed.
-
-TODO: module-level statements (assignments and expressions) are not attributed to symbols;
-only top-level `def`, `async def`, and `class` symbols are analyzed.
 Dotted targets resolve statically through the running Python environment; see `pithy.python.package.resolve_module_installed`.
 The import and symbol layers resolve against the target roots only.
 '''
@@ -40,7 +38,7 @@ from .ast_utils import fmt_syntax_error
 from .package import (module_name_for_path, qualname_rel_to, resolve_module_in_dirs, resolve_module_installed,
   resolve_spec_paths, safe_path_help, SpecResolutionError, target_resolution_help)
 from .sem import (Sem, sem_for_source, SemArguments, SemAsyncFunctionDef, SemAttribute, SemClassDef, SemDictComp, SemFunctionDef,
-  SemGeneratorExp, SemImport, SemImportFrom, SemLambda, SemListComp, SemName, SemNode, SemScope, SemSetComp)
+  SemGeneratorExp, SemImport, SemImportFrom, SemLambda, SemListComp, SemModule, SemName, SemNode, SemScope, SemSetComp)
 from .sem.scopes import build_scope_info, iter_scope_tree, ScopeInfo
 
 
@@ -318,16 +316,16 @@ class DepGraph:
     '''
     The symbol-layer references of a module: maps each definition qualname to the references it makes, in source order.
     Methods and nested classes are separate symbols, e.g. `Cls.method`; definitions inside functions belong to the function.
+    Module-level statements outside any definition belong to the pseudo-symbol `<module>`.
     Each reference names an absolute module or `module.symbol`, both intra-module and through imports.
     '''
     try: return self._symbol_refs[name]
     except KeyError: pass
     root = self.scope(name)
     collector = _RefCollector(self, name, root)
-    for child in root.children:
-      if child.kind in ('def', 'async def', 'class'):
-        assert isinstance(child.node, SemScope)
-        collector.walk(child.node, root, child.name, top=child.name)
+    assert isinstance(root.node, SemModule)
+    for stmt in root.node.body:
+      collector.walk(stmt, root, module_symbol, top=module_symbol)
     self._symbol_refs[name] = collector.refs
     return collector.refs
 
@@ -348,6 +346,9 @@ class DepGraph:
     '''
     abs_qual = self.resolve_qual(importer, qual)
     return abs_qual, '.' not in abs_qual or self.resolve_module(abs_qual) is not None
+
+
+module_symbol = '<module>' # The pseudo-symbol for module-level statements outside any definition.
 
 
 class Ref(NamedTuple):
@@ -391,18 +392,18 @@ class _RefCollector:
       if chain is None: self.walk(node.value, scope, sym, top=top)
       else: self.record(scope, sym, chain, node, top=top)
     elif isinstance(node, (SemFunctionDef, SemAsyncFunctionDef)):
-      # The signature evaluates in the enclosing scope, but its references belong to the method's own symbol.
-      inner_sym = f'{sym}.{node.name}' if scope.kind == 'class' else sym
-      for el in (*node.decorator_list, *node.type_params): self.walk(el, scope, inner_sym, top=top)
-      self.walk_args_outer(node.args, scope, inner_sym, top=top)
-      if node.returns is not None: self.walk(node.returns, scope, inner_sym, top=top)
+      # The signature evaluates in the enclosing scope, but its references belong to the definition's own symbol.
+      sym, top = self.def_symbol(node, scope, sym, top)
+      for el in (*node.decorator_list, *node.type_params): self.walk(el, scope, sym, top=top)
+      self.walk_args_outer(node.args, scope, sym, top=top)
+      if node.returns is not None: self.walk(node.returns, scope, sym, top=top)
       child = self.child_scope(node)
-      for el in node.body: self.walk(el, child, inner_sym, top=top)
+      for el in node.body: self.walk(el, child, sym, top=top)
     elif isinstance(node, SemClassDef):
-      inner_sym = f'{sym}.{node.name}' if scope.kind == 'class' else sym
-      for el in (*node.decorator_list, *node.type_params, *node.bases, *node.keywords): self.walk(el, scope, inner_sym, top=top)
+      sym, top = self.def_symbol(node, scope, sym, top)
+      for el in (*node.decorator_list, *node.type_params, *node.bases, *node.keywords): self.walk(el, scope, sym, top=top)
       child = self.child_scope(node)
-      for el in node.body: self.walk(el, child, inner_sym, top=top)
+      for el in node.body: self.walk(el, child, sym, top=top)
     elif isinstance(node, SemLambda):
       self.walk_args_outer(node.args, scope, sym, top=top)
       self.walk(node.body, self.child_scope(node), sym, top=top)
@@ -419,6 +420,18 @@ class _RefCollector:
         self.walk(node.elt, child, sym, top=top)
     elif isinstance(node, SemNode):
       for el in node.els: self.walk(el, scope, sym, top=top)
+
+
+  def def_symbol(self, node:SemFunctionDef|SemAsyncFunctionDef|SemClassDef, scope:ScopeInfo, sym:str, top:str
+   ) -> tuple[str,str]:
+    '''
+    The (symbol, top) pair for a definition encountered in `scope`.
+    A module-level definition, even inside a conditional block, starts its own top-level symbol;
+    a class member is a sub-symbol of the class; a definition inside a function belongs to the function.
+    '''
+    if scope is self.root: return node.name, node.name
+    if scope.kind == 'class': return f'{sym}.{node.name}', top
+    return sym, top
 
 
   def walk_args_outer(self, args:SemArguments, scope:ScopeInfo, sym:str, *, top:str) -> None:
