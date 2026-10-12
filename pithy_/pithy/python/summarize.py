@@ -13,6 +13,8 @@ Methods and nested classes are shown beneath their class; functions nested insid
 Numbered lines preserve source text and positions, except that `-docs=first` drops the docstring quotes;
 truncated assignments have an appended ` ...` marker.
 Generated module headers and dependency annotations are unnumbered.
+`-locs` prefixes each numbered line with `path:line: ` instead of the bare line number,
+so that locations survive filtering with grep and are recognized by editors.
 `-docs=full` is the default; `first` shows the first nonblank line of docstring content without its quotes, and `none` omits docstrings.
 Docstrings on definition header lines remain visible with any mode.
 
@@ -70,6 +72,7 @@ class SummarizeCmd(Cmd):
     doc='Docstring source: full (default), first nonblank content line without quotes, or none. Header lines are always shown.')
   public:bool = flag(doc='Omit definitions whose names begin with an underscore.')
   assigns:bool = flag(default=True, doc='Show module and class level assignments; `-no-assigns` omits them.')
+  locs:bool = flag(doc='Prefix numbered lines with `path:line: ` so that locations survive grep filtering.')
   uses:bool = flag(doc='Append a `uses:` line to each top-level definition, listing the modules and symbols it references.')
 
 
@@ -82,7 +85,7 @@ class SummarizeCmd(Cmd):
       try: paths = resolve_spec_paths(target, safe_path=self.safe_path)
       except SpecResolutionError as e: exit(f'pithy.python.summarize error: {e}')
       for path in paths:
-        try: summary = ModuleSummary.from_path(path)
+        try: summary = ModuleSummary.from_path(path, locs=self.locs)
         except SyntaxError as e:
           print(f'pithy.python.summarize error: {fmt_syntax_error(path, e)}', file=stderr)
           ok = False
@@ -111,10 +114,14 @@ def main() -> None: SummarizeCmd.main()
 
 
 class ModuleSummary:
-  'A parsed module and its source lines, with methods to print summary and full views of its definitions.'
+  '''
+  A parsed module and its source lines, with methods to print summary and full views of its definitions.
+  `locs` selects the `path:line: ` prefix for numbered lines instead of the bare right-aligned line number.
+  '''
 
-  def __init__(self, path:str, text:str) -> None:
+  def __init__(self, path:str, text:str, *, locs:bool=False) -> None:
     self.path = path_rel_to_current_or_abs(path)
+    self.locs = locs
     self.name = module_name_for_path(path)[0]
     self.text = text
     self.lines = text.split('\n')
@@ -125,9 +132,9 @@ class ModuleSummary:
 
 
   @classmethod
-  def from_path(cls, path:str) -> 'ModuleSummary':
+  def from_path(cls, path:str, *, locs:bool=False) -> 'ModuleSummary':
     with open(path) as f: text = f.read()
-    return cls(path, text)
+    return cls(path, text, locs=locs)
 
 
   def print_summary(self, selectors:list[str], *, docs:DocsMode, public:bool, assigns:bool, uses:dict[str,str]|None=None
@@ -144,7 +151,7 @@ class ModuleSummary:
           self.print_lines(self.header_range(member))
           self.print_doc(member, mode=docs)
           if uses and (text := uses.get(qualname)):
-            print(' ' * (self.width + 2 + member.col_offset + 2) + 'uses: ' + text)
+            print(' ' * (len(self.prefix(member.lineno)) + member.col_offset + 2) + 'uses: ' + text)
         else:
           self.print_assign(member)
       elif isinstance(member, ast.ClassDef): # An unselected class containing selected members is shown for context.
@@ -229,17 +236,23 @@ class ModuleSummary:
     return start, node.end_lineno or node.lineno
 
 
+  def prefix(self, lineno:int) -> str:
+    'The prefix of a numbered output line: `path:line: ` with `locs`, else the right-aligned line number.'
+    if self.locs: return f'{self.path}:{lineno}: '
+    return f'{lineno:>{self.width}}: '
+
+
   def print_lines(self, line_range:tuple[int,int]) -> None:
     'Print the inclusive 1-based range of source lines, each prefixed with its line number.'
     start, end = line_range
     for lineno in range(start, end + 1):
-      print(f'{lineno:>{self.width}}: {self.lines[lineno-1]}')
+      print(f'{self.prefix(lineno)}{self.lines[lineno-1]}')
 
 
   def print_assign(self, node:Assign) -> None:
     'Print the first source line of an assignment, marking truncation of multi-line statements.'
     suffix = ' ...' if node.end_lineno and node.end_lineno > node.lineno else ''
-    print(f'{node.lineno:>{self.width}}: {self.lines[node.lineno-1]}{suffix}')
+    print(f'{self.prefix(node.lineno)}{self.lines[node.lineno-1]}{suffix}')
 
 
   def print_doc(self, node:ast.Module|Def, *, mode:DocsMode) -> None:
@@ -253,7 +266,7 @@ class ModuleSummary:
       first = self.first_doc_line(doc_node.value)
       if first is None: return
       lineno, text = first
-      if lineno > header_end: print(f'{lineno:>{self.width}}: {text}')
+      if lineno > header_end: print(f'{self.prefix(lineno)}{text}')
       return
     self.print_lines((max(start, header_end + 1), end))
 

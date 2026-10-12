@@ -14,8 +14,8 @@ def full_output(text:str, selectors:list[str]) -> str:
   return out.getvalue()
 
 
-def summary_output(text:str, selectors:list[str], docs:DocsMode='none') -> str:
-  summary = ModuleSummary('sample.py', text)
+def summary_output(text:str, selectors:list[str], docs:DocsMode='none', locs:bool=False) -> str:
+  summary = ModuleSummary('sample.py', text, locs=locs)
   with redirect_stdout(out := StringIO()):
     summary.print_summary(selectors, docs=docs, public=False, assigns=True)
   return out.getvalue()
@@ -238,3 +238,12 @@ utest('sample.py: sample, 1 lines.\n', summary_output, '""\n', [], 'first')
 
 # Unicode line separators in a string do not change Python source line numbers.
 utest('sample.py: sample, 1 lines.\n1: "One\u2028Two"\n', summary_output, '"One\u2028Two"\n', [], 'full')
+
+
+# -locs replaces the right-aligned line number with a `path:line: ` prefix.
+utest('''\
+sample.py: sample, 4 lines.
+sample.py:1: class C:
+sample.py:2:   'Docs.'
+sample.py:4:   def m(self): pass
+''', summary_output, "class C:\n  'Docs.'\n\n  def m(self): pass\n", [], 'full', True)

@@ -1,0 +1,19 @@
+fixtures/sample/mod.py: sample.mod, 82 lines.
+fixtures/sample/mod.py:22: def plain(x:int) -> int:
+fixtures/sample/mod.py:23:   Return x doubled.
+fixtures/sample/mod.py:56: @dataclass
+fixtures/sample/mod.py:57: class Point:
+fixtures/sample/mod.py:58:   A point.
+                             uses: dataclasses.dataclass
+fixtures/sample/mod.py:59:   x:int
+fixtures/sample/mod.py:60:   y:int = 0
+fixtures/sample/mod.py:62:   def norm(self) -> float:
+fixtures/sample/mod.py:63:     The L1 norm.
+fixtures/sample/mod.py:66:   @property
+fixtures/sample/mod.py:67:   def is_origin(self) -> bool: return self.x == 0 and self.y == 0
+fixtures/sample/mod.py:69:   @staticmethod
+fixtures/sample/mod.py:70:   def _secret() -> None:
+fixtures/sample/mod.py:71:     Private method.
+fixtures/sample/mod.py:73:   class Nested:
+fixtures/sample/mod.py:74:     Nested class.
+fixtures/sample/mod.py:75:     def method(self) -> None: pass

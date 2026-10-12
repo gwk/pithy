@@ -1,0 +1,3 @@
+{
+  'args': ['-locs', '-docs=first', '-uses', 'fixtures/sample/mod.py:plain,Point'],
+}
