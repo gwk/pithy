@@ -1,0 +1,7 @@
+Modules importing alpha.base:
+alpha  alpha.attr  alpha.mid  alpha.tip
+
+Symbol dependents of alpha.base.CONST:
+alpha.attr.via_attr: .base.CONST
+alpha.base.helper: .CONST
+alpha.tip.run: .base.CONST

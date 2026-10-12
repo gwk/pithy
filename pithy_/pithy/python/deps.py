@@ -32,7 +32,7 @@ from tolkien import Source
 from ..ansi import BOLD_OUT, RST_OUT, TXT_B_OUT, TXT_G_OUT, TXT_Y_OUT
 from ..cmdparse import Cmd, flag, opt, pos
 from ..dict import dict_dag_inverse_with_all_keys
-from ..fs import abs_path
+from ..fs import abs_path, path_rel_to_current_or_abs
 from ..io import outL
 from .ast_utils import fmt_syntax_error
 from .package import (module_name_for_path, qualname_rel_to, resolve_module_in_dirs, resolve_module_installed,
@@ -58,6 +58,7 @@ class DepsCmd(Cmd):
   targets:list[str] = pos(doc='File paths, directories, and/or dotted module names to analyze.')
   safe_path:bool = flag('-P', doc='Use safe-path target resolution.')
   include_utests:bool = flag(doc='Include `.ut.py` unit test files when walking directories and packages.')
+  sites:bool = flag(default=True, doc='For a symbol dependents query, show each referencing source line; `-no-sites` omits them.')
   dependencies:str|None = opt(default=None, metavar='NAME', doc='Show dependencies of a module or module.symbol.')
   dependents:str|None = opt(default=None, metavar='NAME', doc='Show dependents of a module or module.symbol.')
 
@@ -68,7 +69,7 @@ class DepsCmd(Cmd):
       for target in self.targets:
         graph.add_target(target)
       if self.dependencies: print_dependencies(graph, self.dependencies)
-      elif self.dependents: print_dependents(graph, self.dependents)
+      elif self.dependents: print_dependents(graph, self.dependents, sites=self.sites)
       else: print_summary(graph)
     except DepsError as e:
       exit(f'pithy.python.deps error: {e}')
@@ -139,7 +140,11 @@ def print_dependencies(graph:'DepGraph', spec:str) -> None:
   if not found: outL('*none*')
 
 
-def print_dependents(graph:'DepGraph', spec:str) -> None:
+def print_dependents(graph:'DepGraph', spec:str, *, sites:bool=True) -> None:
+  '''
+  Print the modules importing the target module, then the symbols that reference the target.
+  For a symbol target, each referencing symbol is followed by its reference sites as `path:line: source` lines when `sites` is set.
+  '''
   mod, sym = graph.split_spec(spec)
   target = f'{mod}.{sym}' if sym else mod
   module_deps = {name: graph.module_deps(name) for name in sorted(graph.targets)} # The import layer requires parsing all targets.
@@ -156,11 +161,15 @@ def print_dependents(graph:'DepGraph', spec:str) -> None:
   outL('\n', BOLD_OUT, f'Symbol dependents of {target}:', RST_OUT)
   found = False
   for name in candidates:
-    for s, deps in sorted(graph.symbol_deps(name).items()):
-      matches = [d for d in deps if d == target or d.startswith(target + '.')]
-      if matches:
-        outL(BOLD_OUT, f'{name}.{s}', RST_OUT, ': ', fmt_deps(graph, name, matches))
-        found = True
+    for s, refs in sorted(graph.symbol_refs(name).items()):
+      matching = [ref for ref in refs if ref.qual == target or ref.qual.startswith(target + '.')]
+      if not matching: continue
+      outL(BOLD_OUT, f'{name}.{s}', RST_OUT, ': ', fmt_deps(graph, name, {ref.qual for ref in matching}))
+      found = True
+      if sym and sites:
+        rel_path = path_rel_to_current_or_abs(graph.paths[name])
+        for line in sorted({ref.line for ref in matching}):
+          outL(f'  {rel_path}:{line}: {graph.source_line(name, line)}')
   if not found: outL('*none*')
 
 
@@ -182,6 +191,7 @@ class DepGraph:
     self.targets:dict[str,str] = {} # Target module name -> file path.
     self.paths:dict[str,str] = {} # Resolved module name -> file path; superset of `targets`.
     self._scopes:dict[str,ScopeInfo] = {}
+    self._lines:dict[str,list[str]] = {} # Module name -> source lines, for reference sites.
     self._module_deps:dict[str,frozenset[str]] = {}
     self._symbol_refs:dict[str,dict[str,list[Ref]]] = {}
     self._symbol_deps:dict[str,dict[str,frozenset[str]]] = {}
@@ -262,7 +272,13 @@ class DepGraph:
     except SyntaxError as e:
       raise DepsError(fmt_syntax_error(path, e)) from e
     self._scopes[name] = root
+    self._lines[name] = source.text.split('\n')
     return root
+
+
+  def source_line(self, name:str, line:int) -> str:
+    'The text of a 1-based source line of an analyzed module.'
+    return self._lines[name][line-1]
 
 
   def resolve_relative(self, importer:str, module:str|None, level:int) -> str:

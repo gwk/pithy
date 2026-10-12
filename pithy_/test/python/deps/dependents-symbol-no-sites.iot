@@ -1,0 +1,3 @@
+{
+  'args': ['fixtures/alpha', '-no-sites', '-dependents', 'alpha.base.CONST'],
+}

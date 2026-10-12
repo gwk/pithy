@@ -3,5 +3,8 @@ alpha  alpha.attr  alpha.base.ut  alpha.mid  alpha.tip
 
 Symbol dependents of alpha.base.helper:
 alpha.attr.via_attr: .base.helper
+  fixtures/alpha/attr.py:8:   return alpha.base.helper(base.CONST)
 alpha.base.ut.<module>: .helper
+  fixtures/alpha/base.ut.py:5: utest(2, helper, 1)
 alpha.mid.Mid.value: .base.helper
+  fixtures/alpha/mid.py:9:     return helper(1)
