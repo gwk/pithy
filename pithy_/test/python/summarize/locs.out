@@ -16,4 +16,4 @@ fixtures/sample/mod.py:70:   def _secret() -> None:
 fixtures/sample/mod.py:71:     'Private method.'
 fixtures/sample/mod.py:73:   class Nested:
 fixtures/sample/mod.py:74:     'Nested class.'
-fixtures/sample/mod.py:75:     def method(self) -> None: …
+fixtures/sample/mod.py:75:     def method(self) -> None: pass

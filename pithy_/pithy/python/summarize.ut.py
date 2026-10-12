@@ -245,11 +245,12 @@ utest('''\
 sample.py: sample, 4 lines.
 sample.py:1: class C:
 sample.py:2:   'Docs.'
-sample.py:4:   def m(self): …
+sample.py:4:   def m(self): pass
 ''', summary_output, "class C:\n  'Docs.'\n\n  def m(self): pass\n", [], 'full', True)
 
 
 # Elisions are marked with the Unicode ellipsis, which is never a Python token.
+# A header-line body that is just `...` or `pass` is complete, so it is kept verbatim.
 elision_source = '''\
 def one(): return 1
 def stub(): ...
@@ -264,10 +265,10 @@ value = {
 utest('''\
 sample.py: sample, 9 lines.
 1: def one(): …
-2: def stub(): …
+2: def stub(): ...
 3: def commented():  # Trailing comment.
 5: def doc(): 'Header docstring.'
-6: class C: …
+6: class C: pass
 7: value = { …
 ''', summary_output, elision_source, [], 'first')
 

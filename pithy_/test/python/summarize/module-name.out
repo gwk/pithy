@@ -9,4 +9,4 @@ sample/mod.py: sample.mod, 82 lines.
 69:   @staticmethod
 70:   def _secret() -> None:
 73:   class Nested:
-75:     def method(self) -> None: …
+75:     def method(self) -> None: pass

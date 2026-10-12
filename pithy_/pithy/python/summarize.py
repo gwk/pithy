@@ -12,7 +12,8 @@ Methods and nested classes are shown beneath their class; functions nested insid
 
 Numbered lines preserve source text and positions, with the Unicode ellipsis marking the tool's own elisions:
 * A multi-line assignment shows its first line followed by ` …`.
-* A body that begins on the header line is clipped after the colon, followed by ` …`; a header-line docstring is kept.
+* A body that begins on the header line is clipped after the colon, followed by ` …`.
+  A header-line docstring is kept, as is a body that is just `...` or `pass`, since those lines are complete.
 * `-docs=first` shows the first nonblank docstring line as a quoted literal, followed by `…` when more content follows.
 Because `…` is not a Python token, these markers are never confused with a literal `...` in the source.
 Generated module headers and dependency annotations are unnumbered.
@@ -272,14 +273,14 @@ class ModuleSummary:
     '''
     Print the header lines of a definition.
     A body that begins on the signature line is clipped after the colon and marked with an ellipsis,
-    unless it is the docstring, which remains visible in every docs mode. A trailing comment is kept.
+    unless the line is already complete: a docstring, which remains visible in every docs mode,
+    or a stub body consisting of just `...` or `pass`. A trailing comment is kept.
     '''
     start, end, colon_col = self.header_ranges[node.lineno]
     self.print_lines((start, end - 1))
     line = self.lines[end-1]
     rest = line[colon_col+1:].strip()
-    doc_on_header = node.body[0].lineno == end and ast.get_docstring(node) is not None
-    if rest and not rest.startswith('#') and not doc_on_header:
+    if rest and not rest.startswith('#') and not is_complete_header_body(node, end):
       line = f'{line[:colon_col+1]} {ellipsis}'
     print(f'{self.prefix(end)}{line}')
 
@@ -320,6 +321,16 @@ class ModuleSummary:
       for offset, line in enumerate(literal[len(quote):-len(quote)].split('\n')):
         if line.strip(): return value.lineno + token.start[0] - 1 + offset
     return None
+
+
+def is_complete_header_body(node:Def, header_end:int) -> bool:
+  'True if the body on the header line needs no elision: it is the docstring, or the whole body is a `...` or `pass` stub.'
+  first = node.body[0]
+  if first.lineno != header_end: return False
+  if ast.get_docstring(node) is not None: return True
+  if len(node.body) != 1: return False
+  if isinstance(first, ast.Pass): return True
+  return isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant) and first.value.value is ...
 
 
 def definition_header_ranges(text:str) -> dict[int,HeaderRange]:
