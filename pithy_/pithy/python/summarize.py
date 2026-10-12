@@ -14,12 +14,18 @@ Numbered lines preserve source text and positions, with the Unicode ellipsis mar
 * A multi-line assignment shows its first line followed by ` …`.
 * A body that begins on the header line is clipped after the colon, followed by ` …`.
   A header-line docstring is kept, as is a body that is just `...` or `pass`, since those lines are complete.
-* `-docs=first` shows the first nonblank docstring line as a quoted literal, followed by `…` when more content follows.
+* A docstring summary shows the first block of the docstring, up to its first blank line, as a quoted literal,
+  followed by `…` when more content follows. The blank line is the author's control over what the summary reveals.
 Because `…` is not a Python token, these markers are never confused with a literal `...` in the source.
 Generated module headers and dependency annotations are unnumbered.
 `-locs` prefixes each numbered line with `path:line: ` instead of the bare line number,
 so that locations survive filtering with grep and are recognized by editors.
-`-docs=full` is the default; `first` shows the quoted first line of each docstring, and `none` omits docstrings.
+`-docs` selects how much of each docstring is shown:
+* `default`: the module docstring in full, and the summary block of each definition docstring.
+  The module prose supplies the leads; each definition shows its summary; selectors and `-full` pull the detail.
+* `first`: summary blocks everywhere, for wide scans where even the module prose is too much.
+* `full`: every docstring as source.
+* `none`: no docstrings.
 Docstrings on definition header lines remain visible with any mode.
 
 A target is a file, a directory, or a dotted module name, optionally followed by `:` and a comma-separated list of selectors.
@@ -56,7 +62,7 @@ _context_keywords_ = ['api', 'ast', 'decorators', 'definitions', 'docstring', 'i
   'signature', 'source']
 
 
-type DocsMode = Literal['full','first','none']
+type DocsMode = Literal['default','first','full','none']
 type Def = ast.FunctionDef|ast.AsyncFunctionDef|ast.ClassDef
 type Assign = ast.Assign|ast.AnnAssign|ast.TypeAlias
 type Member = Def|Assign
@@ -84,8 +90,8 @@ class SummarizeCmd(Cmd):
   targets:list[str] = pos(doc='File paths, directories, or dotted module names, each with optional `:selectors`.')
   safe_path:bool = flag('-P', doc='Use safe-path target resolution.')
   full:bool = flag(doc='Print the complete source of the selected definitions, or the whole module, instead of a summary.')
-  docs:DocsMode = opt(default='full',
-    doc='Docstring source: full (default), first nonblank line as a quoted literal, or none. Header lines are always shown.')
+  docs:DocsMode = opt(default='default',
+    doc='Docstrings: default (full module docstring, summary block per definition), first (summary blocks only), full, or none.')
   public:bool = flag(doc='Omit definitions whose names begin with an underscore.')
   assigns:bool = flag(default=True, doc='Show module and class level assignments; `-no-assigns` omits them.')
   locs:bool = flag(doc='Prefix numbered lines with `path:line: ` so that locations survive grep filtering.')
@@ -292,21 +298,42 @@ class ModuleSummary:
 
 
   def print_doc(self, node:ast.Module|Def, *, mode:DocsMode) -> None:
+    '''
+    Print the docstring of a module or definition according to `mode`.
+    The `default` mode shows a module docstring in full and summarizes definition docstrings; `first` summarizes both.
+    '''
     if mode == 'none': return
     doc = ast.get_docstring(node)
     if doc is None: return
     doc_node = node.body[0]
     start, end = doc_node.lineno, doc_node.end_lineno or doc_node.lineno
-    header_end = self.header_range(node)[1] if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) else 0
-    if mode == 'first':
+    header_end = 0 if isinstance(node, ast.Module) else self.header_range(node)[1]
+    if mode == 'first' or (mode == 'default' and header_end):
       assert isinstance(doc_node, ast.Expr) and isinstance(doc_node.value, ast.Constant)
-      content = [line for line in doc.split('\n') if line.strip()]
       lineno = self.first_doc_line(doc_node.value)
-      if not content or lineno is None or lineno <= header_end: return
-      text = repr(content[0]) + (ellipsis if len(content) > 1 else '')
-      print(f'{self.prefix(lineno)}{" " * doc_node.col_offset}{text}')
+      if lineno is None or lineno <= header_end: return
+      self.print_doc_summary(doc, lineno, end, indent=' ' * doc_node.col_offset)
       return
     self.print_lines((max(start, header_end + 1), end))
+
+
+  def print_doc_summary(self, doc:str, lineno:int, end:int, *, indent:str) -> None:
+    '''
+    Print the first block of a cleaned docstring as a quoted literal, with `…` appended when more content follows.
+    A one-line block is shown as its repr. A multi-line block is shown in triple quotes, one numbered line per line,
+    when the source spans enough lines from `lineno` to `end`; otherwise, as with escaped newlines, it falls back to the repr.
+    '''
+    lines = doc.split('\n')
+    block_len = next((i for i, line in enumerate(lines) if not line.strip()), len(lines))
+    block = lines[:block_len]
+    more = ellipsis if any(line.strip() for line in lines[block_len:]) else ''
+    if len(block) == 1 or end - lineno + 1 < len(block):
+      print(f'{self.prefix(lineno)}{indent}{repr(chr(10).join(block))}{more}')
+      return
+    for i, line in enumerate(block):
+      open_q = "'''" if i == 0 else ''
+      close_q = f"'''{more}" if i == len(block) - 1 else ''
+      print(f'{self.prefix(lineno + i)}{indent}{open_q}{line}{close_q}')
 
 
   def first_doc_line(self, value:ast.Constant) -> int|None:

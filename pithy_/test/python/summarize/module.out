@@ -12,11 +12,7 @@ fixtures/sample/mod.py: sample.mod, 82 lines.
 27: def undocumented(a, b): …
 30: def multi_line_sig(a:int,
 31:   b:str) -> str:
-32:   '''
-33:   Join a and b.
-34: 
-35:   The blank line above is preserved.
-36:   '''
+33:   'Join a and b.'…
 41: @overload
 42: def over(x:int) -> int: ...
 43: @overload

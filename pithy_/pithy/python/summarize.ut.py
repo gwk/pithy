@@ -208,7 +208,7 @@ utest('sample.py: sample, 6 lines.\n', summary_output, module_doc_source, [], 'n
 
 # Escaped newlines stay on their actual source line.
 utest('sample.py: sample, 1 lines.\n1: "One\\nTwo"\n', summary_output, '"One\\nTwo"\n', [], 'full')
-utest("sample.py: sample, 1 lines.\n1: 'One'…\n", summary_output, '"One\\nTwo"\n', [], 'first')
+utest("sample.py: sample, 1 lines.\n1: 'One\\nTwo'\n", summary_output, '"One\\nTwo"\n', [], 'first') # Too few source lines for a block.
 
 concatenated_doc_source = '''\
 def f():
@@ -274,3 +274,41 @@ sample.py: sample, 9 lines.
 
 # A complete one-line docstring has no ellipsis; its repr form is quoted consistently regardless of source quoting.
 utest("sample.py: sample, 2 lines.\n1: def f():\n2:   'One line.'\n", summary_output, 'def f():\n  """One line."""\n', [], 'first')
+
+
+# A docstring summary is the first block, up to the first blank line, which the author controls.
+block_doc_source = """\
+def f():
+  '''
+  Line one.
+  Line two.
+
+  More details.
+  '''
+
+def g():
+  '''Line one.
+  Line two.
+  '''
+"""
+utest("""\
+sample.py: sample, 12 lines.
+ 1: def f():
+ 3:   '''Line one.
+ 4:   Line two.'''…
+ 9: def g():
+10:   '''Line one.
+11:   Line two.'''
+""", summary_output, block_doc_source, [], 'first')
+
+# The default mode shows the module docstring in full and summarizes definitions.
+utest("""\
+sample.py: sample, 11 lines.
+ 1: '''
+ 2: Module intro.
+ 3: 
+ 4: Module details.
+ 5: '''
+ 6: def f():
+ 8:   'Summary.'…
+""", summary_output, "'''\nModule intro.\n\nModule details.\n'''\ndef f():\n  '''\n  Summary.\n\n  Details.\n  '''\n", [], 'default')

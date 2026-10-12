@@ -1,7 +1,8 @@
 fixtures/sample/__init__.py: sample, 1 lines.
 1: 'Sample package for summarize tests.'
 fixtures/sample/mod.py: sample.mod, 82 lines.
- 2: 'A sample module.'…
+ 2: '''A sample module.
+ 3: It has a multi-line docstring.'''
 22: def plain(x:int) -> int:
 23:   'Return x doubled.'
 27: def undocumented(a, b): …
