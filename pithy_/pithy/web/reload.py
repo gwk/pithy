@@ -14,6 +14,10 @@ from ..io import errL
 from .server import ServerConfig
 
 
+_context_keywords_ = ['development server', 'file watching', 'hot reload', 'multiprocessing spawn', 'port selection',
+  'process restart', 'watchfiles']
+
+
 '''
 Developer command and hot-reload helper for pithy.web servers.
 

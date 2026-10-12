@@ -7,6 +7,9 @@ Render JSON-like data trees (dicts, lists, and leaf values) to human-readable in
 from typing import Any
 
 
+_context_keywords_ = ['data display', 'indented text', 'json', 'nested containers', 'pprint', 'pretty printing', 'rendering']
+
+
 def render_datatree(tree:Any, indent:int=0, mapping_symbol:str='*', sequence_symbol:str='') -> str:
   '''
   Recursively render a JSON-like data tree to a human-readable string.

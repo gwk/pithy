@@ -4,6 +4,9 @@ from collections import Counter
 from typing import ItemsView, Iterable, Iterator, Mapping
 
 
+_context_keywords_ = ['collections.Counter', 'frequency distribution', 'numeric bins', 'statistics']
+
+
 class Histogram(Mapping[float,int]):
 
   def __init__(self, iterable_or_mapping:Iterable[float]|Mapping[float,int]=(), *, bin_width:float):

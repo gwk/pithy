@@ -1,5 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+
+_context_keywords_ = ['dom', 'event categories', 'form', 'keyboard', 'mouse', 'touch', 'window']
+
 dom_category_events = {
   'mouse': ['mousedown', 'mouseup', 'click', 'dblclick', 'mousemove', 'mouseover', 'mousewheel', 'mouseout', 'contextmenu'],
   'touch': ['touchstart', 'touchmove', 'touchend', 'touchcancel'],

@@ -22,6 +22,10 @@ from .response import html_media_type, Response
 from .util import norm_url_path
 
 
+_context_keywords_ = ['conditional requests', 'directory listing', 'etag', 'http.server.SimpleHTTPRequestHandler', 'mime types',
+  'mimetypes.guess_type', 'mounted assets', 'static serving']
+
+
 def _build_ext_media_types() -> dict[str,str]:
   'Build the extension-to-media-type map once, at import time rather than per request.'
   if not mimetypes.inited: mimetypes.init()

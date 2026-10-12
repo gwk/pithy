@@ -3,6 +3,9 @@
 from typing import Sequence, TypeVar
 
 
+_context_keywords_ = ['common prefix', 'common suffix', 'sequence comparison', 'trim']
+
+
 _T = TypeVar('_T')
 
 

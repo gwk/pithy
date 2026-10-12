@@ -4,6 +4,10 @@ from bisect import bisect
 from typing import Sequence, TypeVar
 
 
+_context_keywords_ = ['lcs', 'longest common subsequence', 'patience diff', 'sequence alignment', 'sequence comparison',
+  'unique elements']
+
+
 _T = TypeVar('_T')
 
 Alignment = list[tuple[int, int]]

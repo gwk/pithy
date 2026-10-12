@@ -27,6 +27,10 @@ from .reprs import repr_lim
 from .strings import EscapedStr
 
 
+_context_keywords_ = ['attributes', 'document tree', 'dom', 'html', 'html escaping', 'mixed content', 'rendering', 'scraping',
+  'sgml', 'svg', 'tree traversal', 'xml', 'xml.etree.ElementTree']
+
+
 _T = TypeVar('_T')
 
 # Attr values are currently Any so that we can preserve exact numerical values and pass lists/dicts as JSON.

@@ -9,6 +9,10 @@ from . import sem_for_source
 from .scopes import build_scope_info
 
 
+_context_keywords_ = ['abstract syntax tree', 'command line', 'scope analysis', 'semantic tree', 'static analysis',
+  'tree rendering']
+
+
 def main() -> None:
 
   parser = ArgParser(description='Analyze Python code.')

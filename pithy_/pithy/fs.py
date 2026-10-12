@@ -19,6 +19,10 @@ from .path import (is_path_abs, MixedAbsoluteAndRelativePathsError, norm_path, P
 from .util import memoize
 
 
+_context_keywords_ = ['chmod', 'copy', 'copytree', 'directory traversal', 'executable lookup', 'filesystem', 'listdir',
+  'makedirs', 'mkdir', 'move', 'os.walk', 'project root', 'remove', 'rmtree', 'scandir', 'shutil', 'symlink', 'touch', 'utime']
+
+
 _convenience_exports = ( file_ctime, file_inode, file_size, file_stat, is_file_executable_by_owner, is_file, is_link_to_dir,
   is_link_to_file, is_link, is_mount)
 

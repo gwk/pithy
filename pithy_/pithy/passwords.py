@@ -3,6 +3,10 @@
 from secrets import randbelow
 
 
+_context_keywords_ = ['base36', 'credentials', 'cryptographic randomness', 'password generation', 'random strings',
+  'secrets.randbelow']
+
+
 base36LC_chars = '0123456789abcdefghijklmnopqrstuvwxyz'
 
 

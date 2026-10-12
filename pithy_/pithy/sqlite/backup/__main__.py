@@ -7,6 +7,9 @@ Because a BackupConfig is defined by the owning application,
 each command requires an `-app` option naming the module that defines it. See `resolve_backup_config`.
 '''
 
+
+_context_keywords_ = ['cli', 'command line', 'database', 'restore', 'upload']
+
 from . import main_entry
 
 

@@ -15,6 +15,10 @@ from pithy.type_utils import is_dataclass_instance
 from .iterable import known_leaf_types
 
 
+_context_keywords_ = ['dataclass', 'debugging', 'indented output', 'object description', 'pprint', 'pretty printing',
+  'recursive objects', 'streaming']
+
+
 # Special handling for annoying types that show up in Python scopes.
 _Printer = type(copyright)
 _Quitter = type(quit) # Also the type of `exit`.

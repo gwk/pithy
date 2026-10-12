@@ -6,6 +6,9 @@ from .io import err_progress, errL, writeL
 from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
+_context_keywords_ = ['data pipeline', 'delta logging', 'etl', 'filtering', 'progress reporting', 'stages', 'stream processing']
+
+
 _T = TypeVar('_T')
 _I = TypeVar('_I')
 _O = TypeVar('_O')

@@ -12,6 +12,10 @@ from .ansi import RST_TXT, TXT_B, TXT_C, TXT_G, TXT_M, TXT_R, TXT_Y
 from .type_utils import is_dataclass_or_namedtuple
 
 
+_context_keywords_ = ['dataclass', 'debugging', 'multiline repr', 'namedtuple', 'object representation', 'pprint.pformat',
+  'pretty printing', 'repr', 'syntax coloring', 'truncation']
+
+
 def repr_clean(obj:Any) -> str:
   '''
   Attempt to ensure that an object gets printed with a decent repr.

@@ -5,6 +5,9 @@
 from typing import TypeVar
 
 
+_context_keywords_ = ['membership removal', 'remove if present', 'set.discard', 'set.remove']
+
+
 _T = TypeVar('_T')
 
 

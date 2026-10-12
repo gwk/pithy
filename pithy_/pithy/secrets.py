@@ -4,6 +4,9 @@
 from dataclasses import dataclass
 
 
+_context_keywords_ = ['credentials', 'log redaction', 'redaction', 'sensitive data', 'sensitive strings']
+
+
 @dataclass(frozen=True)
 class SecretStr:
   '''

@@ -6,6 +6,9 @@ from re import Pattern
 from typing import Any, Callable, cast, Generic, get_args, Literal, Self, TypeVar
 
 
+_context_keywords_ = ['path converters', 'pattern matching', 'prefix tree', 'route matching', 'trie', 'url parameters']
+
+
 ConverterKind = Literal['nat', 'pos_int', 'int', 'hex', 'date', 'str', 'path']
 converter_kinds = frozenset(get_args(ConverterKind))
 

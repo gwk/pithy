@@ -1,5 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+_context_keywords_ = ['builtin functions', 'reserved words', 'sql syntax']
+
 
 sqlite_keywords = frozenset({
   'ABORT',

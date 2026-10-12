@@ -8,6 +8,9 @@ from ..server import ServerConfig, WebServer
 from .routes import routes
 
 
+_context_keywords_ = ['demo application', 'development server', 'hot reload', 'http', 'web framework']
+
+
 '''
 DevApp is a web app for devolpers to explore the web framework.
 For integration tests, see `pithy.web.testapp`.

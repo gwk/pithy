@@ -5,6 +5,10 @@ from typing import Any, Callable, Hashable, Iterable, Mapping, MutableMapping, T
 from .exceptions import ConflictingValues
 
 
+_context_keywords_ = ['adjacency', 'collections.defaultdict', 'dictionary', 'graph inversion', 'grouping',
+  'idempotent insertion', 'inverse mapping', 'key remapping', 'missing keys', 'partition', 'setdefault']
+
+
 _K = TypeVar('_K', bound=Hashable)
 _V = TypeVar('_V')
 _VH = TypeVar('_VH', bound=Hashable)

@@ -10,6 +10,9 @@ from typing import Any, Iterable
 from ..html import HtmlNode
 
 
+_context_keywords_ = ['attribute inheritance', 'dom events', 'event attributes', 'hx-trigger', 'incremental updates']
+
+
 def configure_htmx_event_replaced_attrs() -> None:
   '''
   Update `HtmlNode.replaced_attrs` so that `hx-on--{event}` attributes render as `hx-on::{event}` for all htmx events.

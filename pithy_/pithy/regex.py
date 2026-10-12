@@ -4,6 +4,9 @@ from re import compile, Match, Pattern
 from typing import Iterator
 
 
+_context_keywords_ = ['interleaved matches', 'matching text', 're.finditer', 'regular expressions', 'split', 'unmatched text']
+
+
 def find_matches_interleaved(pattern:str|Pattern, s:str) -> Iterator[Match|str]:
   'Find all matches, like re.finditer, but also yield the intervening text.'
   if isinstance(pattern, str): pattern = compile(pattern)

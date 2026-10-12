@@ -7,6 +7,9 @@ from typing import Callable, ContextManager
 from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
+_context_keywords_ = ['SIGALRM', 'context manager', 'deadline', 'signal.alarm', 'timeout', 'timer']
+
+
 class AlarmTimeout(Exception):
   'Exception indicating that an `Alarm` block exceeded its timeout.'
 

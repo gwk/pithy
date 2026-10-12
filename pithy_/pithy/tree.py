@@ -7,6 +7,10 @@ from .exceptions import OmitNode
 from .iterable import iter_values
 
 
+_context_keywords_ = ['depth first', 'node filtering', 'postorder', 'preorder', 'recursive traversal', 'tree transformation',
+  'visitor']
+
+
 _C = TypeVar('_C')
 _T = TypeVar('_T', contravariant=True)
 _R = TypeVar('_R')

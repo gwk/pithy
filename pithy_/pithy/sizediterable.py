@@ -3,6 +3,9 @@
 from typing import Iterable, Iterator, Protocol, runtime_checkable, Sized, TypeVar
 
 
+_context_keywords_ = ['Iterable', 'Protocol', 'Sized', 'last element', 'length', 'runtime protocol']
+
+
 _El = TypeVar('_El', covariant=True)
 
 

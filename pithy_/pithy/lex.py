@@ -12,6 +12,10 @@ from tolkien import Source, Token
 from .strings import iter_str
 
 
+_context_keywords_ = ['dedent', 'indentation', 'lexer', 'lexical analysis', 'mode transitions', 're.compile',
+  'regular expressions', 'scanner', 'tokenization', 'tokens']
+
+
 class LexError(Exception): pass
 
 

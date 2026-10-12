@@ -42,6 +42,10 @@ The `cleanup` command keeps the newest downloaded backup per database and store,
 Older downloads and their -wal/-shm sidecar files are removed.
 '''
 
+
+_context_keywords_ = ['cloud storage', 'database', 'disaster recovery', 'download', 'interval scheduling', 'object storage',
+  'replication', 'restore', 'retention', 'sha1', 'sqlite3_rsync', 'upload', 'vacuum into', 'wal checkpoint']
+
 import time
 from dataclasses import dataclass, field
 from glob import escape, glob

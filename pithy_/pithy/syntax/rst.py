@@ -15,6 +15,9 @@ from ..tree import OmitNode, transform_tree
 from . import Syntax
 
 
+_context_keywords_ = ['docutils', 'markup', 'parse tree', 'restructuredtext', 'source locations', 'syntax tree']
+
+
 def parse_rst(path:str, text:str) -> Syntax:
   parser = _RstParser()
   settings = _frontend.OptionParser(components=(_RstParser,)).get_default_values()

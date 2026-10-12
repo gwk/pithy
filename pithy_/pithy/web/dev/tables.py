@@ -9,6 +9,9 @@ from ..response import HtmlResponse
 from .pages import dev_page
 
 
+_context_keywords_ = ['collapsible table', 'css styling', 'demo', 'horizontal scrolling', 'striped rows']
+
+
 # (name, count, weight, nocturnal, discovered, last fed, wakes at, description) rows for the demo tables.
 rows = [
   ('Alligator', 2, 453.59, False, Date(1807, 1, 1), DateTime(2026, 8, 24, 8, 5), Time(6, 30),

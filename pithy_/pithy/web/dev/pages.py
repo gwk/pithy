@@ -12,6 +12,9 @@ from ..response import HtmlResponse
 from ..static import pithy_web_static_dir_path
 
 
+_context_keywords_ = ['breadcrumbs', 'demo', 'html layout', 'navigation', 'page shell', 'static assets', 'theme selector']
+
+
 site_name = 'pithy.web.dev'
 
 common_css_paths = (

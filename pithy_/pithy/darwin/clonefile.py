@@ -9,6 +9,9 @@ from os import strerror
 from os.path import dirname, isdir
 
 
+_context_keywords_ = ['apfs', 'copy on write', 'ctypes', 'file cloning', 'filesystem', 'macos', 'reflink', 'shutil.copyfile']
+
+
 __all__ = ['clonefile', 'volume_supports_clone']
 
 

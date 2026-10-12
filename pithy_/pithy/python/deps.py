@@ -45,8 +45,8 @@ from .sem import (Sem, sem_for_source, SemArguments, SemAsyncFunctionDef, SemAtt
 from .sem.scopes import build_scope_info, iter_scope_tree, ScopeInfo
 
 
-_context_keywords_ = ['call graph', 'callers', 'dependencies', 'dependents', 'import graph', 'imports', 'references',
-  'symbols', 'usages', 'who calls']
+_context_keywords_ = ['call graph', 'callers', 'dependencies', 'dependency graph', 'dependents', 'import graph', 'imports',
+  'references', 'static analysis', 'symbol references', 'symbols', 'usages', 'who calls']
 
 
 class DepsCmd(Cmd):

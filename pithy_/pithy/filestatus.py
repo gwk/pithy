@@ -8,6 +8,10 @@ from typing import NamedTuple
 from .path import Pathish, PathishOrFd
 
 
+_context_keywords_ = ['DirEntry', 'file metadata', 'file size', 'file type', 'inode', 'lstat', 'modification time', 'os.stat',
+  'permissions', 'stat_result', 'symlink', 'timestamps']
+
+
 class FileStatus(NamedTuple):
   '''
   Reinterpretation of standard stat_result:

@@ -13,6 +13,9 @@ from .path_encode import path_encode_url
 from .task import runCO
 
 
+_context_keywords_ = ['cache', 'curl', 'download', 'http', 'https', 'rate limiting', 'request headers', 'urllib.request', 'web']
+
+
 class HTTPError(Exception):
   def __init__(self, msg:str, curl_code:int=0, status_code:int=-1):
     super().__init__(msg)

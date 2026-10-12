@@ -1,5 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+_context_keywords_ = ['alter table', 'column rename', 'database', 'ddl', 'migration generation', 'schema diff', 'table rebuild']
+
 from typing import Iterable, Self
 
 from ...iterable import joinR

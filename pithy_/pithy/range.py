@@ -6,6 +6,9 @@ from typing import Any, Iterator, Sequence, TypeVar
 from .type_utils import Comparable
 
 
+_context_keywords_ = ['closed interval', 'float range', 'interval overlap', 'numeric sequence']
+
+
 _setattr = object.__setattr__
 
 

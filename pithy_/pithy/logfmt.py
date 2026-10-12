@@ -3,6 +3,9 @@
 from typing import Any, Iterable, Mapping
 
 
+_context_keywords_ = ['escaping', 'key value', 'log formatting', 'logging', 'quoting', 'structured logs']
+
+
 '''
 This is a very lightweight implementation of the logfmt logging format.
 

@@ -6,6 +6,10 @@ from math import atan2, cos, isfinite, pi, sin, sqrt
 from typing import Iterator, overload, Union
 
 
+_context_keywords_ = ['3d vector', 'angle', 'bounding box', 'cross product', 'distance', 'dot product', 'geometry',
+  'interpolation', 'linear algebra', 'magnitude', 'normalization', 'rotation']
+
+
 h_pi = pi * 0.5
 
 _setattr = object.__setattr__

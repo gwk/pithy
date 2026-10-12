@@ -11,6 +11,10 @@ from typing import Any, cast, Iterable, TextIO
 from .strings import iter_excluding_str
 
 
+_context_keywords_ = ['data exploration', 'example objects', 'json', 'nested data', 'schema inference', 'structure discovery',
+  'type aggregation']
+
+
 def _mk_schema() -> Schema:
   return Schema()
 

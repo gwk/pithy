@@ -1,5 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+_context_keywords_ = ['abstract syntax tree', 'ddl', 'grammar', 'identifier', 'lexer', 'parser', 'sql syntax',
+  'string literals', 'tokenization', 'unquoting']
+
 import re
 from sys import stdin
 from typing import Any, Callable, Match

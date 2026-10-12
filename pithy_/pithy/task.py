@@ -12,6 +12,10 @@ from time import time as _now
 from typing import cast, Generator, IO, Literal, NoReturn, overload, Sequence
 
 
+_context_keywords_ = ['Popen', 'capture output', 'command execution', 'execvp', 'exit code', 'process group', 'redirection',
+  'selectors', 'shlex', 'subprocess', 'subprocess.run', 'timeout']
+
+
 _convenience_exports = (DEVNULL, STDOUT)
 
 Lit_DEVNULL = Literal[-3]; assert DEVNULL == -3 # Literal only accepts the integer value.

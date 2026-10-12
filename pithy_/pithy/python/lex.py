@@ -3,6 +3,10 @@
 from ..lex import c_like_punctuation_patterns, Lexer, LexMode, whitespace_patterns
 
 
+_context_keywords_ = ['comments', 'lexer', 'lexical analysis', 'regular expressions', 'string literals', 'tokenization',
+  'tokenize']
+
+
 patterns=dict(
   # These are ordered roughly to improve matching speed on a sample (all .py files in the repository).
 

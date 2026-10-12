@@ -5,6 +5,10 @@ from functools import cached_property
 from typing import Any, Callable, Sequence
 
 
+_context_keywords_ = ['ArgumentParser', 'argparse', 'arguments', 'cli', 'command dispatch', 'command line', 'help',
+  'options', 'subcommands']
+
+
 class ArgParser(ArgumentParser):
   '''
   A subclass of the standard ArgumentParser.

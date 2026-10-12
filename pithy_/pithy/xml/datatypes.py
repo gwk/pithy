@@ -12,6 +12,10 @@ from typing_extensions import TypeForm  # TODO: import from typing once we requi
 from ..transtruct import Ctx, Transtructor
 
 
+_context_keywords_ = ['child attributes', 'deserialization', 'generated classes', 'object trees', 'transtruct',
+  'tree traversal', 'visitor']
+
+
 _T = TypeVar('_T')
 
 

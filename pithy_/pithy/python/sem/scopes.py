@@ -28,6 +28,10 @@ from . import (Sem, SemAlias, SemAnnAssign, SemArg, SemArguments, SemAsyncFuncti
   SemScope, SemSetComp)
 
 
+_context_keywords_ = ['bindings', 'closures', 'comprehensions', 'free variables', 'global declarations', 'imports',
+  'lexical scope', 'name resolution', 'nonlocal declarations', 'static analysis', 'symbol table', 'symtable', 'variable usages']
+
+
 type ScopeKind = Literal['module', 'class', 'def', 'async def', 'lambda', 'comprehension', 'generator']
 type UsageKind = Literal['annotation', 'async def', 'class', 'def', 'exception', 'global', 'import', 'nonlocal', 'parameter',
   'pattern', 'variable']

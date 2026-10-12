@@ -7,6 +7,10 @@ from typing import Self
 from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
+_context_keywords_ = ['benchmark', 'context manager', 'elapsed time', 'performance', 'profiling', 'stopwatch',
+  'time.perf_counter', 'timing']
+
+
 class Clock:
   '''
   A simple ContextManager for timing code blocks.

@@ -7,6 +7,9 @@ from urllib.parse import urlsplit, urlunsplit
 from .path import norm_path, path_join, path_split
 
 
+_context_keywords_ = ['cache keys', 'escaping', 'file names', 'filename encoding', 'percent encoding', 'url', 'urlsplit']
+
+
 def path_encode(string:str) -> str:
   '''
   Encode string into a path.

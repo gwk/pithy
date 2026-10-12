@@ -14,6 +14,11 @@ from .strings import ConvFn, fmt_rows
 from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
+_context_keywords_ = ['Path.read_bytes', 'Path.read_text', 'Path.write_bytes', 'Path.write_text', 'confirmation prompt',
+  'file reading', 'file writing', 'nonblocking', 'open', 'pprint', 'pretty printing', 'print', 'progress indicator', 'stderr',
+  'stdin', 'stdout', 'table formatting', 'terminal']
+
+
 _convenience_exports = (errD, outD, writeD)
 
 

@@ -3,6 +3,9 @@
 import re
 
 
+_context_keywords_ = ['abi', 'mangled names', 'name mangling', 'nm', 'object file', 'symbol names']
+
+
 def parse_nm_line(nm_line:str) -> tuple[str,str,str,tuple[str,...]]:
   '''
   'Given a string from the output of `nm <some.swift.o> -g -U -m -s __TEXT __text`, parse the output.

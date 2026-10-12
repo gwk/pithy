@@ -9,6 +9,9 @@ from typing import Any, Iterable, Union
 from ..markup import _Mu, Mu, MuAttrs, MuChildOrChildrenLax
 
 
+_context_keywords_ = ['document tree', 'elements', 'markup', 'nodes', 'rendering', 'serialization']
+
+
 XmlChild = Union[str,'Xml']
 XmlChildren = list[XmlChild]
 

@@ -13,6 +13,9 @@ from uvicorn.supervisors import ChangeReload
 from ..systemd import sd_notify_ready
 
 
+_context_keywords_ = ['asgi', 'hot reload', 'readiness notification', 'sd_notify', 'systemd', 'web serving']
+
+
 class ReadyNotifyingServer(Server):
   '''
   A uvicorn Server that notifies systemd once it is listening.

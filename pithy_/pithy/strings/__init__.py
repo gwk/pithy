@@ -10,6 +10,12 @@ from typing import Any, Callable, cast, Final, Iterable, Iterator, Sequence, Typ
 from ..defaultlist import DefaultList
 
 
+_context_keywords_ = ['abbreviations', 'byte count', 'camelcase', 'capitalize', 'column alignment', 'common prefix',
+  'common suffix', 'ellipsis', 'escaping', 'indentation', 'line column', 'pluralization', 'prefix tree', 'punctuation',
+  'radix tree', 'snakecase', 'str.capitalize', 'str.join', 'str.ljust', 'str.removeprefix', 'str.removesuffix', 'str.rjust',
+  'string.Template', 'table formatting', 'templates', 'trie', 'truncation']
+
+
 _T = TypeVar('_T')
 
 

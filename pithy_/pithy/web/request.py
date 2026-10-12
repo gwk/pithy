@@ -17,6 +17,10 @@ from .requestconn import AddrPair, RequestConn
 from .response import ResponseError
 
 
+_context_keywords_ = ['body parsing', 'file upload', 'form data', 'http', 'json', 'multipart', 'query parameters',
+  'upload limits', 'urlencoded', 'urllib.parse.parse_qsl']
+
+
 @dataclass(slots=True, frozen=True)
 class UploadedFile:
   field_name:str

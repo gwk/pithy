@@ -8,6 +8,10 @@ from sys import stdout
 from typing import Any, Callable, Iterable, Mapping, TextIO
 
 
+_context_keywords_ = ['adjacency list', 'directed graph', 'dot language', 'edges', 'graph visualization', 'identifier quoting',
+  'nodes']
+
+
 GraphvizName = int|float|str
 
 GraphvizAttrs = Mapping[str,GraphvizName]

@@ -6,6 +6,9 @@ from ...response import HtmlResponse
 from ..pages import dev_page
 
 
+_context_keywords_ = ['demo index', 'developer reference', 'form controls', 'modal dialogs', 'navigation']
+
+
 def dev_htmx_index(request:Request) -> HtmlResponse:
   'Index of HTMX developer demos.'
   return dev_page(title='HTMX', breadcrumbs=[('/', 'Home'), ('/htmx', 'HTMX')],

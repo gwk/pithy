@@ -15,6 +15,10 @@ from ..domain_events import DomainEvent
 from ..pages import dev_page
 
 
+_context_keywords_ = ['autosave', 'checkboxes', 'demo', 'dialog', 'form validation', 'incremental updates', 'shared modal',
+  'user editing']
+
+
 type UiMode = Literal['auto', 'light', 'dark']
 type Privilege = Literal['publish', 'moderate', 'billing']
 

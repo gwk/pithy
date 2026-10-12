@@ -10,6 +10,10 @@ from cryptography.hazmat.primitives.ciphers.algorithms import AES
 from cryptography.hazmat.primitives.ciphers.modes import ECB
 
 
+_context_keywords_ = ['aes', 'aes-siv', 'authenticated encryption', 'ciphertext', 'decryption', 'deterministic encryption',
+  'encryption', 'integer keys', 'nonce', 'secret key', 'token_bytes']
+
+
 class AesSivCryptor:
 
   def __init__(self, key:bytes):

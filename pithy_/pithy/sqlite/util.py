@@ -1,5 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+_context_keywords_ = ['NamedTuple', 'adapters', 'column affinity', 'converters', 'database', 'datetime', 'escaping',
+  'fuzzy search', 'identifier quoting', 'iso8601', 'json', 'named parameters', 'placeholders', 'raw sql', 'sql generation',
+  'sqlite3.register_adapter', 'sqlite3.register_converter', 'string quoting', 'type conversion', 'upsert']
+
 import re
 from dataclasses import dataclass
 from datetime import date, datetime, time

@@ -8,6 +8,10 @@ from io import BufferedRandom, BufferedReader, FileIO, TextIOWrapper
 from typing import Any, BinaryIO, Callable, cast, IO, Iterable, TextIO
 
 
+_context_keywords_ = ['archive', 'compression', 'csv', 'deserialization', 'dispatch', 'file extension', 'file formats', 'gzip',
+  'json', 'lzma', 'msgpack', 'open', 'parsing', 'pickle', 'plist', 'spreadsheet', 'sqlite', 'text', 'tsv', 'yaml', 'zstd']
+
+
 __all__ = [
   'add_loader',
   'FileOrPath',

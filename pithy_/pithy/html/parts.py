@@ -13,6 +13,10 @@ from ..strings import identifier_or_repr
 from . import A, Div, Label, Li, MuAttrs, Ol, Select, Span, Ul
 
 
+_context_keywords_ = ['components', 'dark mode', 'htmx', 'json visualization', 'pagination', 'theme selector', 'urlencode',
+  'widgets']
+
+
 def pagination_control(*, count:int|None, limit:int, offset:int, href:str='', hx_get:str='', params:Mapping[str,Any],
  link_attrs:MuAttrs|None=None) -> Div:
   """

@@ -7,6 +7,10 @@ from pithy.type_utils import is_a
 from tolkien import Token
 
 
+_context_keywords_ = ['build configuration', 'build phase', 'object model', 'pbxproj', 'project file', 'property list',
+  'swift package', 'xcode project']
+
+
 class PBX:
   'Abstract root class.'
   isa:str

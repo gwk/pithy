@@ -10,6 +10,10 @@ from ..path import path_dir, path_join
 from ..path_encode import path_encode_url
 
 
+_context_keywords_ = ['browser automation', 'chromium', 'firefox', 'page capture', 'playwright', 'png', 'responsive layouts',
+  'webkit']
+
+
 def main() -> None:
 
   parser = ArgumentParser()

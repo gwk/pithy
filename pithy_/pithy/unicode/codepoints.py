@@ -5,6 +5,9 @@ from typing import Iterable
 from . import CodeRange
 
 
+_context_keywords_ = ['character ranges', 'code point', 'escape sequences', 'formatting', 'hexadecimal', 'range description']
+
+
 __all__ = [
   'codes_desc',
 ]

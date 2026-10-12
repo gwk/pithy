@@ -18,6 +18,10 @@ from .errors import ResponseError
 from .headers import add_header_item, ResponseHeadersDict
 
 
+_context_keywords_ = ['cache control', 'csv', 'error page', 'file body', 'html', 'htmx fragments', 'http', 'json', 'redirect',
+  'text']
+
+
 ResponseBody = str|bytes|bytearray|BufferedReader|Mu|None
 
 BinaryResponseBody = bytes|bytearray|BufferedReader|None

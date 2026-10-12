@@ -37,6 +37,10 @@ from xml.etree.ElementTree import Comment, Element, fromstring as parse_xml_data
 from ..exceptions import DeleteNode, FlattenNode, OmitNode
 
 
+_context_keywords_ = ['comments', 'deserialization', 'dictionary trees', 'interleaved text', 'mixed content', 'parsing',
+  'xml.etree.ElementTree']
+
+
 DeleteNode = DeleteNode
 FlattenNode = FlattenNode
 

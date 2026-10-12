@@ -19,6 +19,10 @@ from ..response import HtmlResponse
 from .pages import dev_page
 
 
+_context_keywords_ = ['accessibility', 'apca', 'contrast', 'css palette', 'dark theme', 'demo', 'light theme', 'oklch',
+  'semantic palette', 'srgb']
+
+
 type Scheme = str
 
 

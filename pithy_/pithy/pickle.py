@@ -6,6 +6,10 @@ from sys import stdout
 from typing import Any, BinaryIO
 
 
+_context_keywords_ = ['binary format', 'deserialization', 'object persistence', 'pickle.dump', 'pickle.load', 'serialization',
+  'stdout']
+
+
 def load_pickle(file:BinaryIO, *, fix_imports:bool=True, encoding:str="ASCII", errors:str="strict") -> Any:
   return _load(file, fix_imports=fix_imports, encoding=encoding, errors=errors)
 

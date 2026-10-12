@@ -6,6 +6,10 @@ from types import MappingProxyType
 from typing import Any, Callable, cast, Concatenate, Generic, ParamSpec, TypeAlias, TypeVar
 
 
+_context_keywords_ = ['decorator', 'descriptor', 'functools.singledispatchmethod', 'key dispatch', 'method registry',
+  'polymorphism']
+
+
 class DispatchKeyError(KeyError):
     pass
 

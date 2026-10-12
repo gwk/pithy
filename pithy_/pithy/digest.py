@@ -8,6 +8,9 @@ from typing import Callable
 import blake3
 
 
+_context_keywords_ = ['blake2', 'blake3', 'checksum', 'cryptographic hash', 'hashlib', 'md5', 'sha256', 'sha3']
+
+
 digest_fns:dict[str,Callable] = {
   'blake2b'   : hashlib.blake2b,
   'blake2s'   : hashlib.blake2s,

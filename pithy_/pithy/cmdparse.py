@@ -77,6 +77,11 @@ from .path import Path
 from .type_utils import normalize_type_form
 
 
+_context_keywords_ = ['ArgumentParser', 'argparse', 'arguments', 'cli', 'command dispatch', 'command line', 'dataclasses',
+  'declarative', 'flags', 'help', 'options', 'positional arguments', 'shell completion', 'subcommands', 'typed arguments',
+  'usage', 'zsh completion']
+
+
 _arg_key = 'pithy.cmdparse' # Key under which an ArgSpec is stored in dataclass field metadata.
 _help_flags = frozenset(('-h', '-help', '--help'))
 _option_name_re = re.compile(r'-[A-Za-z0-9_-]+\Z')

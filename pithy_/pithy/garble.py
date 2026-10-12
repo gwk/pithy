@@ -5,6 +5,10 @@ from random import choice, getrandbits
 from typing import TypeVar
 
 
+_context_keywords_ = ['anonymization', 'fake data', 'family names', 'given names', 'identifiers', 'obfuscation', 'random names',
+  'test data']
+
+
 _T = TypeVar('_T')
 
 

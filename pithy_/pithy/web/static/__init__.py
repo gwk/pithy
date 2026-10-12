@@ -6,6 +6,9 @@ from functools import cache
 from ...fs import is_dir, real_path
 
 
+_context_keywords_ = ['asset directory', 'bundled resources', 'css', 'javascript']
+
+
 @cache
 def pithy_web_static_dir_path() -> str:
   static_module_path = sys.modules[__name__].__path__[0]

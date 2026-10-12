@@ -1,5 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+_context_keywords_ = ['database', 'dry run', 'migration generation', 'python migrations', 'schema drift', 'schema sync',
+  'sql migrations', 'user_version', 'versioned migrations']
+
 import re
 import types
 from dataclasses import dataclass

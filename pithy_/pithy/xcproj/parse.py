@@ -12,6 +12,9 @@ from .pbx import DefError, node_classes, PlistRoot
 from .util import unquote_string
 
 
+_context_keywords_ = ['lexer', 'openstep plist', 'parser', 'pbxproj', 'project file', 'property list', 'xcode project']
+
+
 lexer = Lexer(patterns=dict(
   utf8_header = r'// !\$\*UTF8\*\$!',
   newline     = r'\n',

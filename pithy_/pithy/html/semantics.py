@@ -4,6 +4,8 @@
 HTML semantics data.
 '''
 
+_context_keywords_ = ['content categories', 'form input types', 'phrasing content', 'raw text', 'void elements', 'whitespace']
+
 raw_text_tags = frozenset({ 'script', 'style' })
 escapeable_raw_text_tags = frozenset({ 'textarea', 'title' })
 ws_sensitive_tags = raw_text_tags | escapeable_raw_text_tags | frozenset({'pre'})

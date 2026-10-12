@@ -5,6 +5,10 @@ from typing import Callable, Iterable, Iterator, TypeVar
 from .default import Raise, RaiseOr
 
 
+_context_keywords_ = ['buffered iterator', 'iterable', 'itertools.dropwhile', 'itertools.takewhile', 'lookahead', 'peek',
+  'pushback']
+
+
 _T = TypeVar('_T')
 
 

@@ -10,6 +10,10 @@ from .type_utils import is_dataclass_instance
 from .util import memoize
 
 
+_context_keywords_ = ['dataclasses.asdict', 'datetime', 'json default', 'msgpack', 'object conversion', 'serialization',
+  'singledispatch', 'slots']
+
+
 EncodeObj = Callable[[Any],Any]
 
 @singledispatch

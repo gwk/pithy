@@ -7,6 +7,10 @@ from math import cos, pi, sin
 from . import V
 
 
+_context_keywords_ = ['3d transformation', 'determinant', 'geometry', 'inverse', 'linear algebra', 'matrix composition',
+  'matrix multiplication', 'rodrigues formula', 'rotation', 'scaling', 'svg matrix', 'translation']
+
+
 h_pi = pi * 0.5
 
 

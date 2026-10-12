@@ -19,6 +19,11 @@ from .secrets import SecretBytes, SecretStr
 from .type_utils import is_dataclass_instance, is_namedtuple, is_type_namedtuple, normalize_type_form
 
 
+_context_keywords_ = ['Annotated', 'Literal', 'TypeForm', 'blank values', 'coercion', 'csv', 'dataclasses', 'deserialization',
+  'json', 'namedtuple', 'polymorphic types', 'recursive conversion', 'type conversion', 'type hints', 'typed data',
+  'union types']
+
+
 Desired = TypeVar('Desired')
 Ctx = Any
 Input = Any

@@ -10,6 +10,10 @@ ASGI specification types.
 from typing import Any, Iterable, Literal, NotRequired, Protocol, TypedDict
 
 
+_context_keywords_ = ['Protocol', 'TypedDict', 'async application', 'connection scope', 'http', 'lifespan', 'type annotations',
+  'websocket']
+
+
 type AsgiEventValAtom = None | bool | bytes | float | int | str
 type AsgiEventVal = AsgiEventValAtom | tuple[AsgiEventValAtom,...] | list[AsgiEventVal] | dict[str,AsgiEventVal]
 

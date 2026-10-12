@@ -7,6 +7,9 @@ This mirrors the Python standard library `sqlite3.__main__` module, but builds t
 `pithy.interactive.Interpreter` and the pithy `Conn` connection class.
 '''
 
+
+_context_keywords_ = ['cli', 'command line', 'database', 'interactive', 'query', 'repl', 'shell', 'sqlite3.__main__']
+
 import sqlite3
 from argparse import ArgumentParser, Namespace
 from sys import stderr

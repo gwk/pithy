@@ -4,6 +4,9 @@ import re
 from typing import Match
 
 
+_context_keywords_ = ['escape sequences', 'object references', 'pbxproj', 'quoting', 'string escaping', 'xcode project']
+
+
 def is_ref(string:str) -> bool:
   return bool(re.fullmatch(r'[0-9A-F]{24}', string))
 

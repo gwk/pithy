@@ -3,6 +3,9 @@
 from ast import AnnAssign, Global, Nonlocal
 
 
+_context_keywords_ = ['AnnAssign', 'Global', 'Nonlocal', 'SyntaxError', 'declarations', 'diagnostics', 'error formatting']
+
+
 type AstDecl = AnnAssign|Global|Nonlocal
 
 

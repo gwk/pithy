@@ -1,5 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+_context_keywords_ = ['attribute access', 'column access', 'database', 'query results', 'sqlite3.Row']
+
 import sqlite3
 from collections.abc import Sequence
 from typing import Any, Iterator

@@ -10,6 +10,10 @@ from ...html import Span, Td
 from ...sqlite.util import sql_quote_qual_entity as qqe
 
 
+_context_keywords_ = ['cell rendering', 'column visibility', 'database browser', 'datetime wrapping', 'foreign keys', 'sql',
+  'sqlite']
+
+
 ValRenderFn = Callable[[Any],Any]
 CellRenderFn = Callable[[Any],Td]
 _setattr = object.__setattr__

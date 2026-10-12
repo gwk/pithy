@@ -19,6 +19,10 @@ from ..svg import Svg, SvgNode
 from . import semantics
 
 
+_context_keywords_ = ['JustHTML', 'breadcrumbs', 'checkbox', 'css', 'document tree', 'elements', 'forms', 'html.escape',
+  'hyperlinks', 'markup', 'parsing', 'radio buttons', 'rendering', 'sanitization', 'serialization', 'tables', 'templates']
+
+
 _convenience_exports = (ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError, MuChild)
 
 

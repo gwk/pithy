@@ -6,7 +6,8 @@ from typing import Iterable
 from .data import blocks
 
 
-_context_keywords_ = ['block', 'category', 'charset', 'code point', 'code range', 'plane', 'unicodedata']
+_context_keywords_ = ['ascii', 'block', 'category', 'charset', 'coalesce', 'code point', 'code range', 'interval intersection',
+  'interval union', 'plane', 'surrogate', 'unicodedata']
 
 
 # use pairs instead of real range objects because they are sortable, and faster to load in the interpreter.

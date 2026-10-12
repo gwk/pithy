@@ -6,6 +6,10 @@ from urllib.parse import parse_qsl, quote, urlencode, urlsplit as url_split, url
 from .path import path_stem
 
 
+_context_keywords_ = ['composition', 'escaping', 'fragment', 'host', 'netloc', 'parse_qsl', 'parsing', 'percent encoding',
+  'query parameters', 'query string', 'quote', 'scheme', 'uri', 'urlencode', 'urlparse', 'urlsplit', 'urlunsplit']
+
+
 def fmt_url(url:str, *path_parts:str, **params:Any) -> str:
   '''
   Path parts and params are escaped.

@@ -5,6 +5,9 @@ from math import asin
 from . import h_pi, V
 
 
+_context_keywords_ = ['bitangent', 'circle', 'common tangents', 'geometry', 'tangent point']
+
+
 def point_circle_tangent(p:V, *, c:V, r:float, sign:int) -> V:
   '''
   Compute the tangent point from point `p` to a Corner circle.

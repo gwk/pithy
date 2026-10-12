@@ -9,6 +9,10 @@ from zipfile import BadZipFile, ZipFile
 from .fs import path_ext
 
 
+_context_keywords_ = ['TarFile', 'ZipFile', 'compressed files', 'compression', 'members', 'streaming', 'tar', 'tarfile', 'zip',
+  'zipfile']
+
+
 FileOrPath = BinaryIO|str # TODO: support other pathlike objects.
 Opener = Callable[[], BinaryIO]
 

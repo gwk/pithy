@@ -9,6 +9,11 @@ from typing import (Annotated, Any, Callable, cast, ClassVar, get_args, get_orig
 from typing_extensions import TypeForm  # TODO: import from typing once we require Python 3.15.
 
 
+_context_keywords_ = ['Annotated', 'Literal', 'TypeAliasType', 'TypeForm', 'dataclasses.is_dataclass', 'generic types',
+  'isinstance', 'namedtuple', 'runtime validation', 'type introspection', 'type narrowing', 'typing.get_args',
+  'typing.get_origin', 'union types']
+
+
 _T = TypeVar('_T')
 
 NoneType = type(None)

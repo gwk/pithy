@@ -11,6 +11,10 @@ from typing import Any
 from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
+_context_keywords_ = ['BaseExceptionGroup', 'KeyError', 'conflicting values', 'context manager', 'contextlib.suppress',
+  'error handling', 'exception suppression', 'multiple matches', 'no match', 'traceback', 'tree traversal']
+
+
 class ConflictingValues(KeyError):
   '''
   Raised when an incoming value collides with an existing value.

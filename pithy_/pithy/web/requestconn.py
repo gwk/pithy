@@ -3,6 +3,9 @@
 from typing import Iterator
 
 
+_context_keywords_ = ['body limits', 'byte chunks', 'http', 'in memory', 'upload stream']
+
+
 type AddrPair = tuple[str,int]
 
 

@@ -4,6 +4,9 @@ from enum import Enum
 from typing import final, TypeVar, Union
 
 
+_context_keywords_ = ['None', 'default parameter', 'missing value', 'sentinel', 'singleton']
+
+
 _T = TypeVar('_T')
 
 

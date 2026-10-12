@@ -6,6 +6,11 @@ from datetime import date as Date, datetime as DateTime, time as Time, timedelta
 from typing import Iterator, overload, Sequence, TypeVar
 
 
+_context_keywords_ = ['calendar', 'calendar.isleap', 'calendar.monthrange', 'date arithmetic', 'date formatting',
+  'date range', 'datetime', 'datetime.fromisoformat', 'datetime.strptime', 'iso8601', 'leap year', 'month arithmetic',
+  'parsing', 'time formatting', 'timedelta', 'timestamp', 'utc']
+
+
 _setattr = object.__setattr__
 
 sec_per_min = 60

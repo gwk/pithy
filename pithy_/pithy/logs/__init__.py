@@ -24,6 +24,12 @@ from ..typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 A lightweight logging system.
 '''
 
+
+_context_keywords_ = ['Formatter', 'LogRecord', 'TracebackException', 'colored output', 'contextlib.suppress',
+  'exception handling', 'journald', 'json', 'log levels', 'logfmt', 'logging', 'structured logging', 'sys.excepthook',
+  'systemd', 'threading.excepthook', 'traceback', 'warnings.formatwarning']
+
+
 LogLevel = Literal['silent', 'error', 'warn', 'info', 'debug']
 
 log_levels:tuple[str,...] = get_args(LogLevel)

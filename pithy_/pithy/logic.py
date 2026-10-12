@@ -3,6 +3,10 @@
 from typing import Any, Callable, Self, TypeVar
 
 
+_context_keywords_ = ['abstract syntax tree', 'arithmetic operators', 'boolean expressions', 'comparison', 'expression nodes',
+  'logical operators']
+
+
 Leaf = TypeVar('Leaf')
 
 

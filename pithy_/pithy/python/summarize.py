@@ -63,8 +63,8 @@ from .deps import DepGraph, DepsError, fmt_deps
 from .package import module_name_for_path, resolve_spec_paths, safe_path_help, SpecResolutionError, target_resolution_help
 
 
-_context_keywords_ = ['api', 'ast', 'decorators', 'definitions', 'docstring', 'inspect', 'line numbers', 'outline', 'overview',
-  'pyi', 'signature', 'source', 'stubs']
+_context_keywords_ = ['api', 'ast', 'code navigation', 'decorators', 'definitions', 'docstring', 'inspect', 'line numbers',
+  'outline', 'overview', 'pyi', 'signature', 'source', 'source browsing', 'stubs', 'tokenize']
 
 
 type DocsMode = Literal['default','first','full','none']

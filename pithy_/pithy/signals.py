@@ -11,6 +11,10 @@ from types import FrameType, TracebackType
 from typing import Any, Callable, Iterable, Self
 
 
+_context_keywords_ = ['KeyboardInterrupt', 'SIGINT', 'SIGTERM', 'context manager', 'deferred signals', 'graceful shutdown',
+  'interruption', 'os.kill', 'signal.signal', 'termination', 'unix']
+
+
 type SignalHandler = Callable[[int,FrameType|None],Any]|int
 
 

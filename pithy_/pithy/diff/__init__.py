@@ -6,6 +6,10 @@ from typing import Any, Callable, Sequence, TypeVar
 from .patience import align_patience, Alignment, Diff
 
 
+_context_keywords_ = ['SequenceMatcher', 'additions', 'deletions', 'difflib', 'matching blocks', 'patience diff',
+  'sequence alignment', 'sequence comparison']
+
+
 _T = TypeVar('_T')
 
 

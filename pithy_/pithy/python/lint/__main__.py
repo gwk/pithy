@@ -7,6 +7,9 @@ from ...fs import walk_files
 from . import lint_path, lint_text
 
 
+_context_keywords_ = ['command line', 'diagnostics', 'linter', 'static analysis', 'undefined names', 'unused variables']
+
+
 def main() -> None:
   parser = ArgParser(description='Lint Python code.')
   parser.add_argument('paths', nargs='*', help='Paths to lint.')

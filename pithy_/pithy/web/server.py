@@ -28,6 +28,10 @@ from .requestconn import BodyAlreadyReadError, BodyTooLargeError
 from .response import Response, ResponseError
 
 
+_context_keywords_ = ['access logging', 'connection draining', 'h11', 'http 1.1', 'http.server', 'keep alive', 'multithreading',
+  'request dispatch', 'socket', 'thread pool']
+
+
 BAD_REQUEST = HTTPStatus.BAD_REQUEST
 
 

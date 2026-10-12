@@ -6,6 +6,10 @@ from ..default import Raise
 from ..transtruct import bool_str_vals
 
 
+_context_keywords_ = ['configuration', 'debug mode', 'development login', 'environment variables', 'external address', 'host',
+  'os.environ', 'port']
+
+
 def is_web_dbg() -> bool:
   'Return True if the environment has WEB_DBG set to a common true-like string value.'
   return bool_str_vals[environ.get('WEB_DBG', '0')]

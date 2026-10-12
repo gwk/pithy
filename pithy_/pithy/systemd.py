@@ -10,6 +10,10 @@ from sys import stdout
 from typing import Any, IO
 
 
+_context_keywords_ = ['JOURNAL_STREAM', 'NOTIFY_SOCKET', 'daemon', 'journald', 'readiness', 'sd_notify', 'service manager',
+  'unix socket', 'watchdog']
+
+
 def is_journal_stream(f:IO[Any]=stdout) -> bool:
   '''
   Return True if `f` is connected directly to the systemd journal.

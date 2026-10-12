@@ -3,6 +3,9 @@
 from typing import Iterable
 
 
+_context_keywords_ = ['build dependencies', 'dependency extraction', 'patch file', 'source path']
+
+
 class ParseError(Exception): pass
 
 def pat_dependency(src_path:str, src_lines:Iterable[str]) -> str:

@@ -6,6 +6,10 @@ from sys import platform, stderr
 from pithy.task import run
 
 
+_context_keywords_ = ['argparse.ArgumentParser', 'chrome', 'firefox', 'launch', 'macos', 'open url', 'safari',
+  'webbrowser.open']
+
+
 def add_browser_args(parser:ArgumentParser, add_browse:bool=True) -> None:
   '''
   Add browser selection arguments to the parser.

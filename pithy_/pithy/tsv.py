@@ -5,6 +5,10 @@ from typing import Any, Iterable
 from .unicode.control_pictures import c0_del_to_pictures
 
 
+_context_keywords_ = ['control characters', 'control pictures', 'delimited data', 'escaping', 'header validation',
+  'lossy serialization', 'parse', 'render', 'tab separated values', 'write']
+
+
 '''
 A simple, lossy TSV implementation that uses unicode control pictures to escape control characters.
 When parsing it is impossible to distinguish between original control pictures and those used for escaping.

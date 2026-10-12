@@ -7,6 +7,11 @@ from typing import Sized
 from unicodedata import normalize
 
 
+_context_keywords_ = ['base128', 'base16', 'base32', 'base36', 'base58', 'base62', 'base64', 'base64.urlsafe_b64decode',
+  'base64.urlsafe_b64encode', 'base64url', 'base85', 'binary', 'bytes', 'decoding', 'little endian punctuated',
+  'unicode normalization']
+
+
 _convenience_exports = (b16decode, b16encode, b32decode, b32encode, b85decode, b85encode)
 
 

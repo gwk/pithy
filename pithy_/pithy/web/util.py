@@ -5,6 +5,9 @@ from urllib.parse import unquote as url_unquote, urlsplit as url_split
 from ..path import norm_path
 
 
+_context_keywords_ = ['path normalization', 'percent decoding', 'urllib.parse.unquote', 'urllib.parse.urlsplit']
+
+
 def norm_url_path(url:str) -> str:
   '''
   Compute a normalized path from the argument url.

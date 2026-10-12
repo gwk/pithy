@@ -3,6 +3,9 @@
 from . import V
 
 
+_context_keywords_ = ['geometry', 'intersection', 'orthogonal projection', 'parallel lines', 'point projection']
+
+
 def intersect_lines(a:tuple[V,V], b:tuple[V,V]) -> V|None:
   'Given two infinite lines, return the intersection point if it exists or else None.'
 

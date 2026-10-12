@@ -19,6 +19,10 @@ from tolkien import Source
 from ...type_utils import req_type
 
 
+_context_keywords_ = ['abstract syntax tree', 'ast.AST', 'ast.parse', 'depth first', 'node traversal', 'semantic tree',
+  'source locations', 'static analysis', 'tree rendering']
+
+
 '''
 `pithy.python.sem` defines the `Sem` class family that mirrors the stdlib `ast.AST` family.
 '''

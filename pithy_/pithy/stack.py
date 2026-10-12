@@ -4,6 +4,9 @@ from collections.abc import MutableSequence
 from typing import Any, Iterable, overload, TypeVar
 
 
+_context_keywords_ = ['MutableSequence', 'data structure', 'lifo', 'mutable sequence', 'pop', 'push']
+
+
 _El = TypeVar('_El', covariant=True)
 
 

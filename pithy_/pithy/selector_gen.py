@@ -5,6 +5,10 @@ from collections.abc import Generator, Sequence
 from selectors import DefaultSelector, EVENT_READ
 
 
+_context_keywords_ = ['DefaultSelector', 'concurrent reads', 'file descriptors', 'multiplexing', 'os.read', 'pipes', 'pty',
+  'readiness', 'select', 'timeout']
+
+
 class SelectorTimeout(Exception):
   'Exception indicating that `read_fds` timed out with no file descriptors ready.'
 

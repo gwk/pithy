@@ -41,6 +41,10 @@ from ..type_utils import is_namedtuple
 from ..untyped import Immutable
 
 
+_context_keywords_ = ['associativity', 'expression parsing', 'grammar', 'infix', 'operator precedence', 'ordered choice',
+  'parser combinators', 'parsing', 'postfix', 'prefix', 'recursive descent', 'syntax tree', 'tokens', 'transformers']
+
+
 TokenKind = str
 RuleName = str
 RuleRef = Union['Rule',RuleName]

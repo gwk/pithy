@@ -5,6 +5,9 @@ from .request import Request
 from .response import Response
 
 
+_context_keywords_ = ['application', 'dispatch', 'http', 'request lifecycle', 'routing', 'web framework']
+
+
 class WebApp(RequestHandler):
 
   def resolve_handler(self, request:Request) -> RequestHandler:

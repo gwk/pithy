@@ -6,6 +6,10 @@ from typing import Any, cast, ContextManager, IO
 from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
+_context_keywords_ = ['bidirectional', 'context manager', 'duplex', 'file descriptors', 'interprocess communication', 'ipc',
+  'os.pipe']
+
+
 File = int|IO|None
 
 

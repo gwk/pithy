@@ -5,6 +5,9 @@ from .request import Request
 from .response import Response
 
 
+_context_keywords_ = ['debugging', 'echo request', 'form parsing', 'http', 'json', 'multipart', 'request inspection']
+
+
 def _fmt_param_val(v:object) -> str:
   'Format a scalar-or-list param value, using str() for each element so UploadedFile renders via __str__.'
   if isinstance(v, list): return ', '.join(str(el) for el in v)

@@ -1,6 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 
+_context_keywords_ = ['duration', 'duration parsing', 'seconds', 'time units', 'timeout', 'unit conversion']
+
+
 _suffix_to_seconds:dict[str,float] = {
   'ns': 1e-9,
   'us': 1e-6,

@@ -21,6 +21,10 @@ from ..sem import Sem, sem_for_source
 from ..sem.scopes import build_scope_info, ScopeInfo, Usage
 
 
+_context_keywords_ = ['diagnostics', 'global declarations', 'linter', 'name resolution', 'nonlocal declarations',
+  'scope analysis', 'static analysis', 'symtable', 'undefined names', 'unused variables']
+
+
 module_implicit_names = frozenset((
   '__annotations__', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__',
   '__path__', '__spec__'))

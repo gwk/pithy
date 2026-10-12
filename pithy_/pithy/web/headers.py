@@ -1,6 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 
+_context_keywords_ = ['http', 'multivalue', 'response metadata', 'typing']
+
+
 type ResponseHeaderAtom = float | int | str
 type ResponseHeaderVal = ResponseHeaderAtom | list[ResponseHeaderAtom]
 type ResponseHeadersDict = dict[str,ResponseHeaderVal]

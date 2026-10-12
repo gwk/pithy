@@ -1,4 +1,7 @@
 
+_context_keywords_ = ['imports', 'module names', 'python modules', 'standard library', 'sys.stdlib_module_names']
+
+
 stdlib_module_names = [
   '_thread',
   'abc',

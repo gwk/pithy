@@ -1,5 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+_context_keywords_ = ['advisory locking', 'attached databases', 'backup', 'configuration', 'connection', 'manifest',
+  'replication', 'sqlite3_rsync', 'user_version', 'vacuum into', 'wal checkpoint', 'write ahead log']
+
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from typing import Any, Callable, cast, ClassVar, Iterable, Self

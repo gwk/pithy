@@ -3,6 +3,9 @@
 from .util import memoize
 
 
+_context_keywords_ = ['__mro__', '__slots__', 'attribute names', 'inheritance', 'introspection', 'slot discovery']
+
+
 @memoize()
 def all_slots(type:type) -> tuple[str,...]:
   '''

@@ -11,6 +11,10 @@ from .pbx import (_BuildPhase, PBX, PBXBuildFile, PBXFileReference, PBXGroup, PB
 from .util import is_ref, quote_string
 
 
+_context_keywords_ = ['openstep plist', 'pbxproj', 'pretty printing', 'project file', 'property list', 'serialization',
+  'xcode project']
+
+
 class Renderer:
 
   def __init__(self, proj_name:str, root:PlistRoot) -> None:

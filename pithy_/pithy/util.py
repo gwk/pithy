@@ -4,6 +4,10 @@ import importlib
 from typing import Any, Callable, Iterable, NamedTuple, TypeVar
 
 
+_context_keywords_ = ['caching', 'decorator', 'dynamic imports', 'functools.cache', 'importlib.import_module', 'memoization',
+  'module specification', 'namedtuple fields', 'non nullable', 'recursive functions']
+
+
 _T = TypeVar('_T')
 
 

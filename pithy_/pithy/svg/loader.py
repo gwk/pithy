@@ -6,5 +6,8 @@ from ..loader import FileOrPath
 from . import SvgNode
 
 
+_context_keywords_ = ['file loading', 'parsing', 'vector graphics', 'xml.etree.ElementTree']
+
+
 def load_svg(file_or_path:FileOrPath, encoding:str='utf8', **kwargs:Any) -> Any:
   return SvgNode.parse_file(cast(str|TextIO|BinaryIO, file_or_path), encoding=encoding, **kwargs)

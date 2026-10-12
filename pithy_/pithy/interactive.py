@@ -9,6 +9,10 @@ from .io import errSL
 from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
+_context_keywords_ = ['code.InteractiveConsole', 'code.InteractiveInterpreter', 'debugging', 'embedded interpreter',
+  'keyboard interrupt', 'locals', 'python console', 'repl']
+
+
 class Interpreter(InteractiveInterpreter):
   '''
   Similar to code.InteractiveConsole.

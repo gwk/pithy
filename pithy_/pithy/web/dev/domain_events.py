@@ -3,6 +3,9 @@
 from enum import auto, StrEnum
 
 
+_context_keywords_ = ['application events', 'document body', 'htmx', 'user updates']
+
+
 class DomainEvent(StrEnum):
   'Application events dispatched to the document body. Values are identical to the member names.'
   user_updated = auto()

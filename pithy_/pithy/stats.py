@@ -5,6 +5,10 @@ from statistics import fmean, median, stdev, variance
 from typing import Sequence
 
 
+_context_keywords_ = ['descriptive statistics', 'mean', 'median', 'sample variance', 'standard deviation', 'statistics.fmean',
+  'statistics.stdev', 'statistics.variance', 'summary statistics']
+
+
 @dataclass(frozen=True)
 class BasicStats:
   count:int

@@ -4,6 +4,10 @@ from datetime import date as Date, datetime as DateTime, tzinfo as TZInfo, UTC a
 from zoneinfo import ZoneInfo
 
 
+_context_keywords_ = ['ZoneInfo', 'datetime', 'datetime.fromisoformat', 'eastern time', 'iso8601', 'naive datetime',
+  'pacific time', 'parsing', 'time zone', 'timezone', 'utc', 'zoneinfo']
+
+
 tz_et = ZoneInfo('US/Eastern')
 tz_pt = ZoneInfo('US/Pacific')
 

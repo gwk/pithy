@@ -11,6 +11,10 @@ from ..encode import encode_obj, EncodeObj
 from .fmt import fmt_json_bytes
 
 
+_context_keywords_ = ['JSONDecodeError', 'JSONDecoder', 'comments', 'deserialization', 'json.dump', 'json.dumps', 'json.load',
+  'json.loads', 'jsonc', 'jsonl', 'ndjson', 'pretty printing', 'serialization', 'streaming', 'trailing commas']
+
+
 type JsonList = list['Json']
 type JsonDict = dict[str, 'Json']
 type Json = None|int|float|str|bool|JsonList|JsonDict

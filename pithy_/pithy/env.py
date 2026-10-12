@@ -5,6 +5,9 @@ from os import environ
 from typing import Iterable, Iterator
 
 
+_context_keywords_ = ['configuration', 'dotenv', 'environment variables', 'export', 'os.environ', 'shell']
+
+
 class EnvParseError(ValueError): pass
 
 

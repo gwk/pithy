@@ -6,6 +6,10 @@ from time import time as unix_epoch_time
 from typing import get_args, Literal
 
 
+_context_keywords_ = ['HTTPStatus', 'email.utils.formatdate', 'header date', 'methods', 'request', 'response body',
+  'status code']
+
+
 http_status_response_strings = { s : f'{s.value} {s.phrase}'  for s in HTTPStatus }
 
 HttpEndpointMethod = Literal['DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT', 'TRACE']

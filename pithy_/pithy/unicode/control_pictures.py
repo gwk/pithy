@@ -2,6 +2,10 @@
 
 # For the unicode control pictures block, see: https://www.unicode.org/charts/PDF/U2400.pdf.
 
+_context_keywords_ = ['ascii', 'c0 controls', 'control characters', 'delete', 'nonprinting characters', 'str.translate',
+  'visualization', 'whitespace']
+
+
 c0_to_pictures:dict[str,str] = {
   '\x00' : '␀', # SYMBOL FOR NULL
   '\x01' : '␁', # SYMBOL FOR START OF HEADING

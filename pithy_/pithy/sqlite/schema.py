@@ -1,5 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+_context_keywords_ = ['column definitions', 'constraints', 'database', 'ddl', 'generated columns', 'indexes', 'primary key',
+  'record cleaning', 'sql generation', 'strict tables', 'table definitions']
+
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from functools import cached_property

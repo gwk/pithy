@@ -4,6 +4,9 @@ from collections.abc import Generator
 from typing import Generic, TypeVar
 
 
+_context_keywords_ = ['StopIteration.value', 'generator return', 'iteration result', 'yield from']
+
+
 Y = TypeVar("Y")  # Yield.
 S = TypeVar("S")  # Send.
 R = TypeVar("R")  # Return.

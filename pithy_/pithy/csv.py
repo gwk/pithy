@@ -12,6 +12,10 @@ from typing import Any, Callable, Iterable, Iterator, Literal, Mapping, Sequence
 from .transtruct import bool_for_val
 
 
+_context_keywords_ = ['csv.DictReader', 'csv.reader', 'csv.writer', 'delimited data', 'dictionary rows', 'header validation',
+  'parse', 'quoting', 'render', 'spreadsheet', 'type conversion', 'write']
+
+
 _convenience_exports = (QUOTE_ALL, QUOTE_MINIMAL, QUOTE_NONE, QUOTE_NONNUMERIC)
 
 Quoting:TypeAlias = Literal[0, 1, 2, 3, 4, 5]

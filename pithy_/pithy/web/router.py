@@ -11,6 +11,10 @@ from .request import Request
 from .routetree import build_route_tree, RouteTree
 
 
+_context_keywords_ = ['dispatch', 'get functions', 'http', 'method validation', 'path matching', 'prefix tree',
+  'route registration', 'typed parameters']
+
+
 type RouteTarget = type[RoutableHandler]|GetHandler
 
 

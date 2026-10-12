@@ -3,6 +3,9 @@
 from typing import Callable, cast, Iterable, overload, SupportsIndex, TypeVar
 
 
+_context_keywords_ = ['auto extension', 'default factory', 'defaultdict', 'index', 'list', 'missing elements']
+
+
 _T = TypeVar('_T')
 
 

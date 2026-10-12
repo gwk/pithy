@@ -8,6 +8,11 @@ from .categories import unicode_categories, unicode_category_aliases
 from .data import blocks, category_ranges
 
 
+_context_keywords_ = ['ascii', 'character classification', 'character membership', 'code point', 'control characters',
+  'general category', 'hexadecimal digits', 'lexer', 'readable characters', 'unicode blocks', 'unicode planes',
+  'visible characters']
+
+
 def is_code_in_charset(code:int, charset:CodeRanges) -> bool:
   p = (code, code)
   i = bisect(charset, p)

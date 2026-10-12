@@ -15,6 +15,10 @@ from typing import Any, cast, Self
 from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
+_context_keywords_ = ['cbreak', 'console', 'echo', 'fcntl.ioctl', 'raw mode', 'shutil.get_terminal_size', 'terminal size',
+  'termios', 'tty.setcbreak', 'tty.setraw']
+
+
 def window_size(f:Any=stdout) -> tuple[int,int]:
   '''
   Return the terminal window size attached to `f` as `(width, height)` in character cells.

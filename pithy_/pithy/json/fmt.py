@@ -12,6 +12,10 @@ from io import BytesIO, Reader, Writer
 from typing import Generator
 
 
+_context_keywords_ = ['comments', 'indentation', 'jsonc', 'malformed json', 'missing commas', 'pretty printing', 'repair',
+  'streaming', 'trailing commas']
+
+
 # Iterating over bytes chunks and their ints instead of individual BytesIO bytes objects yields ~2x speedup.
 _chunk_size = 16 * 1024
 _b_newline = ord('\n')

@@ -11,6 +11,9 @@ from xml.sax.saxutils import escape as _escape_text, quoteattr as _escape_attr
 from ..strings import EscapedStr
 
 
+_context_keywords_ = ['attributes', 'character entities', 'escaping', 'quoteattr', 'serialization', 'xml.sax.saxutils']
+
+
 XmlAttrs = dict[str,Any]|None
 
 

@@ -4,6 +4,9 @@ from dataclasses import dataclass
 from typing import Any, Iterable, Iterator
 
 
+_context_keywords_ = ['diagnostics', 'parse tree', 'source locations', 'source spans', 'syntax tree', 'tree traversal']
+
+
 SyntaxStack = tuple['Syntax', ...]
 
 

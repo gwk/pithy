@@ -16,6 +16,10 @@ from ..vec import V
 from ..vec.affine import AffineMat
 
 
+_context_keywords_ = ['affine transforms', 'drawing', 'elements', 'geometry', 'graphics', 'grid', 'markup', 'path commands',
+  'polygons', 'rendering', 'serialization', 'vector graphics', 'viewBox', 'xml.etree.ElementTree']
+
+
 Dim = int|float|str
 Vec = tuple[float,float]|V
 VecOrNum = Vec|float

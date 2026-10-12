@@ -4,6 +4,9 @@ import re
 from typing import Any, Generic, Iterable, Iterator, Mapping, TypeVar
 
 
+_context_keywords_ = ['attribute access', 'dictionary access', 'dynamic record', 'hashable', 'immutable', 'readonly']
+
+
 _T = TypeVar('_T')
 
 

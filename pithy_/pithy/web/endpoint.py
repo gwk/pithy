@@ -20,7 +20,8 @@ from .requestconn import BodyTooLargeError
 from .response import Response
 
 
-_context_keywords_ = ['endpoint', 'form', 'get_endpoint', 'handler', 'http', 'params', 'route', 'validation']
+_context_keywords_ = ['body fields', 'endpoint', 'field conversion', 'form', 'get_endpoint', 'handler', 'http', 'json',
+  'multipart', 'params', 'path parameters', 'query parameters', 'route', 'typed functions', 'validation']
 
 
 type GetHandler = Callable[Concatenate[Request,...],Response]

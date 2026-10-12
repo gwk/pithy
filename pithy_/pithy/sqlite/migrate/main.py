@@ -14,6 +14,10 @@ A project defines its own migration script that calls `main_migrate` with its mi
 The script must run in the application's environment because .py migrations import application code.
 '''
 
+
+_context_keywords_ = ['cli', 'command line', 'database', 'dry run', 'migration generation', 'schema drift', 'schema sync',
+  'user_version', 'versioned migrations']
+
 import types
 from argparse import Namespace
 from typing import Iterable, Sequence

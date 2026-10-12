@@ -7,6 +7,9 @@ edition is not worth generating.
 '''
 
 
+_context_keywords_ = ['code generation', 'identifier', 'raw identifiers', 'reserved words', 'strict keywords', 'weak keywords']
+
+
 # Strict keywords can only be used in their syntactic positions. `async`, `await` and `dyn` were added in the 2018 edition.
 rust_strict_keywords = frozenset({
   'as', 'async', 'await', 'break', 'const', 'continue', 'crate', 'dyn', 'else', 'enum', 'extern', 'false', 'fn', 'for', 'if',

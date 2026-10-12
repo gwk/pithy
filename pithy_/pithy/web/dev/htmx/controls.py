@@ -13,6 +13,10 @@ from ...response import HtmlResponse, Response
 from ..pages import dev_page
 
 
+_context_keywords_ = ['checkboxes', 'demo', 'file upload', 'form inputs', 'incremental updates', 'multipart', 'radio buttons',
+  'select']
+
+
 def dev_controls_htmx(request:Request) -> Response:
   'Demonstrates HTMX controls.'
   main = Main(

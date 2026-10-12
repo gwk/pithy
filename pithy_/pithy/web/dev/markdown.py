@@ -11,6 +11,10 @@ from ..response import HtmlResponse, HtmxResponse
 from .pages import dev_page
 
 
+_context_keywords_ = ['attachments', 'clipboard images', 'demo', 'editor', 'htmx morph', 'image upload', 'multipart',
+  'syntax highlighting', 'textarea']
+
+
 sample_markdown = r"""# Heading
 
 A lightweight **Markdown syntax editor**.

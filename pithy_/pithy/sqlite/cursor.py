@@ -1,5 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+_context_keywords_ = ['bulk insert', 'database', 'named parameters', 'parameter binding', 'query', 'query timing',
+  'result rows', 'sqlite3.Cursor', 'upsert', 'user_version']
+
 import sqlite3
 from time import monotonic as get_time
 from typing import Any, cast, Iterable, Mapping, overload, Protocol, Self, Sequence, TypeVar

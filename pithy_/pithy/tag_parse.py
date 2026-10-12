@@ -21,6 +21,10 @@ from .ansi import RST_TXT, TXT_R, TXT_Y
 from .buffer import Buffer
 
 
+_context_keywords_ = ['abstract syntax tree', 'delimiters', 'error recovery', 'html', 'lisp', 'nested delimiters', 'parser',
+  'regular expressions', 's expressions', 'syntax tree', 'tree traversal']
+
+
 class TagRule():
   def __init__(self, open_pattern: str, close_pattern: str, open_close_tokens_match_fn: Callable|None=None):
     self.open_pattern = open_pattern

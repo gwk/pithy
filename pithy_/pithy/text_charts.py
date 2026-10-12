@@ -4,6 +4,10 @@ from enum import Enum
 from typing import Any, Iterable, Mapping
 
 
+_context_keywords_ = ['bar chart', 'console', 'cumulative', 'data visualization', 'ratios', 'sparkline', 'terminal',
+  'unicode blocks']
+
+
 vertical_bars = ' ' + ''.join(chr(i) for i in range(0x2581, 0x2589))
 
 horizontal_bars = (

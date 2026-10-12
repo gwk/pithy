@@ -5,6 +5,10 @@ from types import TracebackType
 from typing import Protocol, Sized
 
 
+_context_keywords_ = ['Buffer', 'Protocol', 'Sized', 'TracebackType', '__exit__', 'buffer protocol', 'context manager',
+  'exception types']
+
+
 # These types are helpful when defining `__exit__`:
 # def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> bool: ...
 OptTypeBaseExc = type[BaseException]|None

@@ -17,6 +17,9 @@ from .tests import dev_tests
 from .typography import dev_typography
 
 
+_context_keywords_ = ['demo application', 'dispatch', 'endpoint registration', 'static assets', 'url mapping']
+
+
 routes:dict[str,RouteTarget] = {
   '/': index_html,
   '/colors': dev_colors,

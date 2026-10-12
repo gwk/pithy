@@ -8,6 +8,9 @@ from pithy.regex import find_matches_interleaved
 from . import A
 
 
+_context_keywords_ = ['autolink', 'hyperlinks', 'ipv4', 'linkify', 'plain text', 'regular expressions', 'url detection']
+
+
 def linkify(text:str, transform:Callable[[str],str]|None=None) -> Iterator[A|str]:
   '''
   Given a string `text`, return an iterator of strings and A elements.

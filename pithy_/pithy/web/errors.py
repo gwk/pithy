@@ -5,6 +5,10 @@ from http import HTTPStatus
 from .headers import ResponseHeadersDict
 
 
+_context_keywords_ = ['bad request', 'exceptions', 'http.HTTPStatus', 'method not allowed', 'not found', 'response status',
+  'utf8 decoding']
+
+
 class ResponseError(Exception):
   '''
   An exception that causes the current request handler to return an error response.

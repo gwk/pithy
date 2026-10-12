@@ -61,6 +61,10 @@ from sys import stderr, stdout
 from typing import Any, Sequence
 
 
+_context_keywords_ = ['background color', 'console', 'control sequences', 'cursor', 'escape sequences', 'sgr', 'strip escapes',
+  'terminal', 'text color', 'tty', 'xterm']
+
+
 is_err_tty = stderr.isatty()
 is_out_tty = stdout.isatty()
 

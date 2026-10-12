@@ -17,6 +17,9 @@ from ..response import HtmlResponse
 from .pages import dev_page
 
 
+_context_keywords_ = ['black level', 'demo', 'display calibration', 'grayscale', 'lightness', 'oklch', 'srgb', 'tone response']
+
+
 # The theme canvas lightnesses in OKLCH. These mirror `--bg` in pithy.css and must change with it.
 canvas_l_dark = 0.20
 canvas_l_light = 0.99

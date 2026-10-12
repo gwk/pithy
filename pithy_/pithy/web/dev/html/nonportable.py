@@ -10,6 +10,9 @@ from ..pages import dev_page
 from .controls import posted_values_div
 
 
+_context_keywords_ = ['browser compatibility', 'demo', 'form inputs', 'month input', 'safari', 'week input']
+
+
 class DevFormNonportable(Endpoint):
   'Demonstrates month and week inputs.'
 

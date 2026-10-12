@@ -3,6 +3,9 @@
 from typing import Callable, Hashable, Iterable, TypeVar
 
 
+_context_keywords_ = ['cycles', 'node discovery', 'reachable nodes', 'traversal', 'visited set']
+
+
 _H = TypeVar('_H', bound=Hashable)
 
 def visit_nodes(start_nodes:Iterable[_H], visitor:Callable[[_H], Iterable[_H]]) -> set[_H]:

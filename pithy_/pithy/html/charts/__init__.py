@@ -20,6 +20,10 @@ from ...range import NumRange
 from .. import Div, Figcaption, Figure, Span
 
 
+_context_keywords_ = ['axis', 'bar chart', 'categorical data', 'css', 'data visualization', 'grid lines', 'legend',
+  'linear scale', 'plotting', 'tick labels']
+
+
 Dim = int|float|str
 Vec = tuple[float,float]
 V2F = tuple[float,float]

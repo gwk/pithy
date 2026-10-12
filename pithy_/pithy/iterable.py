@@ -10,6 +10,11 @@ from typing import Any, Callable, Hashable, Iterable, Iterator, Mapping, TypeVar
 from .type_utils import Comparable
 
 
+_context_keywords_ = ['adjacent pairs', 'chunking', 'deduplication', 'filtering', 'grouping', 'integer intervals', 'interleave',
+  'iterator', 'itertools.groupby', 'min max', 'partition', 'prefix tree', 'shuffle', 'single element', 'sliding window',
+  'str.join', 'transpose', 'trie']
+
+
 _T = TypeVar('_T')
 _K = TypeVar('_K', bound=Hashable)
 _V = TypeVar('_V')

@@ -4,6 +4,9 @@
 import builtins
 
 
+_context_keywords_ = ['builtins', 'identifier sanitization', 'keyword.iskeyword', 'keywords', 'naming', 'reserved words']
+
+
 py_keywords = frozenset({
   'None',
   'True',

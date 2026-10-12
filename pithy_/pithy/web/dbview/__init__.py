@@ -23,6 +23,10 @@ from ...sqlite.util import sql_quote_entity as qe, sql_quote_qual_entity as qqe,
 from .vis import CellRenderFn, ValRenderFn, Vis
 
 
+_context_keywords_ = ['database browser', 'foreign keys', 'html table', 'pagination', 'query interface', 'query plan',
+  'read only', 'sql', 'sqlite', 'starlette']
+
+
 class TableAbbrs:
 
   def __init__(self, *, schema:str, table:str, all_vis:Iterable[Vis]) -> None:

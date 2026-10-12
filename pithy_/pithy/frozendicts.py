@@ -10,6 +10,9 @@ from types import GenericAlias, MappingProxyType
 from typing import Any, ItemsView, Iterable, Iterator, KeysView, overload, Protocol, TypeVar, ValuesView
 
 
+_context_keywords_ = ['MappingProxyType', 'dictionary', 'frozendict', 'hashable mapping', 'immutable', 'readonly']
+
+
 _KT = TypeVar('_KT')
 _VT = TypeVar('_VT')
 _VT_co = TypeVar('_VT_co', covariant=True)

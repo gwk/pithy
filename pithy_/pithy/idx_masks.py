@@ -4,6 +4,9 @@ from functools import reduce
 from operator import or_
 
 
+_context_keywords_ = ['bit operations', 'bitmask', 'bitset', 'contiguous bits', 'integer ranges', 'set bits']
+
+
 def idx_mask_for_range(range:range) -> int:
   '''
   Given a range of integers, return a bitmask with the bits set for the elements of the range.

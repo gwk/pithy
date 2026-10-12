@@ -8,6 +8,9 @@ from .request import Request
 from .response import Response
 
 
+_context_keywords_ = ['dispatch', 'expect continue', 'http', 'request lifecycle', 'routable class']
+
+
 class RequestHandler:
   'Base class for objects that handle HTTP requests. Implemented by both WebApp and RoutableHandler.'
 

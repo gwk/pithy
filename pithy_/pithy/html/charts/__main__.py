@@ -7,6 +7,9 @@ from ...web.server import ServerConfig, WebServer
 from ._webtest import ChartTestApp
 
 
+_context_keywords_ = ['demo server', 'development server', 'live reload', 'visual testing']
+
+
 def main() -> None:
   DevServerCmd.parse_or_exit().serve(run, watch=[pithy])
 

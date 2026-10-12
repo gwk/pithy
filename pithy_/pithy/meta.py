@@ -7,6 +7,11 @@ from types import FrameType
 from typing import Any, Callable, cast, Iterable, Mapping, TypeVar
 
 
+_context_keywords_ = ['call stack', 'caller', 'dispatch', 'dynamic dispatch', 'importlib.machinery.ModuleSpec',
+  'inspect.currentframe', 'inspect.stack', 'introspection', 'locals', 'metaprogramming', 'module spec', 'reflection',
+  'renaming', 'source location']
+
+
 class MetaprogrammingError(Exception): pass
 
 

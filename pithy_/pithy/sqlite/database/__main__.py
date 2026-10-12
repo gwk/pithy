@@ -7,6 +7,9 @@ Because a DbConfig is defined by the owning application (often via `Database.set
 each command takes a dotted `app` spec naming the module that defines it. See `load_config`.
 '''
 
+
+_context_keywords_ = ['cli', 'command line', 'configuration', 'initialization', 'manifest']
+
 from argparse import Namespace
 from types import ModuleType
 

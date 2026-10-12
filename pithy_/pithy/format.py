@@ -8,6 +8,10 @@ from typing import Any, Iterable, Match, Pattern
 from .strings import line_col_1
 
 
+_context_keywords_ = ['format specification', 'format string parsing', 'named capture', 'partial formatting',
+  'regular expressions', 'str.format', 'string.Formatter', 'template']
+
+
 class FormatError(Exception): pass
 
 

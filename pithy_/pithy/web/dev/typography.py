@@ -9,6 +9,9 @@ from ..response import HtmlResponse
 from .pages import dev_page
 
 
+_context_keywords_ = ['css styling', 'demo', 'document elements', 'headings', 'lists', 'text rendering']
+
+
 lorem = ('Endpoints declare an inner fields class per HTTP method; the router fills a fresh instance from the path, query and body'
   ' parameters, rejecting requests that carry the wrong ones. The intent is that a handler receives values it can'
   ' use directly, rather than a bag of strings it must validate itself.')

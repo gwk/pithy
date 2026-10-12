@@ -33,6 +33,10 @@ from .response import Response as PithyResponse
 from .static import pithy_web_static_dir_path
 
 
+_context_keywords_ = ['asgi adapter', 'auth scopes', 'csv', 'endpoint integration', 'form validation', 'html', 'htmx fragments',
+  'path parameters', 'query parameters', 'response conversion', 'static assets']
+
+
 _convenience_exports = (
   requires,
   RedirectResponse,

@@ -4,6 +4,10 @@ from collections import Counter
 from typing import NamedTuple
 
 
+_context_keywords_ = ['character classification', 'combining marks', 'general category', 'letters', 'punctuation',
+  'unicodedata.category']
+
+
 class UnicodeCategory(NamedTuple):
   key:str
   name:str

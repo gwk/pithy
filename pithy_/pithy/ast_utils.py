@@ -3,6 +3,10 @@
 from ast import dump, parse
 
 
+_context_keywords_ = ['abstract syntax tree', 'ast.dump', 'ast.parse', 'pretty printing', 'python syntax',
+  'syntax inspection']
+
+
 def parse_and_dump(code:str, *, filename:str='<str>', mode:str='exec', type_comments:bool=True, feature_version:int|tuple[int,int]|None=None,
 annotate:bool=True, include_attributes:bool=False, indent:int|str|None=2) -> str:
   return dump(parse(code, filename=filename, mode=mode, type_comments=type_comments, feature_version=feature_version),

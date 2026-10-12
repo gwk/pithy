@@ -7,6 +7,9 @@ from ...response import HtmlResponse
 from ..pages import dev_page
 
 
+_context_keywords_ = ['demo', 'nested lists', 'object rendering']
+
+
 def dev_html_to_json(request:Request) -> HtmlResponse:
   'Examples of JSON rendered as nested HTML lists.'
   main = Main(

@@ -1,5 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+_context_keywords_ = ['atomic migration', 'context manager', 'database', 'foreign key check', 'foreign keys', 'rollback',
+  'schema changes']
+
 from contextlib import contextmanager
 from typing import Iterator
 

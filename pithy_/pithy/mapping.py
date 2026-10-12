@@ -3,6 +3,9 @@
 from typing import Any, Generic, Iterator, Mapping, TypeVar
 
 
+_context_keywords_ = ['dataclass default', 'empty dictionary', 'immutable', 'parameter default']
+
+
 _K = TypeVar('_K')
 _V = TypeVar('_V')
 

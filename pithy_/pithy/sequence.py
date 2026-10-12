@@ -7,6 +7,10 @@ from bisect import bisect_left, bisect_right
 from typing import Sequence, TypeVar
 
 
+_context_keywords_ = ['binary search', 'bisect', 'damerau levenshtein', 'edit distance', 'fuzzy matching', 'reverse index',
+  'sorted lookup']
+
+
 _T = TypeVar('_T')
 
 

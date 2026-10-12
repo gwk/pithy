@@ -18,8 +18,8 @@ from ..fs import abs_path, list_dir, path_exists, path_join, real_path, walk_dir
 from ..path import norm_path, path_dir, path_name
 
 
-_context_keywords_ = ['PYTHONSAFEPATH', 'discovery', 'find_spec', 'importlib', 'module name', 'module path', 'package root',
-  'pkgutil', 'py.typed', 'pyi', 'resolve', 'stubs', 'sys.path', 'walk']
+_context_keywords_ = ['PYTHONSAFEPATH', 'discovery', 'dotted names', 'find_spec', 'importlib', 'module name', 'module path',
+  'namespace packages', 'package root', 'pkgutil', 'py.typed', 'pyi', 'resolve', 'source discovery', 'stubs', 'sys.path', 'walk']
 
 
 target_resolution_help = '''

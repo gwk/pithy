@@ -3,6 +3,9 @@
 from typing import TypeVar
 
 
+_context_keywords_ = ['None', 'non nullable', 'null check', 'unwrap']
+
+
 _T = TypeVar('_T')
 
 def unwrap(optional:_T|None) -> _T:

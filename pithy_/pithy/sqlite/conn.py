@@ -1,5 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+_context_keywords_ = ['autocommit', 'backup', 'busy timeout', 'connection', 'context manager', 'database',
+  'exponential backoff', 'file uri', 'locking', 'retry', 'rollback', 'sqlite3.Connection', 'transactions', 'write ahead log']
+
 import contextlib
 import sqlite3
 from random import random

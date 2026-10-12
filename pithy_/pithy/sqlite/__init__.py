@@ -1,5 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+_context_keywords_ = ['database', 'dbapi', 'resource warnings', 'sqlite3', 'sqlite3.Error', 'thread safety']
+
 import sqlite3
 from sqlite3 import (DatabaseError, DataError, IntegrityError, InterfaceError, InternalError, NotSupportedError,
   OperationalError, ProgrammingError)

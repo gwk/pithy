@@ -8,6 +8,10 @@ from msgpack import dump as _dump, ExtraData, ExtType, FormatError, load as _loa
 from .encode import encode_obj, EncodeObj
 
 
+_context_keywords_ = ['binary format', 'deserialization', 'messagepack', 'object conversion', 'serialization', 'streaming',
+  'unpacker']
+
+
 _convenience_exports = (ExtraData, FormatError, StackError)
 
 

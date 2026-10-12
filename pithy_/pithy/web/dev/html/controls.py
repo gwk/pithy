@@ -16,6 +16,10 @@ from ...response import RedirectResponse, Response
 from ..pages import dev_page
 
 
+_context_keywords_ = ['checkboxes', 'demo', 'file upload', 'form submission', 'image button', 'multipart', 'radio buttons',
+  'select', 'textarea']
+
+
 image_button_svg = '''<svg xmlns="http://www.w3.org/2000/svg" width="64" height="32" viewBox="0 0 64 32">
   <rect width="64" height="32" rx="3" fill="black"/>
   <path d="M8 16h48M32 4v24" fill="none" stroke="#39ff14" stroke-width="2"/>

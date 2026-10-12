@@ -11,6 +11,10 @@ from typing import Any, Iterable, Iterator, NamedTuple, Pattern
 from .strings import line_col_1
 
 
+_context_keywords_ = ['file names', 'format strings', 'formatting', 'parsing', 'printf', 'regex', 'regular expressions',
+  'templates', 'zero padding']
+
+
 class FilenameFormatterError(Exception): pass
 
 
