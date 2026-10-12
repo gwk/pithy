@@ -59,7 +59,7 @@ utest(pithy_pkg_dir, find_package_root, this_file, package_roots={proj_dir})
 
 fixtures_dir = path_join(path_dir(pithy_pkg_dir), 'test', 'python', 'deps', 'fixtures') # pithy_/test/py/deps/fixtures/.
 alpha_dir = path_join(fixtures_dir, 'alpha')
-alpha_files = [path_join(alpha_dir, name) for name in ('__init__.py', 'base.py', 'mid.py', 'tip.py')]
+alpha_files = [path_join(alpha_dir, name) for name in ('__init__.py', 'attr.py', 'base.py', 'mid.py', 'tip.py')]
 
 
 def fixture_resolver(name:str) -> str|None: return resolve_module_in_dirs(name, [fixtures_dir])
