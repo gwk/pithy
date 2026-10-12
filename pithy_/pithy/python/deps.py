@@ -14,11 +14,12 @@ Modules are parsed lazily, driven by the query:
 * The default summary prints the full import graph over the targets, followed by the dependency/dependent tips.
 
 Symbol dependencies are inferred by straightforward static lexical interpretation, not type inference:
-each name loaded within a symbol's scope subtree is classified using the scope analysis in `pithy.python.sem.scopes`,
-then resolved against the module's imports and module-level bindings.
+each name or attribute chain loaded within a definition is resolved through the enclosing scopes built by
+`pithy.python.sem.scopes` to a scope-local import, a module-level import or a module-level binding.
+Attribute chains through module imports resolve to the accessed symbol, e.g. `import pkg.mod; pkg.mod.f()` records `pkg.mod.f`.
+Methods and nested classes are separate symbols such as `Cls.method`; each reference keeps its source position.
+Names in string annotations are not analyzed.
 
-TODO: attribute chains through plain module imports (e.g. `import os; os.path.join`)
-are recorded as a dependency on the module only, not on the accessed attribute.
 TODO: module-level statements (assignments and expressions) are not attributed to symbols;
 only top-level `def`, `async def`, and `class` symbols are analyzed.
 Dotted targets resolve statically through the running Python environment; see `pithy.python.package.resolve_module_installed`.
@@ -26,7 +27,7 @@ The import and symbol layers resolve against the target roots only.
 '''
 
 from sys import stdlib_module_names
-from typing import Iterable
+from typing import Iterable, NamedTuple
 
 from tolkien import Source
 
@@ -38,9 +39,9 @@ from ..io import outL
 from .ast_utils import fmt_syntax_error
 from .package import (module_name_for_path, qualname_rel_to, resolve_module_in_dirs, resolve_module_installed,
   resolve_spec_paths, safe_path_help, SpecResolutionError, target_resolution_help)
-from .sem import (Sem, sem_for_source, SemAsyncFunctionDef, SemClassDef, SemFunctionDef, SemImport, SemImportFrom, SemName,
-  SemScope)
-from .sem.scopes import build_scope_info, ScopeInfo
+from .sem import (Sem, sem_for_source, SemArguments, SemAsyncFunctionDef, SemAttribute, SemClassDef, SemDictComp, SemFunctionDef,
+  SemGeneratorExp, SemImport, SemImportFrom, SemLambda, SemListComp, SemName, SemNode, SemScope, SemSetComp)
+from .sem.scopes import build_scope_info, iter_scope_tree, ScopeInfo
 
 
 _context_keywords_ = ['call graph', 'callers', 'dependencies', 'dependents', 'import graph', 'imports', 'references',
@@ -125,15 +126,19 @@ def print_dependencies(graph:'DepGraph', spec:str) -> None:
     outL(fmt_deps(graph, mod, deps) if deps else '*none*')
 
   symbol_deps = graph.symbol_deps(mod)
-  if sym is not None:
-    try: sym_deps = symbol_deps[sym]
-    except KeyError: raise DepsError(f'module {mod!r} has no analyzed symbol {sym!r}.') from None
+  if sym is not None: # A symbol query includes its members, e.g. the methods of a class.
+    selected = {s: deps for s, deps in symbol_deps.items() if s == sym or s.startswith(sym + '.')}
+    if not selected: raise DepsError(f'module {mod!r} has no analyzed symbol {sym!r}.')
     outL(BOLD_OUT, f'Symbol dependencies of {mod}.{sym}:', RST_OUT)
-    outL(fmt_deps(graph, mod, sym_deps) if sym_deps else '*none*')
   else:
+    selected = symbol_deps
     outL('\n', BOLD_OUT, f'Symbol dependencies within {mod}:', RST_OUT)
-    for s, sym_deps in sorted(symbol_deps.items()):
-      if sym_deps: outL(BOLD_OUT, f'{mod}.{s}', RST_OUT, ': ', fmt_deps(graph, mod, sym_deps))
+  found = False
+  for s, sym_deps in sorted(selected.items()):
+    if sym_deps:
+      outL(BOLD_OUT, f'{mod}.{s}', RST_OUT, ': ', fmt_deps(graph, mod, sym_deps))
+      found = True
+  if not found: outL('*none*')
 
 
 def print_dependents(graph:'DepGraph', spec:str) -> None:
@@ -180,6 +185,7 @@ class DepGraph:
     self.paths:dict[str,str] = {} # Resolved module name -> file path; superset of `targets`.
     self._scopes:dict[str,ScopeInfo] = {}
     self._module_deps:dict[str,frozenset[str]] = {}
+    self._symbol_refs:dict[str,dict[str,list[Ref]]] = {}
     self._symbol_deps:dict[str,dict[str,frozenset[str]]] = {}
 
 
@@ -238,8 +244,10 @@ class DepGraph:
     An unresolvable spec is treated as an external module name.
     '''
     if self.resolve_module(spec) is not None: return spec, None
-    mod, _, sym = spec.rpartition('.')
-    if mod and self.resolve_module(mod) is not None: return mod, sym
+    parts = spec.split('.')
+    for i in range(len(parts) - 1, 0, -1): # The longest resolvable prefix is the module; the rest is a dotted symbol.
+      mod = '.'.join(parts[:i])
+      if self.resolve_module(mod) is not None: return mod, '.'.join(parts[i:])
     return spec, None
 
 
@@ -306,68 +314,165 @@ class DepGraph:
     return result
 
 
-  def symbol_deps(self, name:str) -> dict[str,frozenset[str]]:
+  def symbol_refs(self, name:str) -> dict[str,list[Ref]]:
     '''
-    The symbol-layer dependencies of a module: maps each top-level def/class symbol
-    to the absolute qualified names it references, both intra-module (`this_module.symbol`)
-    and inter-module (via imports).
+    The symbol-layer references of a module: maps each definition qualname to the references it makes, in source order.
+    Methods and nested classes are separate symbols, e.g. `Cls.method`; definitions inside functions belong to the function.
+    Each reference names an absolute module or `module.symbol`, both intra-module and through imports.
     '''
-    try: return self._symbol_deps[name]
+    try: return self._symbol_refs[name]
     except KeyError: pass
     root = self.scope(name)
-    import_locals = {local: self.resolve_qual(name, qual) for local, qual in root.imports.items()}
-    module_locals = frozenset(n for n, u in root.usages.items() if u.is_local)
-    symbols:dict[str,set[str]] = {}
+    collector = _RefCollector(self, name, root)
     for child in root.children:
-      if child.kind not in ('def', 'async def', 'class'): continue
-      names:set[str] = set()
-      deps:set[str] = set()
-      assert isinstance(child.node, SemScope)
-      _collect_outer_refs(child.node, names)
-      self._collect_scope_refs(child, name, names, deps)
-      for n in names:
-        if qual := import_locals.get(n): deps.add(qual)
-        elif n in module_locals and n != child.name: deps.add(f'{name}.{n}')
-      symbols.setdefault(child.name, set()).update(deps)
-    result = {s: frozenset(deps) for s, deps in symbols.items()}
+      if child.kind in ('def', 'async def', 'class'):
+        assert isinstance(child.node, SemScope)
+        collector.walk(child.node, root, child.name, top=child.name)
+    self._symbol_refs[name] = collector.refs
+    return collector.refs
+
+
+  def symbol_deps(self, name:str) -> dict[str,frozenset[str]]:
+    'The symbol-layer dependencies of a module: each definition qualname mapped to the set of qualified names it references.'
+    try: return self._symbol_deps[name]
+    except KeyError: pass
+    result = {sym: frozenset(ref.qual for ref in refs) for sym, refs in self.symbol_refs(name).items()}
     self._symbol_deps[name] = result
     return result
 
 
-  def _collect_scope_refs(self, scope:ScopeInfo, importer:str, names:set[str], deps:set[str]) -> None:
+  def resolve_import(self, importer:str, qual:str) -> tuple[str,bool]:
     '''
-    Collect from a symbol's scope subtree: names that refer outside the subtree (module-level or unknown),
-    plus direct dependencies from scope-local import statements.
+    Resolve an imported qualified name to an absolute name and whether it denotes a module.
+    A name is a module if it resolves within the target roots or is a top-level name; otherwise it is taken to be a symbol.
     '''
-    for n, u in scope.usages.items():
-      if u.load is not None and not u.is_local and scope.free_kind(n) in ('global', 'unknown'):
-        names.add(n)
-    for qual in scope.imports.values():
-      deps.add(self.resolve_qual(importer, qual))
-    for child in scope.children:
-      self._collect_scope_refs(child, importer, names, deps)
+    abs_qual = self.resolve_qual(importer, qual)
+    return abs_qual, '.' not in abs_qual or self.resolve_module(abs_qual) is not None
 
 
-def _collect_outer_refs(node:SemScope, names:set[str]) -> None:
+class Ref(NamedTuple):
+  'A reference from a symbol to an absolute module or symbol name, at a 1-based source position.'
+  qual:str
+  line:int
+  col:int
+
+
+class _RefCollector:
   '''
-  Collect names loaded by the parts of a def/class that evaluate in the enclosing scope:
-  decorators, base classes, class keywords, type parameters, parameter annotations and defaults, and return annotations.
-  The scope visitor attributes these loads to the enclosing scope, so they must be gathered separately per symbol.
+  Walk the semantic tree of a module's definitions, mirroring the scope structure of `pithy.python.sem.scopes`,
+  and resolve each loaded name or attribute chain against the scopes that enclose it.
+  A name resolves through the enclosing scopes, skipping class scopes as Python does, to a scope-local import,
+  a module-level import, or a module-level binding; names bound locally along the way, and builtins, are not dependencies.
+  An attribute chain rooted at a module extends while each prefix resolves to a module within the target roots,
+  then takes one more attribute as the symbol; so `import os; os.path.join` records `os.path` and `pkg.mod.f()` records `pkg.mod.f`.
   '''
-  outer_els:list[Sem] = []
-  if isinstance(node, (SemFunctionDef, SemAsyncFunctionDef)):
-    outer_els.extend(node.decorator_list)
-    outer_els.extend(node.type_params)
-    outer_els.append(node.args)
-    if node.returns is not None: outer_els.append(node.returns)
-  elif isinstance(node, SemClassDef):
-    outer_els.extend(node.decorator_list)
-    outer_els.extend(node.type_params)
-    outer_els.extend(node.bases)
-    outer_els.extend(node.keywords)
-  for el in outer_els:
-    for sub in el.walk():
-      if isinstance(sub, SemName) and sub.ctx == 'load': names.add(sub.id)
+
+  def __init__(self, graph:DepGraph, module:str, root:ScopeInfo) -> None:
+    self.graph = graph
+    self.module = module
+    self.root = root
+    self.refs:dict[str,list[Ref]] = {}
+    self.scopes = {id(s.node): s for s in iter_scope_tree(root)}
+
+
+  def child_scope(self, node:SemScope) -> ScopeInfo:
+    return self.scopes[id(node)]
+
+
+  def walk(self, node:Sem, scope:ScopeInfo, sym:str, *, top:str) -> None:
+    '''
+    Walk `node` within `scope`, attributing references to symbol `sym`; `top` is the top-level symbol name,
+    whose own references to itself are not recorded as dependencies.
+    '''
+    if isinstance(node, SemName):
+      if node.ctx == 'load': self.record(scope, sym, [node.id], node, top=top)
+    elif isinstance(node, SemAttribute):
+      chain = _attr_chain(node)
+      if chain is None: self.walk(node.value, scope, sym, top=top)
+      else: self.record(scope, sym, chain, node, top=top)
+    elif isinstance(node, (SemFunctionDef, SemAsyncFunctionDef)):
+      # The signature evaluates in the enclosing scope, but its references belong to the method's own symbol.
+      inner_sym = f'{sym}.{node.name}' if scope.kind == 'class' else sym
+      for el in (*node.decorator_list, *node.type_params): self.walk(el, scope, inner_sym, top=top)
+      self.walk_args_outer(node.args, scope, inner_sym, top=top)
+      if node.returns is not None: self.walk(node.returns, scope, inner_sym, top=top)
+      child = self.child_scope(node)
+      for el in node.body: self.walk(el, child, inner_sym, top=top)
+    elif isinstance(node, SemClassDef):
+      inner_sym = f'{sym}.{node.name}' if scope.kind == 'class' else sym
+      for el in (*node.decorator_list, *node.type_params, *node.bases, *node.keywords): self.walk(el, scope, inner_sym, top=top)
+      child = self.child_scope(node)
+      for el in node.body: self.walk(el, child, inner_sym, top=top)
+    elif isinstance(node, SemLambda):
+      self.walk_args_outer(node.args, scope, sym, top=top)
+      self.walk(node.body, self.child_scope(node), sym, top=top)
+    elif isinstance(node, (SemListComp, SemSetComp, SemDictComp, SemGeneratorExp)):
+      child = self.child_scope(node)
+      for i, comp in enumerate(node.generators):
+        self.walk(comp.iter, scope if i == 0 else child, sym, top=top) # Only the first iterable evaluates in the outer scope.
+        self.walk(comp.target, child, sym, top=top)
+        for cond in comp.ifs: self.walk(cond, child, sym, top=top)
+      if isinstance(node, SemDictComp):
+        self.walk(node.key, child, sym, top=top)
+        if node.value is not None: self.walk(node.value, child, sym, top=top)
+      else:
+        self.walk(node.elt, child, sym, top=top)
+    elif isinstance(node, SemNode):
+      for el in node.els: self.walk(el, scope, sym, top=top)
+
+
+  def walk_args_outer(self, args:SemArguments, scope:ScopeInfo, sym:str, *, top:str) -> None:
+    'Walk the parts of a parameter list that evaluate in the enclosing scope: annotations and defaults.'
+    for arg in (*args.posonlyargs, *args.args, args.vararg, *args.kwonlyargs, args.kwarg):
+      if arg is not None and arg.annotation is not None: self.walk(arg.annotation, scope, sym, top=top)
+    for default in (*args.defaults, *args.kw_defaults):
+      if default is not None: self.walk(default, scope, sym, top=top)
+
+
+  def record(self, scope:ScopeInfo, sym:str, chain:list[str], node:Sem, *, top:str) -> None:
+    'Resolve a name or attribute chain loaded in `scope` and record the reference for `sym`, if it is a dependency.'
+    resolved = self.resolve_root(scope, chain[0])
+    if resolved is None: return
+    qual, is_module = resolved
+    if qual == f'{self.module}.{top}': return # A symbol's references to itself are not dependencies.
+    if is_module:
+      for attr in chain[1:]:
+        qual = f'{qual}.{attr}'
+        if self.graph.resolve_module(qual) is None: break # The first non-module attribute is the symbol.
+    self.refs.setdefault(sym, []).append(Ref(qual, node.line_num, node.col_num))
+
+
+  def resolve_root(self, scope:ScopeInfo, name:str) -> tuple[str,bool]|None:
+    '''
+    Resolve a name loaded in `scope` through its enclosing scopes to an absolute qualified name and whether it is a module.
+    Returns None for names bound locally in an enclosing function, builtins and unknown names.
+    '''
+    s:ScopeInfo|None = scope
+    while s is not None and s is not self.root:
+      usage = s.usages.get(name)
+      if usage is not None and usage.kind == 'global': break
+      if usage is not None and usage.is_local:
+        if qual := s.imports.get(name): return self.graph.resolve_import(self.module, qual)
+        if usage.kind != 'nonlocal': return None
+      s = s.parent
+      while s is not None and s is not self.root and s.kind == 'class': s = s.parent # Class scopes do not enclose names.
+    if qual := self.root.imports.get(name): return self.graph.resolve_import(self.module, qual)
+    usage = self.root.usages.get(name)
+    if usage is not None and usage.is_local: return f'{self.module}.{name}', False
+    return None
+
+
+def _attr_chain(node:SemAttribute) -> list[str]|None:
+  'The dotted names of an attribute chain rooted at a loaded name, e.g. `[os, path, join]`; None for other chains.'
+  attrs = [node.attr]
+  value = node.value
+  while isinstance(value, SemAttribute):
+    attrs.append(value.attr)
+    value = value.value
+  if not isinstance(value, SemName) or value.ctx != 'load': return None
+  attrs.append(value.id)
+  attrs.reverse()
+  return attrs
 
 
 if __name__ == '__main__': main()

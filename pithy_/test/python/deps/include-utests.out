@@ -2,4 +2,5 @@ Modules importing alpha.base:
 alpha  alpha.attr  alpha.base.ut  alpha.mid  alpha.tip
 
 Symbol dependents of alpha.base.helper:
-alpha.mid.Mid: .base.helper
+alpha.attr.via_attr: .base.helper
+alpha.mid.Mid.value: .base.helper

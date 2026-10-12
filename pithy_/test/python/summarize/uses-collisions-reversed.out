@@ -3,10 +3,10 @@ fixtures/collisions/b/pkg/__init__.py: pkg, 5 lines.
      uses: .beta.value
 fixtures/collisions/b/mod.py: mod, 5 lines.
 5: def f(): …
-     uses: sys
+     uses: sys.platform
 fixtures/collisions/a/pkg/__init__.py: pkg, 5 lines.
 5: def f(): …
      uses: .alpha.value
 fixtures/collisions/a/mod.py: mod, 5 lines.
 5: def f(): …
-     uses: os
+     uses: os.name

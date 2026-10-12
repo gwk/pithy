@@ -1,2 +1,3 @@
 Symbol dependencies of alpha.mid.Mid:
-.base.Base  .base.helper
+alpha.mid.Mid: .base.Base
+alpha.mid.Mid.value: .base.helper

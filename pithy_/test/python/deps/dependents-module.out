@@ -2,7 +2,8 @@ Modules importing alpha.base:
 alpha  alpha.attr  alpha.mid  alpha.tip
 
 Symbol dependents of alpha.base:
-alpha.attr.via_attr: .base
+alpha.attr.via_attr: .base.CONST  .base.helper
 alpha.base.helper: .CONST
-alpha.mid.Mid: .base.Base  .base.helper
+alpha.mid.Mid: .base.Base
+alpha.mid.Mid.value: .base.helper
 alpha.tip.run: .base.CONST

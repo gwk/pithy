@@ -2,5 +2,5 @@ Module dependencies of alpha.tip:
 json  .base  .mid
 
 Symbol dependencies within alpha.tip:
-alpha.tip.lazy_json: json
+alpha.tip.lazy_json: json.loads
 alpha.tip.run: .base.CONST  .mid.make

@@ -39,7 +39,7 @@ A selector that matches nothing across all of a target's files is an error.
 `-full` prints the complete source of the selected definitions, decorators included, instead of the summary.
 Without selectors it prints the whole module with line numbers.
 
-`-uses` appends a `uses:` line to each top-level definition, listing the modules and symbols that it references,
+`-uses` appends a `uses:` line to each listed definition, methods included, naming the modules and symbols it references,
 as analyzed by `pithy.python.deps`. Callers are not shown here; query them with `pithy.python.deps -dependents`.
 
 Dotted targets resolve statically through the running Python environment; see `pithy.python.package.resolve_module_installed`.
@@ -98,7 +98,7 @@ class SummarizeCmd(Cmd):
   members:bool = flag(doc='Show class members: methods, nested classes and class-level assignments. Selected classes always show them.')
   locs:bool = flag(doc='Prefix numbered lines with `path:line: ` so that locations survive grep filtering.')
   include_utests:bool = flag(doc='Include `.ut.py` unit test files when walking directories and packages.')
-  uses:bool = flag(doc='Append a `uses:` line to each top-level definition, listing the modules and symbols it references.')
+  uses:bool = flag(doc='Append a `uses:` line to each listed definition, naming the modules and symbols it references.')
 
 
   def run(self) -> None:

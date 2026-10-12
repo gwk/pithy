@@ -3,4 +3,4 @@ alpha.attr  alpha.mid
 
 Symbol dependents of os:
 alpha.attr.via_stdlib: os.path
-alpha.mid.make: os
+alpha.mid.make: os.devnull
