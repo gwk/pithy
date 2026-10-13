@@ -17,6 +17,10 @@ from pithy.secrets import SecretStr
 from pithy.tz import tz_utc
 
 
+_context_keywords_ = ['api responses', 'application keys', 'b2', 'backblaze', 'buckets', 'dataclasses', 'deserialization',
+  'file versions', 'json parsing', 'schema validation']
+
+
 class B2ParseError(ValueError):
   'A B2 API response payload did not match the expected shape.'
 

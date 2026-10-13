@@ -7,6 +7,9 @@ from pithy.io import write_rows
 from pithy.tsv import parse_tsv
 
 
+_context_keywords_ = ['aligned columns', 'cli', 'table formatting', 'tabular data', 'tsv']
+
+
 def main() -> None:
 
   parser = ArgumentParser(description='Format TSV, CSV, or other tabular data to aligned columns.')

@@ -9,6 +9,9 @@ from pithy.fs import is_file, move_file, path_exists
 from pithy.io import errL, outL
 
 
+_context_keywords_ = ['cli', 'indentation', 'source formatting', 'tabs', 'whitespace conversion']
+
+
 def main() -> None:
 
   for path in sys.argv[1:]:

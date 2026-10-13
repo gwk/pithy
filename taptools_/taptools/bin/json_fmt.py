@@ -6,6 +6,10 @@ from sys import stdin, stdout
 from pithy.json.fmt import write_formatted_json_bytes
 
 
+_context_keywords_ = ['cli', 'comments', 'json.dumps', 'json.tool', 'jsonc', 'malformed json', 'pretty printing',
+  'trailing commas']
+
+
 def main() -> None:
   parser = ArgumentParser(description='Format JSON input.')
   parser.add_argument('paths', nargs='*', default=['-'], help='input file paths; defaults to stdin.')

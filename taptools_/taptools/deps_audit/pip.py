@@ -15,6 +15,10 @@ from pithy.task import runO
 from pithy.transtruct import Transtructor
 
 
+_context_keywords_ = ['dependency graph', 'dependents', 'environment markers', 'installed packages', 'package audit',
+  'package extras', 'packaging.requirements', 'pip inspect']
+
+
 DepDict = dict[str,set[str]]
 
 

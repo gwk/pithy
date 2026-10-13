@@ -15,6 +15,9 @@ from pithy.datatree import render_datatree
 from pithy.json import load_json, load_jsonl
 
 
+_context_keywords_ = ['cli', 'data exploration', 'indented tree', 'json lines', 'jsonl', 'pretty printing']
+
+
 def main() -> None:
   parser = ArgumentParser(description='View json or jsonl input as a human-readable indented tree.')
   parser.add_argument('paths', nargs='*', default=['-'], help='Input file paths; defaults to stdin.')

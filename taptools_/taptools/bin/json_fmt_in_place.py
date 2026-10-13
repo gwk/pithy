@@ -7,6 +7,10 @@ from pithy.io import errL
 from pithy.json.fmt import write_formatted_json_bytes
 
 
+_context_keywords_ = ['cli', 'comments', 'directory traversal', 'json.tool', 'jsonc', 'malformed json', 'pretty printing',
+  'rewrite files', 'trailing commas']
+
+
 def main() -> None:
   parser = ArgumentParser(description='Format JSON files in place.')
   parser.add_argument('paths', nargs='*', help='paths to search for JSON files; directories are walked recursively.')

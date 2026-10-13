@@ -17,6 +17,10 @@ from typing import Any, Self
 from pithy.selector_gen import read_fds
 
 
+_context_keywords_ = ['context manager', 'integration tests', 'output capture', 'process cleanup', 'process groups', 'pty',
+  'server testing', 'stderr', 'stdout', 'subprocess.Popen', 'terminal', 'timeouts']
+
+
 class TestProcess:
   '''
   A context manager that launches a background process and captures its output.

@@ -12,6 +12,10 @@ from .dfa import DFA
 from .patterns import LegsPattern, regex_for_codes
 
 
+_context_keywords_ = ['code generation', 'lexer generator', 're.compile', 'regex lexer', 'regular expressions',
+  'source generation', 'table driven lexer']
+
+
 class OutputOpts(TypedDict):
   'The command options shared by the source code output functions.'
   patterns_path:str|None

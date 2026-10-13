@@ -13,6 +13,9 @@ from .capabilities import all_capabilities_and_groups, file_ro_capabilities, fil
 from .creds import B2Creds
 
 
+_context_keywords_ = ['application keys', 'b2', 'backblaze', 'buckets', 'cli', 'credentials', 'permissions']
+
+
 def main() -> None:
   parser = CommandParser(description='B2 application key management tool.')
 

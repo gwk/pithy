@@ -99,7 +99,8 @@ from pithy.python.package import prefer_stub_paths, walk_module_paths
 from tolkien import Source, Token
 
 
-_context_keywords_ = ['agent instructions', 'discovery', 'docstring', 'keywords', 'metadata', 'pyi']
+_context_keywords_ = ['agent instructions', 'ast.literal_eval', 'code discovery', 'coding agents', 'discovery', 'docstring',
+  'keyword index', 'keywords', 'markdown imports', 'metadata', 'metadata validation', 'module search', 'pyi', 'shared skills']
 
 
 ctx_name = 'CTX.md'

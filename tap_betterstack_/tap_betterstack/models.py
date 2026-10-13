@@ -9,7 +9,8 @@ from pithy.json import Json, JsonDict
 from pithy.transtruct import Transtructor
 
 
-_context_keywords_ = ['api', 'betterstack', 'dashboard', 'dataclass', 'labels', 'metrics', 'telemetry']
+_context_keywords_ = ['api', 'better stack', 'betterstack', 'charts', 'dashboard', 'dataclass', 'deserialization',
+  'json serialization', 'labels', 'metrics', 'pagination', 'sources', 'telemetry']
 _transtructor = Transtructor(strict=False)
 _response = {'response': True} # Field metadata marking response-only fields that as_json omits.
 

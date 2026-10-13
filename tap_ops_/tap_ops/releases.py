@@ -28,7 +28,8 @@ from urllib.request import Request, urlopen
 from pithy.cmdparse import Cmd, opt
 
 
-_context_keywords_ = ['github', 'release', 'upgrade', 'version']
+_context_keywords_ = ['checksums', 'dependency updates', 'git tags', 'github', 'python', 'release', 'sha256', 'sha3', 'sqlite',
+  'upgrade', 'upstream versions', 'uv', 'vector', 'version']
 
 
 @dataclass(frozen=True)

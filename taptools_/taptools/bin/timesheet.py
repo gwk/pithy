@@ -20,6 +20,9 @@ from pithy.io import outL, outZ
 from pithy.iterable import fan_by_key_fn
 
 
+_context_keywords_ = ['cli', 'expense tracking', 'hourly rates', 'invoicing', 'payments', 'time tracking', 'work hours']
+
+
 def main() -> None:
   parser = ArgumentParser(description='Validate timesheets.')
   parser.add_argument('timesheets', nargs='+')

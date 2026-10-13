@@ -8,6 +8,9 @@ from sys import stderr
 from pithy.fs import file_inode, move_file, path_join, split_dir_name, walk_files
 
 
+_context_keywords_ = ['case normalization', 'cli', 'filenames', 'lowercase', 'os.rename', 'rename files']
+
+
 def main() -> None:
   parser = ArgumentParser(description='Lower case file names.')
   parser.add_argument('paths', nargs='+', help='Paths to explore.')

@@ -13,6 +13,9 @@ from pithy.fs import path_rel_to_dir
 from pithy.path import norm_path, path_dir, path_join
 
 
+_context_keywords_ = ['apply patch', 'cli', 'context diff', 'create patch', 'text comparison']
+
+
 pat_version = '0'
 
 

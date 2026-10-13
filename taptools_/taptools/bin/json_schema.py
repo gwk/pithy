@@ -12,6 +12,9 @@ from pithy.fs import walk_files
 from pithy.schema import compile_schema, write_schema
 
 
+_context_keywords_ = ['cli', 'data exploration', 'schema inference', 'type inference']
+
+
 def main() -> None:
   parser = ArgumentParser(description='Count lines of source code.')
   parser.add_argument('-count-atoms', action='store_true')

@@ -10,6 +10,10 @@ from .creds import B2Creds
 from .progress import ProgressListener
 
 
+_context_keywords_ = ['b2', 'backblaze', 'backup', 'cloud storage', 'database backup', 'file versions', 'object storage',
+  'restore', 'sqlite']
+
+
 class B2BackupStore:
   '''
   Backblaze B2 implementation of the `pithy.sqlite.backup.BackupStore` protocol.

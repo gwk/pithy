@@ -10,6 +10,10 @@ from typing import BinaryIO, Iterable, Mapping, Sequence
 from urllib.parse import quote, unquote
 
 
+_context_keywords_ = ['b2', 'backblaze', 'checksums', 'file names', 'hashlib.sha1', 'http headers', 'multipart upload',
+  'percent encoding', 'upload planning', 'url construction', 'urllib.parse.quote', 'urllib.parse.unquote', 'validation']
+
+
 api_version = 'v4'
 
 realm_url = 'https://api.backblazeb2.com'

@@ -15,6 +15,10 @@ from PIL.Image import Image, new as Image_new, open as Image_open, Resampling
 from pithy.path import split_stem_ext
 
 
+_context_keywords_ = ['antialiasing', 'app artwork', 'image resizing', 'macos icons', 'pillow', 'rounded corners',
+  'transparency']
+
+
 def main() -> None:
   arg_parser = ArgumentParser(description='Create mac icons.')
   arg_parser.add_argument('path', help='Path to the original 1024x1024 icon artwork.')

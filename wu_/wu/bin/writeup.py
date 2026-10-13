@@ -8,6 +8,10 @@ from pithy.io import errSL
 from .. import default_css, default_js, minify_css, minify_js, writeup, writeup_dependencies
 
 
+_context_keywords_ = ['command line', 'document conversion', 'html generation', 'lightweight markup', 'markdown',
+  'source dependencies', 'writeup format']
+
+
 __all__ = ['main', 'writeup', 'writeup_dependencies']
 
 

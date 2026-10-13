@@ -6,7 +6,8 @@ from .client import Client
 from .models import Metric, MetricSpec
 
 
-_context_keywords_ = ['betterstack', 'labels', 'metrics', 'sync', 'upsert']
+_context_keywords_ = ['better stack', 'betterstack', 'extraction rules', 'labels', 'log aggregation', 'metrics',
+  'sql expressions', 'sync', 'telemetry', 'upsert']
 
 
 def push_metrics(client:Client, source_id:str, specs:Sequence[MetricSpec]) -> None:

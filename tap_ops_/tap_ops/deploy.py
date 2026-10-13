@@ -22,7 +22,8 @@ from pithy.io import read_bytes_from_path, read_from_path
 from pithy.path import Path
 
 
-_context_keywords_ = ['deploy', 'deployment', 'manifest', 'service', 'systemctl', 'systemd', 'timer', 'unit']
+_context_keywords_ = ['atomic writes', 'deploy', 'deployment', 'dry run', 'manifest', 'ownership', 'reconciliation', 'service',
+  'systemctl', 'systemd', 'timer', 'unit', 'unit files']
 
 
 unit_mode = 0o644

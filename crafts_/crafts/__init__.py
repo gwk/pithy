@@ -12,6 +12,10 @@ from pithy.path import is_sub_path, norm_path, path_ext, path_join, path_name_st
 from pithy.task import runO
 
 
+_context_keywords_ = ['build configuration', 'macos', 'project configuration', 'swift toolchain', 'tomllib.load',
+  'xcode-select']
+
+
 CRAFT_PROJECT_DIR = 'CRAFT_PROJECT_DIR'
 CRAFT_CONFIG_PATH = 'CRAFT_CONFIG_PATH'
 CRAFT_SWIFT_PATH = 'CRAFT_SWIFT_PATH'

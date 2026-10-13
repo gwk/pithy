@@ -22,6 +22,10 @@ from .util import (api_url, api_version as default_api_version, compute_sha1s, d
   parse_retry_after, plan_part_size, plan_parts, realm_url, validate_file_name)
 
 
+_context_keywords_ = ['application keys', 'authentication', 'b2', 'backblaze', 'buckets', 'checksums', 'downloads',
+  'exponential backoff', 'http', 'multipart upload', 'object storage', 'pagination', 'retry', 'uploads']
+
+
 default_max_retries = 5
 default_timeout = 128.0 # Timeout for requests: connection and read inactivity, not a total limit.
 default_content_type = 'application/octet-stream'

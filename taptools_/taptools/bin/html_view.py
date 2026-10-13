@@ -9,6 +9,9 @@ from typing import BinaryIO
 from pithy.web.browser import add_browser_args, launch_browser
 
 
+_context_keywords_ = ['browser preview', 'cli', 'http.server', 'local server', 'stdin']
+
+
 def main() -> None:
 
   parser = ArgumentParser(description='Serve a file or `stdin` to a browser.')

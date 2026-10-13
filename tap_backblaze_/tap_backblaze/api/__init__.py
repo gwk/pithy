@@ -13,6 +13,10 @@ from .types import (B2AllowedBucket, B2ApplicationKey, B2Auth, B2Bucket, B2Creat
   B2UploadUrl)
 
 
+_context_keywords_ = ['application keys', 'authorization', 'b2', 'backblaze', 'buckets', 'downloads', 'http', 'json',
+  'multipart upload', 'object storage']
+
+
 # Silence linter by referencing imported names.
 
 _:tuple = (B2Client, Progress,

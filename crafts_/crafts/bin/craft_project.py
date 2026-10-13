@@ -9,6 +9,9 @@ from argparse import ArgumentParser
 from .. import load_craft_config
 
 
+_context_keywords_ = ['configuration validation', 'toml']
+
+
 def main() -> None:
   arg_parser = ArgumentParser(description='Craft project configuration tool.')
   _ = arg_parser.parse_args()

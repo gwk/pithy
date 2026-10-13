@@ -13,6 +13,11 @@ from typing import Callable, Container, Generic, Iterator, NoReturn, Protocol, r
 from unicodedata import category, east_asian_width
 
 
+_context_keywords_ = ['diagnostics', 'lexer protocol', 'lexical analysis', 'line numbers', 'parser support',
+  'source locations', 'syntax errors', 'terminal width', 'text spans', 'tokens', 'unicode width',
+  'unicodedata.east_asian_width', 'utf8']
+
+
 @runtime_checkable
 class HasSlc(Protocol):
   @property

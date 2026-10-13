@@ -12,6 +12,9 @@ from .dfa import DFA
 from .python import comment_lines
 
 
+_context_keywords_ = ['code generation', 'lexer generator', 'source generation', 'string escaping', 'swift literals']
+
+
 def output_swift(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
  pattern_descs:dict[str,str], license:str, *, patterns_path:str|None, type_prefix:str) -> None:
   'Generate and write a swift lexer to a file at `path`.'

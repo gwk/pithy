@@ -12,6 +12,10 @@ from pithy.diff import calc_diff
 from pithy.path import vscode_path
 
 
+_context_keywords_ = ['ansi colors', 'cli', 'diff highlighting', 'git pager', 'interactive staging', 'moved lines',
+  'token diff']
+
+
 '''
 same-same is a git diff highlighter.
 

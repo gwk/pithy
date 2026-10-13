@@ -9,6 +9,9 @@ from pithy.web.files import FilesApp
 from pithy.web.server import ServerConfig, WebServer
 
 
+_context_keywords_ = ['browser preview', 'cli', 'http.server', 'local server', 'static files']
+
+
 def main() -> None:
 
   parser = ArgumentParser(description='Serve files from a directory.')

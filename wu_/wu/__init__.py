@@ -15,6 +15,10 @@ from pithy.path import norm_path, path_dir, path_ext, path_join, path_name_stem,
 from pithy.url import url_path
 
 
+_context_keywords_ = ['css minification', 'document conversion', 'document markup', 'embedded files', 'html generation',
+  'javascript minification', 'lightweight markup', 'markdown', 'source dependencies', 'writeup format']
+
+
 __all__ = ['writeup', 'writeup_dependencies', 'default_css', 'minify_css', 'minify_js', 'default_js']
 
 

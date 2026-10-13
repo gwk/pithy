@@ -7,6 +7,10 @@ from typing import Callable, Pattern
 from pithy.io import read_from_path
 
 
+_context_keywords_ = ['file comparison', 'golden tests', 'integration tests', 'output assertions', 're.fullmatch', 'regex',
+  'regular expressions', 'snapshot testing']
+
+
 class TestCaseError(Exception): pass
 
 

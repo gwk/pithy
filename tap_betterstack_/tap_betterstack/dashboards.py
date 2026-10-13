@@ -10,7 +10,8 @@ from .client import Client
 from .models import Dashboard, DashboardDefinition
 
 
-_context_keywords_ = ['betterstack', 'dashboard', 'push', 'sync', 'upsert']
+_context_keywords_ = ['better stack', 'betterstack', 'charts', 'dashboard', 'dashboard definitions', 'push', 'reconciliation',
+  'sections', 'sync', 'telemetry', 'upsert']
 
 
 def push_dashboard(client:Client, definition:DashboardDefinition, *, dashboard_id:str|None=None) -> Dashboard:

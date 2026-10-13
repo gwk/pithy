@@ -16,7 +16,8 @@ from .models import (Chart, ChartSpec, Dashboard, DashboardPage, DashboardSpec, 
   SectionSpec, Source, SourcePage)
 
 
-_context_keywords_ = ['api', 'betterstack', 'client', 'dashboard', 'http', 'labels', 'metrics', 'requests', 'rest', 'telemetry']
+_context_keywords_ = ['api', 'better stack', 'betterstack', 'charts', 'client', 'dashboard', 'dashboard export',
+  'dashboard import', 'http', 'labels', 'metrics', 'pagination', 'requests', 'rest', 'sources', 'telemetry']
 
 api_url = 'https://telemetry.betterstack.com/api/v2'
 

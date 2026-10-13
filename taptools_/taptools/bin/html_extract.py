@@ -5,6 +5,9 @@ from html.parser import HTMLParser
 from sys import stdin
 
 
+_context_keywords_ = ['cli', 'dom element', 'element id', 'html.parser.HTMLParser', 'markup extraction']
+
+
 def main() -> None:
   arg_parser = ArgumentParser('Extract a portion of an HTML document.')
   arg_parser.add_argument('-id',help='The `id` of the DOM element to extract.')

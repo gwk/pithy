@@ -17,6 +17,10 @@ from pithy.strings import clip_first_prefix
 from pithy.task import runO
 
 
+_context_keywords_ = ['cli', 'curl', 'html links', 'http download', 'regex filter', 'url normalization', 'web crawler',
+  'website mirror']
+
+
 def main() -> None:
   arg_parser = ArgumentParser(description='Crawl URLs, using a regex filter for discovered links.')
   arg_parser.add_argument('seeds', nargs='+', help='URLs to crawl.')

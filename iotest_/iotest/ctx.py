@@ -3,6 +3,9 @@
 from typing import Callable, NamedTuple
 
 
+_context_keywords_ = ['integration tests', 'test configuration', 'test runner']
+
+
 class Ctx(NamedTuple):
   build_dir: str
   coverage: bool

@@ -5,6 +5,9 @@ from argparse import ArgumentParser
 from pithy.sqlite import Conn
 
 
+_context_keywords_ = ['cli', 'database comparison', 'row comparison', 'schema comparison', 'sqlite3']
+
+
 def main() -> None:
 
   parser = ArgumentParser(description='Diff two SQLite database files.')

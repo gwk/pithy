@@ -8,6 +8,9 @@ from pithy.xcproj.parse import parse_pbx
 from pithy.xcproj.render import render_to_str
 
 
+_context_keywords_ = ['cli', 'pbxproj', 'project rewriting', 'xcode']
+
+
 def main() -> None:
   parser = ArgumentParser(description='Rewrite Xcode projects to match directory contents.')
   parser.add_argument('project')

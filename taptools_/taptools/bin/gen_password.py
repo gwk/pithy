@@ -5,6 +5,9 @@ from argparse import ArgumentParser
 from pithy.passwords import gen_password
 
 
+_context_keywords_ = ['cli', 'credentials', 'password generation', 'random password']
+
+
 def main() -> None:
   arg_parser = ArgumentParser('Generate a random password.')
   arg_parser.add_argument('-length', type=int, default=24, help='The length of the password to generate.')

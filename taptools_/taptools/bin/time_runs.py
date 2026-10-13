@@ -7,6 +7,9 @@ from time import perf_counter
 from pithy.task import communicate, DEVNULL, launch
 
 
+_context_keywords_ = ['benchmarking', 'cli', 'command timing', 'process startup', 'statistics', 'time.perf_counter']
+
+
 def main() -> None:
   if len(argv) < 3: exit('error: usage: time-runs NUM_RUNS CMD ...')
 

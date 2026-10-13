@@ -4,6 +4,9 @@ from html import escape
 from sys import argv
 
 
+_context_keywords_ = ['cli', 'entity encoding', 'html.escape', 'markup escaping']
+
+
 def main() -> None:
   for arg in argv[1:]:
     print(escape(arg, quote=True))

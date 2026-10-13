@@ -8,6 +8,10 @@ from typing import BinaryIO, Callable, Self, TextIO
 from pithy.strings import format_byte_count
 
 
+_context_keywords_ = ['binary streams', 'bounded reads', 'download progress', 'file wrapper', 'progress reporting', 'terminal',
+  'upload progress']
+
+
 class ProgressListener:
   '''
   A progress listener that prints to TTY stderr.

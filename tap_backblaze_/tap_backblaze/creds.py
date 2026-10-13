@@ -12,6 +12,9 @@ from pithy.transtruct import Transtructor
 from .api.types import B2CreatedApplicationKey
 
 
+_context_keywords_ = ['application keys', 'b2', 'backblaze', 'credentials', 'json', 'secrets', 'serialization']
+
+
 hex_re = re.compile(r'^[0-9a-fA-F]+$')
 b64_re = re.compile(r'^[0-9a-zA-Z+/=]+$')
 

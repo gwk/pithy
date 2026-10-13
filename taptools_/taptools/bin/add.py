@@ -3,6 +3,9 @@
 from sys import argv, stderr, stdin
 
 
+_context_keywords_ = ['arithmetic', 'cli', 'numeric input', 'sum']
+
+
 def main() -> None:
   args = argv[1:] or list(stdin)
   number_strings = [a.replace(',', '_') for arg in args for a in arg.split()]

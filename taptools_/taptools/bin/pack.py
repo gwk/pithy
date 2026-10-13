@@ -10,6 +10,9 @@ from pithy.strings import format_byte_count
 from pithy.task import run, UnexpectedExit
 
 
+_context_keywords_ = ['brotli', 'cli', 'compression', 'compression ratio', 'gzip', 'xz', 'zstd']
+
+
 PackFn = Callable[[str, str], None]
 
 

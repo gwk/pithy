@@ -9,6 +9,9 @@ from pithy.fs import file_inode, move_file, walk_files
 from pithy.path import split_stem_ext
 
 
+_context_keywords_ = ['case normalization', 'cli', 'file extensions', 'lowercase', 'os.rename', 'rename files']
+
+
 def main() -> None:
   parser = ArgumentParser(description='Lower case file extensions.')
   parser.add_argument('paths', nargs='+', help='Paths to explore.')

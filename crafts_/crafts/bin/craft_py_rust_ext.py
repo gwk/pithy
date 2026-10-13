@@ -85,7 +85,8 @@ from pithy.path import norm_path, Path, path_dir, path_name, path_stem
 from pithy.rust.keywords import rust_keywords
 
 
-_context_keywords_ = ['code generation', 'docstring', 'extension', 'pyi', 'pyo3', 'rust']
+_context_keywords_ = ['code generation', 'compile-time assertions', 'docstring', 'extension', 'maturin', 'native bindings',
+  'pyi', 'pyo3', 'python extensions', 'rust', 'rust scaffolding', 'signature validation', 'type stubs']
 
 
 KEYWORD_ONLY = Parameter.KEYWORD_ONLY

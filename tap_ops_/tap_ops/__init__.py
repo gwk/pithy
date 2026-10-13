@@ -2,4 +2,6 @@
 
 '''Service deployment and server operations.'''
 
+_context_keywords_ = ['deployment', 'server operations', 'services', 'systemd']
+
 __version__ = '0.0.0'

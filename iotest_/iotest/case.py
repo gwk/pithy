@@ -17,6 +17,10 @@ from .ctx import Ctx
 from .file_expectation import FileExpectation, TestCaseError, validate_exp_mode
 
 
+_context_keywords_ = ['environment variables', 'integration tests', 'parameterized tests', 'string.Template',
+  'test configuration', 'test fixtures', 'variable expansion']
+
+
 coverage_name = '_.coven'
 
 

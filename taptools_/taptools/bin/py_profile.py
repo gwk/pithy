@@ -12,6 +12,9 @@ from typing import Any, Iterable, TextIO
 from pithy.fs import path_for_cmd, path_rel_to_current_or_abs
 
 
+_context_keywords_ = ['cProfile.Profile', 'call counts', 'cli', 'performance', 'profiling', 'pstats.Stats', 'python script']
+
+
 def main() -> None:
   sort_keys_l = ', '.join(sort_keys)
   sort_keys_desc = f'sort keys: {sort_keys_l}.'

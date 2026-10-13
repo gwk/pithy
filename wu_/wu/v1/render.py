@@ -8,6 +8,9 @@ from pithy.html import Body, Html, HtmlNode, Section
 from pithy.markup import MuChild
 
 
+_context_keywords_ = ['document serialization', 'html conversion', 'lightweight markup', 'markup escaping', 'writeup format']
+
+
 def render_wu(node:HtmlNode) -> Iterator[str]:
   yield 'writeup v0\n\n' # TODO: Bump to v1.
   yield from _render(node, section_depth=0, max_top_nl=0)

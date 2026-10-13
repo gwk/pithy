@@ -24,6 +24,10 @@ from pithy.io import read_from_path
 from pithy.strings import fmt_rows
 
 
+_context_keywords_ = ['bindkey', 'cli', 'control characters', 'keyboard shortcuts', 'keymaps', 'terminal', 'termios.tcgetattr',
+  'tty', 'zle', 'zsh']
+
+
 # Keep the collector in a subshell so its variables cannot change the caller's shell.
 # NUL framing preserves whitespace, quotes and newlines in keymap names and bindings.
 zsh_collector = r'''(

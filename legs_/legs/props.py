@@ -44,6 +44,10 @@ from .parse import Grammar
 from .patterns import CharsetPattern, ChoicePattern, LegsPattern, OptPattern, PlusPattern, SeqPattern, StarPattern
 
 
+_context_keywords_ = ['dfa coverage', 'differential testing', 'grammar validation', 'hypothesis', 'input generation',
+  'lexer testing', 'longest match', 'property testing']
+
+
 @dataclass
 class PropsStats:
   'Counts of the inputs that were checked.'

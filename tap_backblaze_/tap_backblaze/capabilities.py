@@ -1,5 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+_context_keywords_ = ['access control', 'application keys', 'b2', 'backblaze', 'permissions', 'read only']
+
 # The complete capability vocabulary, per https://www.backblaze.com/apidocs/b2-create-key.
 all_capabilities:tuple[str,...] = (
   'listKeys',

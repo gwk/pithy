@@ -8,6 +8,9 @@ from pithy.logs import render_log_record_as_text
 from pithy.term import CBreakMode
 
 
+_context_keywords_ = ['cli', 'json lines', 'log formatting', 'logging', 'structured logs', 'terminal input']
+
+
 def main() -> None:
   'Read pithy JSON log lines from stdin and render them as human-readable text.'
   # When stdin is an interactive terminal, canonical input mode truncates long pasted lines at the

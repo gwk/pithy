@@ -33,6 +33,10 @@ from . import KindModeTransitions, ModeTransitions
 from .patterns import CharsetPattern, ChoicePattern, LegsPattern, OptPattern, PlusPattern, SeqPattern, StarPattern
 
 
+_context_keywords_ = ['character classes', 'error diagnostics', 'grammar files', 'lexer grammar', 'lexer modes',
+  'pattern expressions', 'unicode charsets']
+
+
 @dataclass
 class Grammar:
   license:str

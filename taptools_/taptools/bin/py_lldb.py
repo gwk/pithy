@@ -7,6 +7,9 @@ from shlex import quote as sh_quote
 from sys import argv, executable, stderr
 
 
+_context_keywords_ = ['cli', 'debugging', 'native debugger', 'python script']
+
+
 def main() -> None:
   if len(argv) < 2: exit('usage: py-lldb [script] ...')
   if not executable: exit('py-lldb error: python executable path is not available.')

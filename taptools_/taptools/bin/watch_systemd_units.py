@@ -19,6 +19,10 @@ from pithy.cmdparse import Cmd, opt, pos
 from pithy.logs import render_log_record_as_text
 
 
+_context_keywords_ = ['cli', 'deployment verification', 'health checks', 'journalctl', 'journald', 'log streaming', 'readiness',
+  'service monitoring', 'systemctl']
+
+
 show_props = ('Id', 'ActiveState', 'SubState', 'Result', 'NRestarts', 'InactiveExitTimestamp')
 
 

@@ -11,6 +11,10 @@ from pithy.unicode.codepoints import codes_desc
 from .nfa import empty_symbol
 
 
+_context_keywords_ = ['character classes', 'codepoint ranges', 'finite automata', 'pattern combinators', 're.compile',
+  'regex generation', 'regular expressions', 'utf8 byte ranges']
+
+
 __all__ = [
   'CharsetPattern',
   'ChoicePattern',

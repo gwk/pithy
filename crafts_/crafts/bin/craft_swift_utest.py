@@ -18,6 +18,9 @@ from pithy.task import run, runC, runCO
 from yaml import safe_load as load_yaml
 
 
+_context_keywords_ = ['nm', 'swiftc', 'symbol discovery', 'test harness', 'unit testing', 'xctest']
+
+
 def main() -> None:
   arg_parser = ArgumentParser(description='Swift unit test tool.')
   arg_parser.add_argument('test_paths', nargs='+')

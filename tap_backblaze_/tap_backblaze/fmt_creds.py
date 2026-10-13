@@ -3,6 +3,9 @@
 from pithy.json import JsonDict, out_json
 
 
+_context_keywords_ = ['application keys', 'b2', 'backblaze', 'clipboard', 'credentials', 'json', 'text parsing']
+
+
 key_remap = {
   'keyID': 'key_id',
   'applicationKey': 'key_secret',

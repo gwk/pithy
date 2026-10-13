@@ -16,6 +16,9 @@ from pithy.task import runCO
 from .. import CraftConfig, load_craft_config
 
 
+_context_keywords_ = ['code formatting', 'copyright', 'declaration modifiers', 'git status', 'source formatting']
+
+
 def main() -> None:
 
   arg_parser = ArgumentParser(description='Simple swift formatter.')

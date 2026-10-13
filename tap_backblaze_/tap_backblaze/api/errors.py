@@ -7,6 +7,9 @@ Error types for the B2 native API, and pure retry policy helpers.
 from pithy.json import parse_json
 
 
+_context_keywords_ = ['b2', 'backblaze', 'exceptions', 'exponential backoff', 'http status', 'rate limiting', 'retry policy']
+
+
 max_retry_delay = 64.0
 
 

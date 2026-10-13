@@ -11,6 +11,9 @@ from pithy.json import load_json
 from pithy.schema import compile_schema, write_schema
 
 
+_context_keywords_ = ['cli', 'grammar analysis', 'plistlib', 'schema inference', 'syntax definitions', 'textmate', 'yaml']
+
+
 def main() -> None:
 
   syntaxes = []

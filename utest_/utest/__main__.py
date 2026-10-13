@@ -9,6 +9,9 @@ from pithy.fs import make_dirs, path_rel_to_dir, walk_files
 from pithy.task import runC
 
 
+_context_keywords_ = ['cli', 'test discovery', 'test runner', 'unit tests', 'unittest']
+
+
 def main() -> None:
   arg_parser = ArgumentParser(description='Find and run utest unit tests with the extension ".ut.py", defaulting to  "test/".')
   arg_parser.add_argument('paths', nargs='*', default=['test'])

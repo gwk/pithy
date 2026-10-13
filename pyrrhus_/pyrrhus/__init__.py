@@ -3,6 +3,9 @@
 from pyrrhus._pyrrhus import add, hello_from_bin, scale
 
 
+_context_keywords_ = ['maturin', 'native rust extension', 'pyo3']
+
+
 __all__ = ['add', 'hello', 'hello_from_bin', 'scale']
 
 

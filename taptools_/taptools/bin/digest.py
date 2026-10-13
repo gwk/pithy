@@ -11,6 +11,9 @@ from pithy.encodings import enc_lep62, enc_lep128_to_utf8
 from pithy.io import errSL
 
 
+_context_keywords_ = ['base16', 'base32', 'base64', 'blake3', 'checksums', 'cli', 'file hashing', 'hashlib', 'sha256']
+
+
 _Encoder = Callable[[bytes], bytes]
 
 

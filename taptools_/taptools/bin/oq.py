@@ -12,6 +12,9 @@ from pithy.parse import Adjacency, Atom, Choice, choice_val, Left, Parser, Prece
 from tolkien import Source, Token
 
 
+_context_keywords_ = ['cli', 'data filtering', 'object query', 'query language', 'recursive search', 'type predicates']
+
+
 def main() -> None:
   '''
   # Syntax:

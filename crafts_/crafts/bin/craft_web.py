@@ -17,6 +17,10 @@ from pithy.strings import replace_prefix
 from pithy.task import runCO
 
 
+_context_keywords_ = ['browser imports', 'compiler diagnostics', 'javascript', 'resource copying', 'source maps', 'tsc',
+  'typescript']
+
+
 def main() -> None:
   conf = load_craft_config()
   build_dir = conf.build_dir

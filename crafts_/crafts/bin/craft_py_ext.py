@@ -28,6 +28,9 @@ from pithy.io import errL, errSL, read_from_path, read_line_from_path
 from pithy.path import path_name, path_stem
 
 
+_context_keywords_ = ['c api', 'c++', 'code generation', 'cpython extensions', 'native bindings', 'pyi', 'type stubs']
+
+
 KEYWORD_ONLY = Parameter.KEYWORD_ONLY
 POSITIONAL_ONLY = Parameter.POSITIONAL_ONLY
 POSITIONAL_OR_KEYWORD = Parameter.POSITIONAL_OR_KEYWORD

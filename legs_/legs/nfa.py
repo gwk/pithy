@@ -17,6 +17,10 @@ from pithy.strings import prepend_to_nonempty
 from pithy.unicode.codepoints import codes_desc
 
 
+_context_keywords_ = ['epsilon closure', 'finite automata', 'nondeterministic automata', 'pattern matching',
+  'regular languages', 'state transitions']
+
+
 NfaState = frozenset[int]
 NfaStateTransitions = dict[int, NfaState]
 NfaTransitions = dict[int, NfaStateTransitions]

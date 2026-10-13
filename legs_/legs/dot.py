@@ -5,6 +5,9 @@ from pithy.graphviz import GraphvizAttrs, GraphvizName, GraphvizNodes, write_dot
 from .dfa import DFA
 
 
+_context_keywords_ = ['automata visualization', 'directed graph', 'graphviz', 'state transitions']
+
+
 def output_dot(path_stem:str, dfas:list[DFA], pattern_descs:dict[str,str]) -> None:
 
   for dfa in dfas:

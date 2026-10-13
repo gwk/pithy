@@ -2,4 +2,6 @@
 
 '''Better Stack Telemetry API and Python dashboard definitions.'''
 
+_context_keywords_ = ['api', 'better stack', 'betterstack', 'dashboard definitions', 'metrics', 'observability', 'telemetry']
+
 __version__ = '0.0.0'

@@ -27,6 +27,11 @@ from ..ctx import Ctx
 from ..file_expectation import file_expectation_fns
 
 
+_context_keywords_ = ['cli testing', 'code coverage', 'file comparison', 'golden tests', 'integration tests', 'output capture',
+  'parameterized tests', 'regression tests', 'snapshot testing', 'stderr', 'stdout', 'subprocess.run', 'test discovery',
+  'test harness', 'timeouts']
+
+
 filterwarnings('error', category=SyntaxWarning) # Fail on SyntaxWarning.
 
 

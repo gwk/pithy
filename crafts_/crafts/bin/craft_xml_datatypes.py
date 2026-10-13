@@ -22,6 +22,10 @@ from pithy.xml.xmldict import XmlDict, XmlDictParser, XmlError
 from typing_extensions import TypeForm  # TODO: import from typing once we require Python 3.15.
 
 
+_context_keywords_ = ['code generation', 'dataclasses', 'example documents', 'schema inference', 'type inference',
+  'xml attributes']
+
+
 def main() -> None:
   arg_parser = ArgumentParser(description='Generate dataclasses from XML example documents.')
   arg_parser.add_argument('-base', default='', help='Base class name. Also used as a prefix for generated subclass names.')

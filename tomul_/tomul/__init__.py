@@ -32,6 +32,10 @@ from types import MappingProxyType
 from typing import Any, IO
 
 
+_context_keywords_ = ['configuration', 'deserialization', 'serialization', 'toml', 'tomli-w', 'tomllib.load', 'tomllib.loads',
+  'utf-8']
+
+
 __version__ = '0.0.0'
 
 _convenience_exports = (load_toml, parse_toml)

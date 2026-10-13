@@ -22,6 +22,10 @@ from ..python import output_python, output_python_re
 from ..swift import output_swift, swift_kind_syms, swift_safe_sym
 
 
+_context_keywords_ = ['command line', 'differential testing', 'generated lexers', 'grammar validation', 'lexer testing',
+  'property testing', 'token comparison']
+
+
 default_langs = ['python', 'swift']
 
 

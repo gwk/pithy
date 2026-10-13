@@ -17,6 +17,10 @@ from ..python import output_python, output_python_re, OutputOpts
 from ..swift import output_swift
 
 
+_context_keywords_ = ['code generation', 'command line', 'grammar compiler', 'lexer generator', 'lexical analysis',
+  'regular expressions', 'tokenization']
+
+
 def main() -> None: LegsCmd.main()
 
 

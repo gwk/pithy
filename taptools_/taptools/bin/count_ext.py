@@ -19,6 +19,9 @@ from collections import defaultdict
 from pithy.fs import path_ext, walk_files
 
 
+_context_keywords_ = ['cli', 'directory traversal', 'file statistics', 'filename suffix', 'os.walk']
+
+
 def main() -> None:
   parser = ArgumentParser(description='Count lines of source code.')
   parser.add_argument('paths', nargs='+', help='Directories to explore.')

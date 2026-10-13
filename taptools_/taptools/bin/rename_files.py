@@ -7,6 +7,9 @@ from pithy.fs import move_file
 from pithy.io import confirm
 
 
+_context_keywords_ = ['batch rename', 'cli', 'filenames', 'os.rename', 're.sub', 'regex substitution']
+
+
 def main() -> None:
 
   parser = ArgumentParser(description='Rename files.')

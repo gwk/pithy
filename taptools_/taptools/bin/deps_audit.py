@@ -7,6 +7,9 @@ from taptools.deps_audit.brew import main_brew
 from taptools.deps_audit.pip import main_pip
 
 
+_context_keywords_ = ['cli', 'dependency graph', 'homebrew', 'package dependencies', 'package managers', 'pip']
+
+
 def main() -> None:
   parser = CommandParser(description='Audit dependencies for various package managers.')
 

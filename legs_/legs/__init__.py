@@ -7,6 +7,10 @@ from typing import Any, ClassVar, Collection, Container, Iterator, Pattern
 from tolkien import Source, Token
 
 
+_context_keywords_ = ['byte lexer', 'lexer modes', 'lexical analysis', 're.compile', 'regular expressions', 'scanner',
+  'tokenization']
+
+
 StateTransitions = dict[int,dict[int,int]] # state -> byte -> dst_state.
 MatchStateKinds = dict[int,str] # state -> token kind.
 ModeData = tuple[int,StateTransitions,MatchStateKinds] # start_node, state_transitions, match_state_kinds.

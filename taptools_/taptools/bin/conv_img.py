@@ -4,6 +4,9 @@ from argparse import ArgumentParser
 from base64 import b64encode
 
 
+_context_keywords_ = ['base64', 'base64.b64encode', 'cli', 'data uri', 'image embedding']
+
+
 def main() -> None:
   arg_parser = ArgumentParser('Convert images.')
   arg_parser.add_argument('paths', nargs='+', help='paths to image files.')

@@ -20,6 +20,10 @@ from pithy.strings import replace_prefix
 from pithy.task import run, runO
 
 
+_context_keywords_ = ['Info.plist', 'actool', 'app bundle', 'asset catalog', 'macos application', 'plistlib',
+  'swift package manager', 'xcrun']
+
+
 def main() -> None:
   arg_parser = ArgumentParser(description='Build Mac Swift apps using the Swift Package Manager (without Xcode).')
   args = arg_parser.parse_args()

@@ -9,6 +9,9 @@ from pithy.io import outL
 from pithy.task import runO
 
 
+_context_keywords_ = ['dependency graph', 'dependents', 'homebrew', 'installed packages', 'package audit']
+
+
 def main_brew(args:Namespace) -> None:
   '''
   Brew's terminology regarding dependencies vs requirements is confusing.

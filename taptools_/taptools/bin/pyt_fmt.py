@@ -7,6 +7,9 @@ from pithy.loader import load
 from pithy.path import path_join, path_name_stem
 
 
+_context_keywords_ = ['cli', 'data loading', 'str.format', 'string interpolation', 'template rendering']
+
+
 def main() -> None:
   parser = ArgumentParser(description='Format a Python template file.')
   parser.add_argument('template', help='the template file.')

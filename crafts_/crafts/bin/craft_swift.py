@@ -20,6 +20,10 @@ from tolkien import Source, Token
 from .. import load_craft_config
 
 
+_context_keywords_ = ['build diagnostics', 'compiler wrapper', 'deduplication', 'swift package manager', 'terminal colors',
+  'xctest']
+
+
 def main() -> None:
   arg_parser = ArgumentParser(description='Swift compiler wrapper.')
   arg_parser.add_argument('-product', default=None)

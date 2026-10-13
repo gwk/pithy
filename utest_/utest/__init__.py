@@ -59,6 +59,10 @@ from traceback import format_exception as _format_exception
 from typing import Any, Callable, Iterable
 
 
+_context_keywords_ = ['assertions', 'equality', 'exception assertions', 'exception comparison', 'isinstance', 'repr',
+  'test decorators', 'test failures', 'testing', 'unit tests', 'unittest']
+
+
 __all__ = [
   'utest',
   'utest_run',

@@ -6,6 +6,9 @@ from sys import stdin
 from typing import TextIO
 
 
+_context_keywords_ = ['cli', 'doctype', 'html.parser.HTMLParser', 'markup validation', 'tag nesting']
+
+
 def main() -> None:
   arg_parser = ArgumentParser('Check the validity of HTML documents.')
   arg_parser.add_argument('paths', nargs='*', help='paths to HTML documents (defaults to stdin).')
