@@ -16,6 +16,7 @@ This applies to both the Pithy project and dependents of that project.
 All projects use `craft-context` to maintain agent instructions.
 `CTX.md` and its imported files are the instruction sources.
 Each `CTX.md` produces a sibling `AGENTS.md` containing the expanded instructions and a sibling `CLAUDE.md` symlink to `CTX.md`.
+`AGENTS.md` and `CLAUDE.md` are gitignored build products; only `CTX.md` and the files it imports are committed.
 `CTX.md` files can appear in subdirectories. Check for applicable local instructions when working in a subtree.
 
 ### Local Dependency Sources
@@ -65,24 +66,98 @@ indexing one project does not trigger indexing of dependencies.
 
 ### Python Code Tools
 
+Two tools produce compact views of Python sources: `pithy.python.summarize` and `pithy.python.deps`.
 Use these to orient before reading whole files. Targets are file paths, directories or dotted module names;
 dotted names resolve through the running Python environment, so run the tools from the project root.
 Directory and package walks omit `.ut.py` files unless `-include-utests` is given.
 
-* `python3 -m pithy.python.summarize TARGETS` shows the module docstring and the line-numbered header of every definition with its decorators and docstring summary.
-  Append `:name,Class.method` to a target to select definitions; selectors accept glob patterns, and selecting a class lists its members.
-  Without a selection each class shows a `members:` count line instead; `-members` lists them.
-  `-docs=full` shows whole docstrings and `-docs=none` omits them. `-full` prints the complete source of the selection.
-  `-locs` prefixes each line with `path:line:` so that grep output stays locatable. `-uses` appends the modules and symbols each definition references.
-* `python3 -m pithy.python.deps [TARGETS]` summarizes imports.
-  `-dependencies MODULE[.symbol]` lists what a module or definition references; methods are named `Class.method`.
-  `-dependents MODULE[.symbol]` lists the modules that reference it, and for a symbol prints each reference site as `path:line: source`.
-  Without targets, a query searches the top-level package of the queried module; name test trees, other packages or dependent projects as targets to include them.
+`python3 -m pithy.python.summarize TARGETS` shows the module docstring and declarations with line numbers, including decorators and docstrings.
+* Append `:name,Class.method` to a target to select definitions; selectors accept glob patterns, and selecting a class lists its members.
+* Without a selection each class shows a `members:` count line instead; `-members` lists them.
+* The unicode ellipsis is used to indicate that content was elided.
+* `-docs`: `none` omits docstrings; `first` shows the first text block; `full` shows the whole docstring.
+  `default` shows the module docstring in full and the first block of all others.
+* `-full` prints the complete source of the selection.
+* `-locs` prefixes each line with `path:line:` so that grep output stays locatable.
+* `-uses` appends the modules and symbols each definition references.
 
-The tools mark elisions with the Unicode ellipsis; a line ending in it continues in the source.
-Analysis is static: names in string annotations, access through `self` or other instances, and dynamic access via `getattr` or `importlib` are not resolved.
+`python3 -m pithy.python.deps [TARGETS]` summarizes imports.
+* `-dependencies MODULE[.symbol]` lists what a module or definition references; methods are named `Class.method`.
+* `-dependents MODULE[.symbol]` lists the modules that reference it, and for a symbol prints each reference site as `path:line: source`.
+* Without targets, a query searches the top-level package of the queried module; name test trees, other packages or dependent projects as targets to include them.
+* Treat an empty dependents result as a lead rather than proof, and confirm with a text search.
+  * Only the targets are searched, so uses in other packages, test trees or dependent projects are invisible unless named.
+  * Only direct, statically resolvable references are found; see the limitations below.
+
+For both tools, analysis is static: names in string annotations, access through `self` or other instances, and dynamic access via `getattr` or `importlib` are not resolved.
 Attribute chains into packages outside the targets stop one attribute past the import.
-Treat an empty dependents result as a lead rather than proof, and confirm with a text search.
+
+
+## Code Documentation
+
+Project documentation generally falls into these six categories:
+
+* Readme files (`readme.md`).
+* Agent instructions (`CTX.md`).
+* Module docstrings.
+* `pithy.cmdparse.Cmd` docstrings and associated parameter help strings.
+* Definition docstrings (`class` and `def`).
+* Comments.
+
+Keep detailed documentation in one authoritative location; use brief summaries and links elsewhere to maintain discoverability.
+Push details down into the lower docs layers when practical so that they live closer to the code, keeping the higher level docs concise.
+
+Document behavior, invariants, constraints, illuminating usage examples and design rationale.
+Do not maintain prose inventories of definitions, signatures, imports or callers that the code-reading tools can regenerate.
+
+Open docstrings with a summary block of one or a few lines, then a blank line before further detail;
+by default `pithy.python.summarize` shows only that first block for definitions.
+
+After writing docs, reread them and consider whether they meet our criteria.
+
+### Readmes
+
+`readme.md` files are primarily for human readers, but agents should also read them.
+They are often the first text read when orienting in a new project, and are presented in directory views by GitHub.
+Each top-level package must have a readme.md in its containing project directory.
+Further subdirectory readmes are optional and should be added only by human devs, but agents must help maintain them.
+There is no strict length limit, but after a page or two consider moving detail sections into separate documents.
+
+### Agent Instructions
+
+`CTX.md` files are automatically presented to agents when they interact with a directory and thus serve as natural entry points.
+They can import `readme.md` files with `@` syntax to share introductory material and add extra instructions for agents.
+
+### Module Docstrings
+
+Module docstrings are by default presented in full by `pithy.python.summarize`.
+Use them for orientation, module-wide behavior and invariants.
+Put details about individual definitions in their own docstrings.
+
+### pithy.cmdparse.Cmd Docstrings and Parameter Help
+
+The docstring of a `Cmd` subclass provides the command description in CLI help.
+Write it for command users, and put argument-specific explanations in the field specifiers' `doc` strings.
+In modules with commands, the module docstring can offer a summary but should not repeat the bulk of the help text.
+`Cmd` also offers `help_addenda` and `epilog` to facilitate factoring out common help text.
+
+### Definition Docstrings
+
+These get surfaced progressively by `pithy.python.summarize` so they are the most appropriate place for knowledge about class/function behavior.
+High level explanations of internals are acceptable, but prefer to push internal implementation details into comments.
+
+### Comments
+
+For the most part, code comments should be used to explain non-obvious aspects and rationale, not to merely narrate the following line.
+The exception is for long blocks of code where comments can helpfully group related lines.
+
+When a comment reads as summarizing a line or more of code it should be presented first.
+When it reads better as a detailed explanation of some aspect, it should be presented afterwards, either on the same line or on a trailing line using this idiom:
+```
+something_long_and_inscrutable()
+#^ The reason why.
+```
+
 
 ## Maintaining Context
 

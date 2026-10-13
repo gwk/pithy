@@ -48,8 +48,6 @@ filler, or marketing/casual/feel-good language.
 * No bare `# type: ignore`; always add error codes.
 * Error handling: early returns, custom exceptions where they clarify intent or need to be caught, explicit error messages.
 * Docstrings: single quotes for brief docs, triple single-quotes for multi-line. Use markdown syntax, not rst.
-  * Open with a summary block of one or a few lines, then a blank line before further detail; `pithy.python.summarize` shows that first block.
-  * Module docstrings orient; put detail in the docstring of the definition it concerns, so that summaries reveal progressively.
 * `if __name__ == '__main__': main()` should always be inlined, not two lines.
 * If you encounter circular import problems:
   * Factor out interdependent code from `__init__` into leaf submodules. This reduces the most common circularity problems.
