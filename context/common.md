@@ -63,6 +63,27 @@ Providers build their index with `craft-context index` (included in `craft-conte
 Each project maintains its own index through build recipes or precommit hooks;
 indexing one project does not trigger indexing of dependencies.
 
+### Python Code Tools
+
+Use these to orient before reading whole files. Targets are file paths, directories or dotted module names;
+dotted names resolve through the running Python environment, so run the tools from the project root.
+Directory and package walks omit `.ut.py` files unless `-include-utests` is given.
+
+* `python3 -m pithy.python.summarize TARGETS` shows the module docstring and the line-numbered header of every definition with its decorators and docstring summary.
+  Append `:name,Class.method` to a target to select definitions; selectors accept glob patterns, and selecting a class lists its members.
+  Without a selection each class shows a `members:` count line instead; `-members` lists them.
+  `-docs=full` shows whole docstrings and `-docs=none` omits them. `-full` prints the complete source of the selection.
+  `-locs` prefixes each line with `path:line:` so that grep output stays locatable. `-uses` appends the modules and symbols each definition references.
+* `python3 -m pithy.python.deps [TARGETS]` summarizes imports.
+  `-dependencies MODULE[.symbol]` lists what a module or definition references; methods are named `Class.method`.
+  `-dependents MODULE[.symbol]` lists the modules that reference it, and for a symbol prints each reference site as `path:line: source`.
+  Without targets, a query searches the top-level package of the queried module; name test trees, other packages or dependent projects as targets to include them.
+
+The tools mark elisions with the Unicode ellipsis; a line ending in it continues in the source.
+Analysis is static: names in string annotations, access through `self` or other instances, and dynamic access via `getattr` or `importlib` are not resolved.
+Attribute chains into packages outside the targets stop one attribute past the import.
+Treat an empty dependents result as a lead rather than proof, and confirm with a text search.
+
 ## Maintaining Context
 
 ### Instruction Files
