@@ -48,6 +48,8 @@ The value must be a sorted list of unique strings, using Python's case-sensitive
 Each keyword must contain at least one word character; blank or punctuation-only keywords are errors.
 A keyword is a short phrase of at most three words separated by whitespace.
 
+For arrays that wrap to multiple lines, the open and closing braces should be kept on the same lines as content to stay compact.
+
 Modules can also declare a free-form status, which queries display next to results:
 ```
 _context_status_ = 'obsolete'
