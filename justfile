@@ -83,9 +83,6 @@ develop-rust: gen-py-rust-exts
 develop-venv:
   sh/develop-venv.sh {{pkgs}}
 
-docs:
-  python3 -m crafts.bin.craft_docs
-
 gen: gen-py-rust-exts
   make gen
 
