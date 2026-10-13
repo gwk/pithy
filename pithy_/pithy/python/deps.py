@@ -52,6 +52,7 @@ _context_keywords_ = ['call graph', 'callers', 'dependencies', 'dependents', 'im
 class DepsCmd(Cmd):
   '''
   Analyze Python module and symbol dependencies.
+
   The targets form the universe for the summary and for dependents queries; a dependencies query parses only the named module.
   Without targets, a query's universe defaults to the top-level package containing the queried module,
   resolved through the Python environment; uses in other packages, test trees or dependent projects need explicit targets.
