@@ -70,6 +70,8 @@ Two tools produce compact views of Python sources: `pithy.python.summarize` and 
 Use these to orient before reading whole files. Targets are file paths, directories or dotted module names;
 dotted names resolve through the running Python environment, so run the tools from the project root.
 Directory and package walks omit `.ut.py` files unless `-include-utests` is given.
+Summaries prefer `.pyi` interfaces over paired `.py` implementations; headers and `-locs` identify the actual source file.
+Explicit file targets select that file. Dependency analysis continues to use implementations by default.
 
 `python3 -m pithy.python.summarize TARGETS` shows the module docstring and declarations with line numbers, including decorators and docstrings.
 * Append `:name,Class.method` to a target to select definitions; selectors accept glob patterns, and selecting a class lists its members.
@@ -184,7 +186,9 @@ After changing instruction sources, run `craft-context instructions` from the pr
 
 ### Module Discovery Metadata
 
-Docstrings and context metadata must be top-level literal syntax; our tools parse them statically and without importing.
+Docstrings and context metadata must be literal syntax; our tools parse them statically and without importing.
+Context metadata belongs at module level. For native modules, keep public docs and metadata in `.pyi` interfaces.
+`craft-context` queries prefer `.pyi` over paired `.py`; see `craft-context validate -help` for paired documentation warnings.
 
 Include the following in `_context_keywords_`:
 * well-known technical terms, including both problem and solution terms;

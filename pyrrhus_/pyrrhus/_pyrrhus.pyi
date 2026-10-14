@@ -6,10 +6,16 @@
 # Run `just gen-py-rust-exts` after editing.
 
 '''
-Functions implemented in Rust.
+Native extension for Pyrrhus.
+
+The public modules re-export functions from this flat extension namespace.
+Integer arguments use signed 64-bit values; out-of-range inputs raise OverflowError.
 '''
 
 from typing import TYPE_CHECKING
+
+
+_context_keywords_:list[str] = ['arithmetic', 'native extension', 'pyo3']
 
 
 # The extension is a single flat module holding every native function in the crate;

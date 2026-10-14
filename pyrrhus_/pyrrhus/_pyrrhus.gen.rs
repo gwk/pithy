@@ -16,7 +16,10 @@ const _: fn(&[u8]) -> PyResult<i64> = crate::byte_utils::sum_bytes;
 const _: fn(&[u8], i64) -> PyResult<Option<i64>> = crate::byte_utils::find_byte;
 const _: fn(&str, i64, &str) -> PyResult<String> = crate::str_utils::repeat;
 
-/// Functions implemented in Rust.
+/// Native extension for Pyrrhus.
+///
+/// The public modules re-export functions from this flat extension namespace.
+/// Integer arguments use signed 64-bit values; out-of-range inputs raise OverflowError.
 #[allow(non_snake_case)]
 #[pymodule]
 pub mod _pyrrhus {
@@ -52,6 +55,9 @@ pub mod _pyrrhus {
   }
 
   /// Return the index of the first occurrence of `byte` in `data`, or None if it is not present.
+  ///
+  /// `byte` must be between 0 and 255; other values in the signed 64-bit range raise ValueError.
+  /// Integers outside that range raise OverflowError during argument conversion.
   #[pyfunction]
   #[pyo3(signature = (data, byte, /))]
   fn byte_utils__find_byte(data: &[u8], byte: i64) -> PyResult<Option<i64>> {

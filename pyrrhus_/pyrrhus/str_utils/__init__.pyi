@@ -6,8 +6,13 @@
 # Compare with `byte_utils`, which is laid out as a single module.
 
 '''
-Utilities for strings, implemented in Rust.
+Utilities for repeating and joining strings, implemented in Rust.
+
+Accepts Python strings and returns a new string; separators appear only between copies.
 '''
+
+_context_keywords_:list[str] = ['join', 'repetition', 'str.join']
+
 
 def repeat(s:str, count:int, sep:str='') -> str:
   'Return `count` copies of `s`, joined by `sep`. Raises ValueError if `count` is negative.'

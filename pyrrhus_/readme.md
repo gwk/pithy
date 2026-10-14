@@ -36,6 +36,23 @@ Implementations return `PyResult` so that any of them can raise a Python excepti
 Note that the Python types narrow in translation: `int` maps to `i64`, so an argument outside that range raises
 `OverflowError` before the implementation is called. See the `craft-py-rust-ext` docstring for the full mapping.
 
+# Documentation
+
+Write public module and function docstrings, `_context_keywords_`, and optional `_context_status_` in the `.pyi` interface.
+The generator copies module docs into Python shims and function docs into PyO3 wrappers for runtime `__doc__`.
+Rust comments describe implementation details and are not copied into public documentation.
+
+`craft-context` indexes interfaces, and `pithy.python.summarize` reads their declarations without loading the extension.
+Queries and summaries prefer `.pyi` over paired `.py` files and show the actual source path so edits go to the interface.
+For example:
+
+```sh
+craft-context query 'byte search'
+python3 -m pithy.python.summarize pyrrhus.byte_utils:find_byte -docs full -locs
+```
+
+See `craft-context validate -help` for warnings about documentation or metadata hidden by an interface.
+
 # Layout
 
 The extension module `pyrrhus._pyrrhus` is a single flat namespace holding every native function in the crate.

@@ -45,6 +45,9 @@ in tracebacks and in profiles, where it is unambiguous.
 
 Each merged interface owns its sibling `.py` shim, including `__init__.py` for package interfaces.
 Do not put hand-written Python code in these files. The extension root has no shim.
+Public docstrings belong in .pyi: module docs are copied into shims, and function docs into the generated PyO3 wrappers.
+Context metadata (_context_keywords_ and _context_status_) stays in .pyi for static discovery; it is not exported.
+Rust implementation comments are not copied to the public wrappers.
 Missing implementations are scaffolded as sibling `.rs` files (`mod.rs` for `__init__.pyi`) with `todo!()` bodies.
 These files are then hand-edited and never rewritten. Declare new implementation modules in the crate root.
 For existing implementations, stdout reports missing or textually different function signatures with copyable skeletons.
@@ -80,6 +83,9 @@ from pithy.fs import walk_files
 from pithy.io import read_from_path, read_line_from_path
 from pithy.path import norm_path, Path, path_dir, path_name, path_stem
 from pithy.rust.keywords import rust_keywords
+
+
+_context_keywords_ = ['code generation', 'docstring', 'extension', 'pyi', 'pyo3', 'rust']
 
 
 KEYWORD_ONLY = Parameter.KEYWORD_ONLY
@@ -257,6 +263,8 @@ def gen_shim(root:Interface, interface:Interface) -> str:
   # A package __init__ imports relative to itself; a module imports relative to its containing package.
   extension = '.' * (depth + 1) + root.name
   lines = [f'# {license_text}', shim_marker, '']
+  if interface.doc:
+    lines.extend(['(', *(f'  {line!r}' for line in interface.doc.splitlines(keepends=True)), ')', ''])
   names = [f'{interface.wrapper_prefix}{f.name} as {f.name}' for f in sorted(interface.funcs, key=lambda f: f.name)]
   if names:
     prefix = f'from {extension} import '
@@ -605,6 +613,9 @@ def iter_decls(path:str, module:Module) -> Iterator[tuple[str,FunctionDef]]:
       continue # Docstring.
     elif isinstance(stmt, If) and isinstance(stmt.test, Name) and stmt.test.id == 'TYPE_CHECKING':
       continue # Stub-only imports; the block does not execute at generation time and declares nothing to generate.
+    elif isinstance(stmt, AnnAssign) and isinstance(stmt.target, Name) and stmt.target.id in (
+      '_context_keywords_', '_context_status_'):
+      continue # Documentation metadata, not an exported native variable.
     elif isinstance(stmt, (AnnAssign, AsyncFunctionDef, ClassDef)):
       kind = {AnnAssign:'variable', AsyncFunctionDef:'async function', ClassDef:'class'}[type(stmt)]
       error(path, stmt, f'{kind} declarations are not implemented')

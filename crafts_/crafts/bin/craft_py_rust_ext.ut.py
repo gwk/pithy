@@ -1,5 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from ast import get_docstring, parse
 from contextlib import redirect_stdout
 from inspect import Parameter
 from io import StringIO
@@ -202,6 +203,10 @@ name_error_fmt = ("error: m.pyi:{}: name '{}' is not defined when the interface 
   'names imported under `TYPE_CHECKING` are not available to the generator.')
 
 utest([], interface_error, 'def f(a:int) -> int: ...')
+utest([], interface_error, '_context_keywords_:list[str] = ["native"]', '_context_status_:str = "experimental"',
+  'def f(a:int) -> int: ...')
+utest(["error: m.pyi:1:1: variable declarations are not implemented.", '  value:int = 1', '  ^'],
+  interface_error, 'value:int = 1')
 
 # Annotations are evaluated lazily, so a name that is only imported for type checkers is undefined at generation time.
 utest([name_error_fmt.format('4:9', 'Sequence'), '  def f(a:Sequence[int]) -> int: ...', '          ^'],
@@ -303,7 +308,9 @@ def scaffolding() -> None:
     sub = package / 'sub'
     make_dir(sub)
     interface = sub / '__init__.pyi'
-    write_to_path(interface, 'def f(data:bytes, n:int) -> int: ...\n')
+    module_doc = 'Module docs.\n\nQuotes: \" and \' and backslash: \\.\n'
+    write_to_path(interface, repr(module_doc) + '\n_context_keywords_:list[str] = ["native"]\n'
+      'def f(data:bytes, n:int) -> int: ...\n')
     rust = sub / 'mod.rs'
     shim = sub / '__init__.py'
 
@@ -314,6 +321,8 @@ def scaffolding() -> None:
     utest(False, path_exists, rust, follow=True)
     utest(False, path_exists, shim, follow=True)
     generate()
+    utest(module_doc, lambda: get_docstring(parse(read_from_path(shim)), clean=False))
+    utest(False, lambda: '_context_keywords_' in read_from_path(shim))
     utest(True, lambda: 'from .._pkg import sub__f as f' in read_from_path(shim))
     utest(True, lambda: 'pub fn f(data: &[u8], n: i64) -> PyResult<i64> {\n  todo!()\n}' in read_from_path(rust))
     utest(False, lambda: 'Generated' in read_from_path(rust))

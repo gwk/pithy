@@ -6,11 +6,21 @@
 # Compare with `str_utils`, which is laid out as a package directory.
 
 '''
-Utilities for bytes, implemented in Rust.
+Utilities for searching and summing bytes, implemented in Rust.
+
+Inputs are Python bytes objects. Positions are zero-based byte offsets.
 '''
+
+_context_keywords_:list[str] = ['byte search', 'bytes.find', 'sum']
+
 
 def sum_bytes(data:bytes) -> int:
   'Return the sum of the byte values of `data`.'
 
 def find_byte(data:bytes, byte:int, /) -> int|None:
-  'Return the index of the first occurrence of `byte` in `data`, or None if it is not present.'
+  '''
+  Return the index of the first occurrence of `byte` in `data`, or None if it is not present.
+
+  `byte` must be between 0 and 255; other values in the signed 64-bit range raise ValueError.
+  Integers outside that range raise OverflowError during argument conversion.
+  '''
