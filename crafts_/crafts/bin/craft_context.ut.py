@@ -468,3 +468,110 @@ with TemporaryDirectory() as tmp:
     return False
 
   utest(True, depth_error)
+
+
+# Both files are validated and cached, while queries use only the interface's metadata and source path.
+with TemporaryDirectory() as tmp:
+  root = Path(tmp)
+  impl_path = root / 'native.py'
+  interface = root / 'native.pyi'
+  write_source(impl_path, '_context_keywords_ = ["implementation"]\n')
+  write_source(interface, '_context_keywords_:list[str] = ["interface"]\n_context_status_:str = "experimental"\n'
+    'raise RuntimeError("Never execute interfaces")\n')
+  with patch('crafts.bin.craft_context.outL'):
+    Index(root=root).run()
+  index = root / 'context/index.json'
+  utest(['native.py', 'native.pyi'], lambda: list(loads(read_from_path(index))['files']))
+  utest([(1, f'{root}/native.pyi', 'experimental', ['interface'])],
+    query_context_modules, load_project_context(root), ['interface', 'implementation'])
+  utest([], query_context_modules, load_project_context(root), ['implementation'])
+  # A no-op scan does not reparse or rewrite either file.
+  mtime = file_stat(index, follow=True).st_mtime_ns
+  with patch('crafts.bin.craft_context.outL'), patch('crafts.bin.craft_context.parse_ast') as parse:
+    Index(root=root).run()
+    utest(0, lambda: parse.call_count)
+  utest(mtime, lambda: file_stat(index, follow=True).st_mtime_ns)
+  # Updating an explicit interface leaves its companion's cached record intact.
+  write_source(interface, '_context_keywords_ = ["updated"]\n')
+  with patch('crafts.bin.craft_context.outL'):
+    Index(root=root, paths=[Path('native.pyi')]).run()
+  utest(['implementation'], lambda: loads(read_from_path(index))['files']['native.py']['keywords'])
+  utest([(1, f'{root}/native.pyi', '', ['updated'])], query_context_modules, load_project_context(root), ['updated'])
+  # An invalid interface fails validation and cannot replace a good index.
+  before = read_bytes_from_path(index)
+  for content in ('def broken(', '_context_keywords_ = [42]'):
+    write_source(interface, content)
+    with patch('crafts.bin.craft_context.errL'), patch('crafts.bin.craft_context.outL'):
+      utest_exc(SystemExit, Validate(root=root, paths=[Path('native.py')]).run)
+      utest_exc(SystemExit, Index(root=root).run)
+    utest(before, read_bytes_from_path, index)
+  # Removing an interface restores the implementation to queries after refreshing its directory.
+  remove(interface)
+  with patch('crafts.bin.craft_context.outL'):
+    Index(root=root).run()
+  utest([(1, f'{root}/native.py', '', ['implementation'])],
+    query_context_modules, load_project_context(root), ['implementation'])
+  # Adding and renaming an interface is discovered even when no existing file changed.
+  write_source(interface, '_context_keywords_ = ["interface"]\n')
+  with patch('crafts.bin.craft_context.outL'):
+    Index(root=root).run()
+  replace(interface, root / 'renamed.pyi')
+  with patch('crafts.bin.craft_context.outL'):
+    Index(root=root).run()
+  utest([f'{root}/native.py', f'{root}/renamed.pyi'], lambda: [m['path'] for m in load_project_context(root)])
+
+
+# Warnings include both source paths. Equal docs, including indentation differences, are allowed.
+with TemporaryDirectory() as tmp:
+  root = Path(tmp)
+  impl_path = root / 'paired.py'
+  interface = root / 'paired.pyi'
+  write_source(impl_path, '''\
+"Module docs."
+_context_keywords_ = ['native']
+_context_status_ = 'experimental'
+class C:
+  "Class docs."
+  def f(self):
+    """Method docs.
+
+    Details.
+    """
+async def g():
+  "Async docs."
+''')
+  write_source(interface, '''\
+"Module docs."
+_context_keywords_:list[str] = ['native']
+_context_status_:str = 'experimental'
+class C:
+    "Class docs."
+    def f(self):
+        """Method docs.
+
+        Details.
+        """
+async def g():
+    "Async docs."
+def extra():
+    "Interface-only docs."
+''')
+  with patch('crafts.bin.craft_context.errL') as errors:
+    Validate(root=root).run()
+    utest([], lambda: errors.call_args_list)
+  write_source(interface, '''\
+"Changed module docs."
+_context_keywords_ = []
+class C:
+  def f(self): ...
+async def g():
+  "Changed async docs."
+''')
+  for target in ('paired.py', 'paired.pyi', '.'):
+    with patch('crafts.bin.craft_context.errL') as errors:
+      Validate(root=root, paths=[Path(target)]).run()
+      messages = [args[0][0] for args in errors.call_args_list]
+    utest(6, len, messages) # Module, class, method, async function, keywords and status.
+    utest(True, lambda: all(f'{impl_path}:' in m and f'{interface}:' in m and 'warning:' in m for m in messages))
+    utest(True, lambda: any('C.f docstring' in m for m in messages))
+  utest(False, path_exists, root / 'context', follow=True)

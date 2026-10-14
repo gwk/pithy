@@ -58,7 +58,9 @@ Both variables are read with ast.literal_eval; modules are never imported or exe
 `craft-context index [paths...]` refreshes `context/index.json`.
 `context/index.lock` is an advisory lock to prevent concurrent updates. Both files are build products and should be gitignored.
 
-`craft-context validate [paths...]` performs syntactic source validation; it does not read or write the index.
+`craft-context validate [paths...]` checks syntax, metadata and paired documentation; see its CLI help.
+Both .py and .pyi files are indexed and validated. Queries prefer .pyi over paired .py files and return the source path.
+Docstrings remain in source for `pithy.python.summarize`; they are not searched as keywords.
 
 `craft-context query [-root project] words...` searches the indexes of the project and of each project in `deps/`;
 such dependencies are not searched recursively.
@@ -77,7 +79,8 @@ Any matching word includes a module in the results; more distinct matching query
 
 import json
 import re
-from ast import AnnAssign, Assign, expr, literal_eval, Module, Name, parse as parse_ast
+from ast import (AnnAssign, Assign, AST, AsyncFunctionDef, ClassDef, expr, FunctionDef, get_docstring, iter_child_nodes,
+  literal_eval, Module, Name, parse as parse_ast)
 from hashlib import sha256
 from os import replace
 from tempfile import TemporaryDirectory
@@ -90,8 +93,11 @@ from pithy.fs import list_dir, make_dirs, make_link, real_path
 from pithy.io import errL, outL
 from pithy.lex import Lexer
 from pithy.path import expand_home_dir, is_path_abs, Path, rel_path
-from pithy.python.package import walk_module_paths
+from pithy.python.package import prefer_stub_paths, walk_module_paths
 from tolkien import Source, Token
+
+
+_context_keywords_ = ['agent instructions', 'discovery', 'docstring', 'keywords', 'metadata', 'pyi']
 
 
 ctx_name = 'CTX.md'
@@ -167,7 +173,7 @@ class Index(Cmd):
   skips hidden names, symlinks, virtual environments, `__pycache__`, `_build`, `_misc`, `deps`, `dist` and `node_modules` directories.
   '''
   paths:list[Path] = cmd_pos(default_factory=lambda: [Path('.')],
-    doc='Python files or directories, relative to the project root.')
+    doc='Python .py or .pyi files or directories, relative to the project root.')
   root:Path = opt(default=Path('.'), complete='dirs', doc='Project root; contains context/index.json.')
 
 
@@ -180,16 +186,29 @@ class Index(Cmd):
 
 
 class Validate(Cmd):
-  'Validate Python sources and keyword metadata using the same scan as index, without reading or writing the index.'
+  '''
+  Validate .py and .pyi syntax and context metadata without reading or writing the index.
+
+  Also validate companions of explicitly selected files. Warn when .py documentation or context metadata is absent from
+  or differs from its .pyi counterpart. Compare docstrings by qualified definition name, ignoring indentation differences;
+  identical content and content found only in .pyi are allowed. Warnings do not fail validation.
+  '''
   paths:list[Path] = cmd_pos(default_factory=lambda: [Path('.')],
-    doc='Python files or directories, relative to the project root.')
+    doc='Python .py or .pyi files or directories, relative to the project root.')
   root:Path = opt(default=Path('.'), complete='dirs', doc='Project root to validate.')
 
 
   def run(self) -> None:
     paths = [path if path.is_abs else self.root / path for path in self.paths]
-    _, errors, _ = scan_context_files(self.root, paths, command='validate', prior={}, built_ns=0)
+    sources = list(walk_module_paths(*map(str, paths), exclude_dirs=scan_exclude_dirs, include_stubs=True))
+    for source in list(sources):
+      companion = source[:-1] if source.endswith('.pyi') else source + 'i'
+      if is_file(companion, follow=True) and not is_link(companion): sources.append(companion)
+    trees:dict[str,Module] = {}
+    _, errors, _ = scan_context_files(self.root, list(map(Path, sources)), command='validate',
+      prior={}, built_ns=0, trees=trees)
     if errors: exit(f'craft-context validate: {errors} source errors.')
+    warn_interface_docs(trees)
 
 
 
@@ -237,33 +256,38 @@ index_version = 2
 scan_exclude_dirs = ('_build', '_misc', 'deps', 'dist', 'node_modules')
 
 
-def scan_context_files(root:Path, paths:list[Path], *, command:str, prior:dict[str,FileRecord], built_ns:int
+def scan_context_files(root:Path, paths:list[Path], *, command:str, prior:dict[str,FileRecord], built_ns:int,
+ trees:dict[str,Module]|None=None
  ) -> tuple[dict[str,FileRecord],int,bool]:
   '''
   Fingerprint and extract keywords and status from the Python files under `paths`, keyed by path relative to `root`.
   A prior record is reused without reading the file when its size and mtime match and the mtime precedes `built_ns`;
   otherwise the file is hashed, and reparsed only if the hash changed.
   Return the records, the number of source errors (reported to stderr), and whether any file was read.
+  When `trees` is supplied, parse every file and collect its AST for paired documentation validation.
   '''
   records:dict[str,FileRecord] = {}
   errors = 0
   read_any = False
-  for path_str in walk_module_paths(*map(str, paths), exclude_dirs=scan_exclude_dirs):
+  for path_str in walk_module_paths(*map(str, paths), exclude_dirs=scan_exclude_dirs, include_stubs=True):
     path = Path(path_str)
     rel = rel_path(path, root)
     stat = file_stat(path, follow=True)
     size, mtime_ns = stat.st_size, stat.st_mtime_ns
     record = prior.get(rel)
-    if record and record['size'] == size and record['mtime_ns'] == mtime_ns and mtime_ns < built_ns:
+    if trees is None and record and record['size'] == size and record['mtime_ns'] == mtime_ns and mtime_ns < built_ns:
       records[rel] = record
       continue
     read_any = True
     with open(path, 'rb') as f: data = f.read()
     digest = sha256(data).hexdigest()
-    if record and record['sha256'] == digest:
+    if trees is None and record and record['sha256'] == digest:
       keywords, status = record['keywords'], record['status']
     else:
-      try: keywords, status = extract_context_meta(parse_ast(data, filename=path_str))
+      try:
+        tree = parse_ast(data, filename=path_str)
+        keywords, status = extract_context_meta(tree)
+        if trees is not None: trees[path_str] = tree
       except (SyntaxError, UnicodeError, ValueError) as e:
         errL(f'craft-context {command}: {path}: {e}')
         errors += 1
@@ -296,8 +320,8 @@ def refresh_context_index(root:Path, paths:list[Path], *, command:str) -> tuple[
     files = dict(sorted(files.items()))
     written = read_any or files != prior
     if written: write_context_index(dest, ContextIndex(version=index_version, files=files))
-  modules = [ContextModule(path=rel, keywords=record['keywords'], status=record['status'])
-    for rel, record in files.items()]
+  modules = [ContextModule(path=rel, keywords=files[rel]['keywords'], status=files[rel]['status'])
+    for rel in prefer_stub_paths(files)]
   return modules, written
 
 
@@ -344,9 +368,9 @@ def load_project_context(root:Path) -> list[ContextModule]:
     except (UnicodeError, ValueError) as e:
       raise ValueError(f'{src}: {e} Run craft-context index at the project root.') from e
     found = True
-    modules.extend(
-      ContextModule(path=str((project / rel).collapse_dotdot()), keywords=record['keywords'], status=record['status'])
-      for rel, record in index['files'].items())
+    files = index['files']
+    modules.extend(ContextModule(path=str((project / rel).collapse_dotdot()),
+      keywords=files[rel]['keywords'], status=files[rel]['status']) for rel in prefer_stub_paths(files))
   if not found:
     raise ValueError(f'no indexes found in {root!s} or its deps/ directories; use source search instead.')
   return modules
@@ -396,7 +420,9 @@ def query_context_modules(modules:list[ContextModule], words:list[str]) -> list[
   query_words = context_words(' '.join(words))
   if not query_words: raise ValueError('expected at least one query word.')
   results:list[tuple[int,str,str,list[str]]] = []
+  preferred = set(prefer_stub_paths(module['path'] for module in modules))
   for module in modules:
+    if module['path'] not in preferred: continue
     matched_words = query_words & module_name_words(module['path'])
     keywords:list[str] = []
     for keyword in module['keywords']:
@@ -440,6 +466,51 @@ def extract_context_meta(tree:Module) -> tuple[list[str],str]:
         if status is not None: raise ValueError(f'{label}: repeated declaration.')
         status = validate_context_status(label, value_node)
   return (keywords or []), (status or '')
+
+
+def warn_interface_docs(trees:dict[str,Module]) -> None:
+  'Warn about .py documentation or metadata hidden by a paired .pyi; all trees must already have valid metadata.'
+  for path, tree in trees.items():
+    if not path.endswith('.py') or (interface := trees.get(path + 'i')) is None: continue
+    interface_docs = documentation_values(interface)
+    for name, entries in documentation_values(tree).items():
+      counterparts = interface_docs.get(name, [])
+      for value, line in entries:
+        if any(value == other for other, _ in counterparts): continue
+        target_line = counterparts[0][1] if counterparts else 1
+        errL(f'craft-context validate: {path}:{line}: warning: {name} is absent from or differs from '
+          f'{path}i:{target_line}; .pyi takes precedence.')
+
+
+def documentation_values(tree:Module) -> dict[str,list[tuple[object,int]]]:
+  '''
+  Collect cleaned docstrings by qualified name and top-level context literals, with source lines.
+  Keep repeated declarations such as overloads; any identical interface docstring satisfies a .py docstring.
+  '''
+  values:dict[str,list[tuple[object,int]]] = {}
+
+  def walk(node:AST, name:str) -> None:
+    if isinstance(node, (Module, ClassDef, FunctionDef, AsyncFunctionDef)):
+      if (doc := get_docstring(node)) is not None:
+        values.setdefault(f'{name or "<module>"} docstring', []).append((doc.strip(), node.body[0].lineno))
+    for child in iter_child_nodes(node):
+      child_name = name
+      if isinstance(child, (ClassDef, FunctionDef, AsyncFunctionDef)):
+        child_name = f'{name}.{child.name}' if name else child.name
+      walk(child, child_name)
+
+  walk(tree, '')
+  for node in tree.body:
+    if isinstance(node, Assign):
+      names = [target.id for target in node.targets if isinstance(target, Name)]
+    elif isinstance(node, AnnAssign) and node.simple and isinstance(node.target, Name):
+      names = [node.target.id]
+    else:
+      continue
+    if node.value is None: continue
+    for name in names:
+      if name in context_meta_names: values[name] = [(literal_eval(node.value), node.lineno)]
+  return values
 
 
 def validate_context_keywords(label:str, value_node:expr) -> list[str]:
