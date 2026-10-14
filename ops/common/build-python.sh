@@ -20,7 +20,8 @@
 set -euo pipefail
 shopt -s extglob # For the prune pattern below.
 
-source "$(dirname "$0")/../versions.sh"
+common_dir="$(cd "$(dirname "$0")" && pwd)"
+source "$common_dir/../versions.sh"
 
 py_version="${py_point_version%.*}"
 
@@ -216,6 +217,12 @@ for name in python python3; do
   exe ln -sf "python$py_version" "$bin_dir/$name"
 done
 
+# Bytecode cache hook. It lives in the stdlib directory rather than site-packages so that venvs created from this
+# installation load it too; altinstall never writes a sitecustomize, so this copy is the sole source. See its docstring.
+# An explicit mode: cp would copy the source file's mode, which the developer's umask may have left group-private,
+# and every user of the installation must be able to read the hook.
+exe install -m 644 "$common_dir/sitecustomize.py" "$prefix/lib/python$py_version/sitecustomize.py"
+
 # pip. altinstall runs ensurepip, but ensurepip installs nothing when site-packages already holds an equal or newer pip
 # (e.g. when rebuilding over an existing prefix), in which case no pip scripts are written to the bin dir.
 # Upgrading pip normally regenerates them (pip special-cases installing itself to emit `pip`, `pip3`, and `pip3.X`),
@@ -260,6 +267,11 @@ check_import 'import ssl; print(ssl.OPENSSL_VERSION)' 'ssl (openssl)'
 check_import 'import sqlite3; print(sqlite3.sqlite_version)' 'sqlite3'
 check_import 'import dbm.gnu' 'dbm.gnu (gdbm)'
 check_import 'import tkinter; print("tk", tkinter.TkVersion)' 'tkinter'
+
+# -I ignores PYTHONPYCACHEPREFIX, so this exercises the sitecustomize hook specifically.
+pycache_prefix="$("$py" -I -c 'import sys; print(sys.pycache_prefix or "")')"
+[[ -n "$pycache_prefix" && "$pycache_prefix" != "$prefix"* ]] || fail "sitecustomize did not set a per-user bytecode cache prefix: '$pycache_prefix'."
+echo "ok:   bytecode cache prefix - $pycache_prefix"
 
 case ":$PATH:" in
   *":$prefix/bin:"*) echo "PATH contains $prefix/bin." ;;

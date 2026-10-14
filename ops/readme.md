@@ -9,6 +9,9 @@ Shell scripts for setting up computers: macOS developer machines and Fedora Linu
 Run `common/install-rust.sh` to install Rust for building native Python packages.
 The invoking user maintains the shared toolchain; each build user keeps a private Cargo cache.
 
+Run `common/build-python.sh` to build and install the shared CPython at `/opt/py`.
+It installs `common/sitecustomize.py` into the stdlib, which keeps bytecode caches per user and out of source trees; see its docstring.
+
 Run `common/install-vector.sh` to install the approved Vector release on Linux (x86_64 or aarch64) or macOS (Apple Silicon).
 The service setup script remains Linux-only at `linux/vector/setup.bash`.
 
