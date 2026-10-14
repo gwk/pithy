@@ -112,8 +112,9 @@ iotest-full:
 
 lint: lint-py lint-rust
 
+# pyflakes cannot exclude paths, so the ops sources are enumerated to skip the ops/_build tree.
 lint-py:
-  python3 -m pyflakes {{pkg_srcs}} ops tap_backblaze_/test-integration test-diff tools
+  python3 -m pyflakes {{pkg_srcs}} $(find ops -name '*.py' -not -path 'ops/_build/*') tap_backblaze_/test-integration test-diff tools
 
 # Pin the interpreter: otherwise pyo3's build script searches `PATH` and rebuilds whenever `PATH` changes.
 lint-rust: fmt-rust-check

@@ -29,7 +29,7 @@ def check_dir(path:str, collisions:list[tuple[str,str]]) -> bool:
   dirs:dict[str,str] = {}
   modules:list[tuple[str,str]] = []
   for entry in children:
-    if entry.name.startswith('.') or entry.name in ('__pycache__', 'site-packages', 'node_modules'): continue
+    if entry.name.startswith('.') or entry.name in ('__pycache__', '_build', 'site-packages', 'node_modules'): continue
     if entry.is_dir():
       if check_dir(entry.path, collisions): dirs[entry.name] = entry.path
     elif entry.name.endswith(('.py', '.pyi')):
