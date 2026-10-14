@@ -132,6 +132,7 @@ For workspace synchronization, uv's cache keys include `pyrrhus/**/*.rs`, `Cargo
 A plain `uv sync` does not regenerate wrappers; use `just develop-rust` after interface changes.
 
 Rust build products go to `_build/cargo` rather than `target`, per the `.cargo/config.toml` at the repository root.
+An exported `CARGO_TARGET_DIR` takes precedence; gloss sets one per user so that the principal and agent never share a build directory.
 
 To build a release wheel:
 

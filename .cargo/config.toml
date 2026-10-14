@@ -3,6 +3,8 @@
 # Cargo discovers this file by walking up from the directory it is invoked in,
 # so it applies to every crate in this repo regardless of where cargo is run.
 # Keep Rust build products under `_build` alongside the rest of our intermediates, rather than in `target`.
+# This is only the fallback: an exported CARGO_TARGET_DIR takes precedence, and gloss sets one per user,
+# because users sharing a checkout must not share a build directory. See gloss `zsh/env.zsh`.
 
 [build]
 target-dir = "_build/cargo"
