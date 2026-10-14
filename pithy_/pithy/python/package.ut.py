@@ -10,8 +10,8 @@ from unittest.mock import patch
 
 from pithy.fs import abs_path, make_dirs, make_link
 from pithy.path import path_dir, path_join
-from pithy.python.package import (find_package_root, qualname_rel_to, resolve_module_in_dirs, resolve_module_installed,
-  resolve_spec_paths, SpecResolutionError, walk_module_paths)
+from pithy.python.package import (find_package_root, module_name_for_path, qualname_rel_to, resolve_module_in_dirs,
+  resolve_module_installed, resolve_spec_paths, SpecResolutionError, walk_module_paths)
 from utest import utest, utest_exc, utest_seq, utest_val
 
 
@@ -168,6 +168,12 @@ with TemporaryDirectory() as tmp:
     utest(str(first / 'pkg/own.py'), resolve_module_installed, 'editable.own', safe_path=True)
     utest(str(first / 'pkg/__init__.py'), resolve_module_installed, 'choice', safe_path=True)
     utest(None, resolve_module_installed, 'editable.child', safe_path=True)
+  # Editable finders may return a .py origin even when its interface exists.
+  (first / 'pkg/__init__.pyi').write_text('raise RuntimeError("Never execute interfaces.")\n')
+  with patch.object(sys, 'meta_path', [EditableFinder, *sys.meta_path]):
+    utest(str(first / 'pkg/__init__.pyi'), resolve_module_installed, 'editable', safe_path=True, prefer_stubs=True)
+    utest(str(first / 'pkg/own.py'), resolve_module_installed, 'editable.own', safe_path=True, prefer_stubs=True)
+    utest(None, resolve_module_installed, 'editable.child', safe_path=True, prefer_stubs=True)
   utest_val(False, 'editable' in sys.modules)
 
 
@@ -216,3 +222,43 @@ with TemporaryDirectory() as tmp:
       utest_val(0 if succeeds else 1, result.returncode, desc=(module, args, safe_env, result.stderr))
       if not succeeds:
         utest_val(True, 'cannot resolve module' in result.stderr, desc=result.stderr)
+
+
+# Interface selection is static and does not change implementation-oriented resolution.
+with TemporaryDirectory() as tmp:
+  root = Path(tmp)
+  names = ('pkg/__init__.pyi', 'pkg/mod.py', 'pkg/mod.pyi', 'pkg/only.pyi', 'pkg/test.ut.py',
+    'pkg/sub/__init__.pyi', 'pkg/sub/child.pyi', 'native.pyi', f'native{EXTENSION_SUFFIXES[0]}')
+  for name in names:
+    stub_path = root / name
+    stub_path.parent.mkdir(parents=True, exist_ok=True)
+    stub_path.write_text('raise RuntimeError("Never execute interfaces.")\n')
+  source = str(root / 'pkg/mod.py')
+  interface = source + 'i'
+  dirs = [tmp]
+  utest(('pkg.mod', tmp), module_name_for_path, interface)
+  utest(('pkg.sub', tmp), module_name_for_path, str(root / 'pkg/sub/__init__.pyi'))
+  utest(source, resolve_module_in_dirs, 'pkg.mod', dirs)
+  utest(interface, resolve_module_in_dirs, 'pkg.mod', dirs, prefer_stubs=True)
+  utest(str(root / 'pkg/only.pyi'), resolve_module_in_dirs, 'pkg.only', dirs, prefer_stubs=True)
+  utest(None, resolve_module_in_dirs, 'native', dirs)
+  utest(str(root / 'native.pyi'), resolve_module_in_dirs, 'native', dirs, prefer_stubs=True)
+  utest([source], resolve_spec_paths, source, prefer_stubs=True)
+  utest([interface], resolve_spec_paths, interface, safe_path=True, prefer_stubs=True)
+  expected = [str(root / name) for name in names if name.startswith('pkg/') and name.endswith('.pyi')]
+  utest(sorted(expected), resolve_spec_paths, str(root / 'pkg'), prefer_stubs=True)
+  utest(sorted(expected + [str(root / 'pkg/test.ut.py')]), resolve_spec_paths, str(root / 'pkg'),
+    prefer_stubs=True, include_utests=True)
+  utest_seq(sorted([source, str(root / 'pkg/test.ut.py'), *expected]), walk_module_paths, str(root / 'pkg'),
+    include_stubs=True)
+  with patch.object(sys, 'path', dirs), patch.dict(os.environ, {'PYTHONSAFEPATH': ''}):
+    utest(interface, resolve_module_installed, 'pkg.mod', prefer_stubs=True)
+    utest(str(root / 'pkg/sub/__init__.pyi'), resolve_module_installed, 'pkg.sub', prefer_stubs=True)
+    utest(str(root / 'native.pyi'), resolve_module_installed, 'native', prefer_stubs=True)
+    utest(sorted(expected), resolve_spec_paths, 'pkg', prefer_stubs=True)
+  # A stub-only regular package still shadows a later package containing additional children.
+  later = root / 'later'
+  (later / 'pkg').mkdir(parents=True)
+  (later / 'pkg/__init__.pyi').write_text('')
+  (later / 'pkg/other.pyi').write_text('')
+  utest(None, resolve_module_in_dirs, 'pkg.other', [tmp, str(later)], prefer_stubs=True)

@@ -19,7 +19,7 @@ from ..path import norm_path, path_dir, path_name
 
 
 _context_keywords_ = ['PYTHONSAFEPATH', 'discovery', 'find_spec', 'importlib', 'module name', 'module path', 'package root',
-  'pkgutil', 'py.typed', 'resolve', 'sys.path', 'walk']
+  'pkgutil', 'py.typed', 'pyi', 'resolve', 'stubs', 'sys.path', 'walk']
 
 
 target_resolution_help = '''
@@ -38,16 +38,18 @@ class SpecResolutionError(Exception):
   'A target spec could not be resolved to Python files.'
 
 
-def walk_module_paths(*paths:str, exclude_dirs:Iterable[str]=()) -> Iterator[str]:
+def walk_module_paths(*paths:str, exclude_dirs:Iterable[str]=(), include_stubs:bool=False) -> Iterator[str]:
   '''
   Yield Python source file paths recursively without importing modules or resolving dependencies.
   Inputs are files or directories; directory trees need not contain package markers such as __init__.py.
   Includes private modules, scripts and tests. Paths are normalized, and directory entries are sorted.
-  Overlapping inputs are deduplicated by real path. Explicit input files must have the .py suffix.
+  Overlapping inputs are deduplicated by real path. Explicit input files must have the .py suffix,
+  or .pyi when `include_stubs` is enabled. This includes both files of a pair without selecting one.
   Skip discovered symlinks, hidden names, __pycache__, virtual environments with pyvenv.cfg,
   and directories whose names are in `exclude_dirs`. Explicit input roots are not excluded.
   Filesystem errors propagate.
   '''
+  suffixes = ('.py', '.pyi') if include_stubs else ('.py',)
   excluded = frozenset(exclude_dirs) | {'__pycache__'}
   seen:set[str] = set()
 
@@ -62,10 +64,10 @@ def walk_module_paths(*paths:str, exclude_dirs:Iterable[str]=()) -> Iterator[str
         if is_dir(child, follow=False):
           if name in excluded or is_file(path_join(child, 'pyvenv.cfg'), follow=False): continue
           yield from walk(child)
-        elif name.endswith('.py') and is_file(child, follow=False):
+        elif name.endswith(suffixes) and is_file(child, follow=False):
           yield from walk(child)
     elif is_file(path, follow=True):
-      if not path.endswith('.py'): raise ValueError(f'not a Python source file: {path!r}')
+      if not path.endswith(suffixes): raise ValueError(f'not a Python source file: {path!r}')
       yield path
     else:
       raise FileNotFoundError(path)
@@ -93,13 +95,13 @@ def find_package_root(path:str, *, package_roots:set[str]|None=None) -> str|None
 
 def module_name_for_path(path:str) -> tuple[str,str]:
   '''
-  Derive the dotted module name for a Python file by walking up through package directories (those containing __init__.py).
+  Derive the dotted module name by walking up through package directories containing __init__.py or __init__.pyi.
   Returns (module name, search dir), where the search dir is the parent of the topmost package directory.
   '''
   path = abs_path(path)
   dir = path_dir(path)
-  parts = [path_name(path).removesuffix('.py')]
-  while path_exists(path_join(dir, '__init__.py'), follow=True):
+  parts = [path_name(path).removesuffix('.pyi').removesuffix('.py')]
+  while any(is_file(path_join(dir, '__init__' + ext), follow=True) for ext in ('.py', '.pyi')):
     parts.append(path_name(dir))
     parent = path_dir(dir)
     if parent == dir: break
@@ -109,26 +111,27 @@ def module_name_for_path(path:str) -> tuple[str,str]:
   return '.'.join(parts), dir
 
 
-def resolve_module_in_dirs(name:str, search_dirs:Iterable[str]) -> str|None:
+def resolve_module_in_dirs(name:str, search_dirs:Iterable[str], *, prefer_stubs:bool=False) -> str|None:
   '''
   Resolve a dotted name within explicit filesystem roots without loading modules.
   Select each package before searching its children; regular packages shadow later copies.
   Namespace portions are combined, and packages take precedence over same-named module files.
   Native and bytecode-only modules can shadow source files, but return None.
+  With `prefer_stubs`, .pyi interfaces take precedence within each search directory, including stub-only packages.
   '''
   parts = name.split('.')
   if not all(parts): return None
   locations = list(search_dirs)
   for idx in range(len(parts)):
-    spec = _find_spec_in_dirs('.'.join(parts[:idx+1]), locations)
+    spec = _find_spec_in_dirs('.'.join(parts[:idx+1]), locations, prefer_stubs=prefer_stubs)
     if spec is None: return None
-    if idx == len(parts)-1: return _source_path(spec)
+    if idx == len(parts)-1: return _source_path(spec, prefer_stubs=prefer_stubs)
     if spec.submodule_search_locations is None: return None
     locations = list(spec.submodule_search_locations)
   return None
 
 
-def resolve_module_installed(name:str, *, safe_path:bool=False) -> str|None:
+def resolve_module_installed(name:str, *, safe_path:bool=False, prefer_stubs:bool=False) -> str|None:
   '''
   Resolve a dotted name in the running Python environment without loading target modules or their parents.
   `safe_path=True` acts like Python's `-P`: omit the interpreter's automatically prepended search directory.
@@ -140,7 +143,8 @@ def resolve_module_installed(name:str, *, safe_path:bool=False) -> str|None:
   Finders execute their lookup code, but this function never invokes loaders or imports target packages.
   Resolve descendants statically within the selected package's filesystem locations.
   Package initialization that changes __path__, custom submodule finders, and source inside archives are not supported.
-  Returns None for unresolved names, namespace packages themselves, and modules without a regular Python source file.
+  With `prefer_stubs`, resolve .pyi interfaces before implementations, without executing either.
+  Returns None for unresolved names, namespace packages themselves, and modules without a selected source file.
   '''
   if not name or not all(name.split('.')): return None
   search_dirs = list(sys.path)
@@ -150,20 +154,23 @@ def resolve_module_installed(name:str, *, safe_path:bool=False) -> str|None:
   spec = None
   for finder in sys.meta_path:
     try:
-      spec = finder.find_spec(top, search_dirs if finder is PathFinder else None)
+      if prefer_stubs and finder is PathFinder:
+        spec = _find_spec_in_dirs(top, search_dirs, prefer_stubs=True)
+      else:
+        spec = finder.find_spec(top, search_dirs if finder is PathFinder else None)
     except (ImportError, ValueError): return None
     if spec is not None: break
   if spec is None: return None
-  if not rest: return _source_path(spec)
+  if not rest: return _source_path(spec, prefer_stubs=prefer_stubs)
   if spec.submodule_search_locations is None: return None
-  return resolve_module_in_dirs(rest, spec.submodule_search_locations)
+  return resolve_module_in_dirs(rest, spec.submodule_search_locations, prefer_stubs=prefer_stubs)
 
 
 def resolve_spec_paths(spec:str, resolve_module:Callable[[str],str|None]|None=None, *, safe_path:bool=False,
- include_utests:bool=False) -> list[str]:
+ include_utests:bool=False, prefer_stubs:bool=False) -> list[str]:
   '''
   Resolve a target spec to a sorted list of Python file paths.
-  A spec is interpreted as a path if it ends in `.py`, contains a slash, or is `.` or `..`.
+  A spec is interpreted as a path if it ends in `.py` or `.pyi`, contains a slash, or is `.` or `..`.
   Outside safe-path mode, other existing filesystem entries are also interpreted as paths.
   Otherwise it is treated as a dotted module name and resolved with `resolve_module`,
   which defaults to `resolve_module_installed` with the given `safe_path` setting.
@@ -171,27 +178,38 @@ def resolve_spec_paths(spec:str, resolve_module:Callable[[str],str|None]|None=No
   A custom resolver is responsible for its own module search policy.
   A dotted name that resolves to a package `__init__` file includes all of the package's submodule files.
   Directory and package walks omit `.ut.py` unit test files unless `include_utests` is set; an explicit file path is always used.
+  With `prefer_stubs`, directory and package walks select .pyi over paired .py files, and dotted names resolve interfaces.
+  Explicit files always select the requested source. Custom resolvers must implement their own stub preference.
   Raises SpecResolutionError if the spec cannot be resolved to any Python files.
   '''
-  is_path = spec.endswith('.py') or '/' in spec or spec in ('.', '..')
+  is_path = spec.endswith(('.py', '.pyi')) or '/' in spec or spec in ('.', '..')
   if is_path or (not _safe_path_enabled(safe_path) and path_exists(spec, follow=True)):
-    try: paths = _walk_py_files(spec, include_utests=include_utests)
+    try: paths = _walk_py_files(spec, include_utests=include_utests, prefer_stubs=prefer_stubs)
     except FileNotFoundError: raise SpecResolutionError(f'target path not found: {spec!r}') from None
     if not paths: raise SpecResolutionError(f'target path contains no Python files: {spec!r}')
     return paths
-  mod_path = resolve_module(spec) if resolve_module is not None else resolve_module_installed(spec, safe_path=safe_path)
+  mod_path = (resolve_module(spec) if resolve_module is not None else
+    resolve_module_installed(spec, safe_path=safe_path, prefer_stubs=prefer_stubs))
   if mod_path is None: raise SpecResolutionError(f'cannot resolve module {spec!r}.')
-  if mod_path.endswith('__init__.py'): # A package spec includes all of its submodules.
-    return _walk_py_files(path_dir(mod_path), include_utests=include_utests)
+  if mod_path.endswith(('__init__.py', '__init__.pyi')): # A package spec includes all of its submodules.
+    return _walk_py_files(path_dir(mod_path), include_utests=include_utests, prefer_stubs=prefer_stubs)
   return [mod_path]
 
 
-def _walk_py_files(path:str, *, include_utests:bool) -> list[str]:
+def _walk_py_files(path:str, *, include_utests:bool, prefer_stubs:bool) -> list[str]:
   'Sorted Python files under `path`; a file path is returned as is, while walks omit `.ut.py` files unless `include_utests`.'
   if is_file(path, follow=True): return [path]
-  paths = walk_files(path, file_exts=['.py'])
-  if not include_utests: paths = (p for p in paths if not p.endswith('.ut.py'))
+  paths = set(walk_files(path, file_exts=['.py', '.pyi'] if prefer_stubs else ['.py']))
+  if prefer_stubs: paths = set(prefer_stub_paths(paths))
+  if not include_utests: paths = {p for p in paths if not p.endswith(('.ut.py', '.ut.pyi'))}
   return sorted(paths)
+
+
+def prefer_stub_paths(paths:Iterable[str]) -> list[str]:
+  'Select .pyi over paired .py paths without filesystem access; preserve input order.'
+  paths = list(paths)
+  stubs = {p for p in paths if p.endswith('.pyi')}
+  return [p for p in paths if not (p.endswith('.py') and p + 'i' in stubs)]
 
 
 def qualname_rel_to(base:str, qual:str) -> str:
@@ -219,16 +237,25 @@ def _safe_path_enabled(safe_path:bool) -> bool:
   return safe_path or sys.flags.safe_path or (not sys.flags.ignore_environment and bool(environ.get('PYTHONSAFEPATH')))
 
 
-def _source_path(spec:ModuleSpec) -> str|None:
+def _source_path(spec:ModuleSpec, *, prefer_stubs:bool=False) -> str|None:
   origin = spec.origin
-  return origin if origin and origin.endswith('.py') and is_file(origin, follow=True) else None
+  if not origin: return None
+  if prefer_stubs:
+    for suffix in (*EXTENSION_SUFFIXES, *BYTECODE_SUFFIXES, '.py'):
+      if origin.endswith(suffix):
+        stub = origin.removesuffix(suffix) + '.pyi'
+        if is_file(stub, follow=True): return stub
+        break
+  suffixes = ('.py', '.pyi') if prefer_stubs else ('.py',)
+  return origin if origin.endswith(suffixes) and is_file(origin, follow=True) else None
 
 
-def _find_spec_in_dirs(name:str, search_dirs:Iterable[str]) -> ModuleSpec|None:
+def _find_spec_in_dirs(name:str, search_dirs:Iterable[str], *, prefer_stubs:bool=False) -> ModuleSpec|None:
   # FileFinder returns plain namespace locations without requiring parent packages in sys.modules.
   namespaces:list[str] = []
   for directory in search_dirs:
-    finder = FileFinder(directory or '.', (ExtensionFileLoader, EXTENSION_SUFFIXES), (SourceFileLoader, SOURCE_SUFFIXES),
+    finder = FileFinder(directory or '.', (SourceFileLoader, ['.pyi'] if prefer_stubs else []),
+      (ExtensionFileLoader, EXTENSION_SUFFIXES), (SourceFileLoader, SOURCE_SUFFIXES),
       (SourcelessFileLoader, BYTECODE_SUFFIXES))
     spec = finder.find_spec(name)
     if spec is None: continue

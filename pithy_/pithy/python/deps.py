@@ -272,7 +272,7 @@ class DepGraph:
 
   def is_package(self, name:str) -> bool:
     path = self.resolve_module(name)
-    return path is not None and path.endswith('__init__.py')
+    return path is not None and path.endswith(('__init__.py', '__init__.pyi'))
 
 
   def split_spec(self, spec:str) -> tuple[str,str|None]:

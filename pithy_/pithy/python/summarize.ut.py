@@ -2,8 +2,10 @@
 
 from contextlib import redirect_stdout
 from io import StringIO
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
-from pithy.python.summarize import DocsMode, ModuleSummary
+from pithy.python.summarize import DocsMode, ModuleSummary, SummarizeCmd
 from utest import utest
 
 
@@ -350,3 +352,32 @@ sample.py: sample, 8 lines.
 6:     def nested(self): pass
 7:     def again(self): pass
 ''', summary_output, members_source, ['Outer.Inner'])
+
+
+# Interface summaries keep editable source paths and correct names, including selectors and dependency annotations.
+with TemporaryDirectory() as tmp:
+  package = Path(tmp) / 'example'
+  package.mkdir()
+  interface = package / '__init__.pyi'
+  (package / 'helper.py').write_text('class Thing: pass\n')
+  interface.write_text("'Interface module.'\nfrom pathlib import Path\nfrom .helper import Thing\n"
+    "def f(path:Path, other:Thing) -> str:\n  \"\"\"Summary.\n\n  Details.\n  \"\"\"\n")
+  source = package / '__init__.py'
+  source.write_text("'Implementation module.'\n")
+  for target in (str(package), str(interface)):
+    with redirect_stdout(out := StringIO()):
+      SummarizeCmd.parse([target + ':f', '-locs', '-docs', 'full', '-uses']).run()
+    output = out.getvalue()
+    utest(True, lambda: f'{interface}: example,' in output)
+    utest(True, lambda: f'{interface}:4: def f(path:Path,' in output)
+    utest(True, lambda: f'{interface}:7:   Details.' in output)
+    utest(True, lambda: 'pathlib.Path' in output)
+    utest(True, lambda: '.helper.Thing' in output)
+    utest(False, lambda: 'Implementation module.' in output)
+  with redirect_stdout(out := StringIO()):
+    SummarizeCmd.parse([str(source)]).run()
+  utest(True, lambda: 'Implementation module.' in out.getvalue())
+  with redirect_stdout(out := StringIO()):
+    SummarizeCmd.parse([str(package), '-full']).run()
+  utest(True, lambda: 'Interface module.' in out.getvalue())
+  utest(False, lambda: 'Implementation module.' in out.getvalue())

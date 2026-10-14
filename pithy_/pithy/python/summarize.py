@@ -30,6 +30,10 @@ so that locations survive filtering with grep and are recognized by editors.
 Docstrings on definition header lines remain visible with any mode.
 
 A target is a file, a directory, or a dotted module name, optionally followed by `:` and a comma-separated list of selectors.
+Directory and dotted module targets prefer `.pyi` interfaces over paired `.py` implementations.
+Explicit file paths select exactly that file. Headers and `-locs` identify the selected source, including its suffix.
+`-uses` on an interface reports references in its declarations, not its implementation.
+
 Directory and package targets omit `.ut.py` unit test files unless `-include-utests` is given.
 A selector is a definition name, a dotted qualified name such as `Class.method`, or a glob pattern over either.
 Selecting a class includes its members; selecting a member also prints the enclosing class header for context.
@@ -60,7 +64,7 @@ from .package import module_name_for_path, resolve_spec_paths, safe_path_help, S
 
 
 _context_keywords_ = ['api', 'ast', 'decorators', 'definitions', 'docstring', 'inspect', 'line numbers', 'outline', 'overview',
-  'signature', 'source']
+  'pyi', 'signature', 'source', 'stubs']
 
 
 type DocsMode = Literal['default','first','full','none']
@@ -84,6 +88,8 @@ class SummarizeCmd(Cmd):
   A target is a file, directory or dotted module name, optionally followed by `:` and comma-separated selectors,
   e.g. `pithy.iterable:first_el,chunk*` or `pkg/mod.py:Cls.method`.
   Definition headers and docstrings are shown as line-numbered source.
+  Directory and dotted targets prefer .pyi interfaces. Explicit files select exactly that source;
+  headers and -locs retain its .py or .pyi suffix so documentation can be edited at its origin.
   '''
 
   help_addenda = (target_resolution_help, safe_path_help)
@@ -107,7 +113,8 @@ class SummarizeCmd(Cmd):
       target, _, sel_text = spec.rpartition(':')
       if not target: target, sel_text = sel_text, ''
       selectors = [s for s in sel_text.split(',') if s]
-      try: paths = resolve_spec_paths(target, safe_path=self.safe_path, include_utests=self.include_utests)
+      try: paths = resolve_spec_paths(target, safe_path=self.safe_path, include_utests=self.include_utests,
+        prefer_stubs=True)
       except SpecResolutionError as e: exit(f'pithy.python.summarize error: {e}')
       unmatched_all = set(selectors) # Selectors that match in none of the files.
       for path in paths:
