@@ -184,7 +184,8 @@ class DbView:
     div.append(dbview_ui_script())
     div.append(H1(A(href=path, _='SELECT')))
 
-    form = div.append(Form(cl='kv-grid-max', action=path, autocomplete='off'))
+    form = div.append(Form(cl='kv-grid-max', action=path, autocomplete='off',
+      oninput='if (event.target.name !== "offset") this.elements.offset.value = 0'))
     #^ autocomplete off is important for the table select input,
     #^ which otherwise remembers the current value when the user presses the back button.
 
@@ -517,6 +518,10 @@ def dbview_ui_script() -> Script:
   return Script('''
   function updateAllColCheckboxes(checked) {
     const checkboxes = document.querySelectorAll('.en-col input[type="checkbox"]');
-    checkboxes.forEach(el => el.checked = checked);
+    checkboxes.forEach(el => {
+      if (el.checked === checked) return;
+      el.checked = checked;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    });
   }
   ''')
