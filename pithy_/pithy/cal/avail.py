@@ -121,7 +121,12 @@ class DaySlots:
 
 
 def slot_for_minute(minute:int) -> int:
-  'Convert a five-minute-aligned day boundary, including 1440, to a slot boundary.'
+  '''
+  Convert a minute offset from midnight to a slot boundary index.
+
+  Raise ValueError if the offset is not an integer in 0..1440 or does not fall on a five-minute slot boundary.
+  The endpoint 1440 denotes midnight at the end of the day.
+  '''
   if type(minute) is not int or not 0 <= minute <= day_minutes or minute % slot_minutes:
     raise ValueError(f'Invalid five-minute day boundary: {minute!r}.')
   return minute // slot_minutes
