@@ -36,28 +36,34 @@ def main_migrate(migrations:types.ModuleType|str, *, config:DbConfig|None=None, 
   Parse a migration command verb from argv (defaulting to sys.argv) and execute it.
 
   Commands:
-  * check: validate the migrations package without touching the database.
+  * check: validate the migrations package and report the stored and latest migration versions when config is provided.
   * run: run all pending versioned migrations up to the target version, then check the result against the schemas.
     The -rerun flag instead reapplies the latest (presumably idempotent) batch, for quick iteration on its files.
   * gen: generate the next versioned migration file by diffing the database against the schemas.
   * sync: automigrate the database to the current schemas and update `user_version` to the latest migration version;
     use it to reconcile a drifted database without a formal migration.
 
-  config defaults to `Database.global_config()` for the commands that open the database;
-  check does not require a config, but uses one if provided to compare its user_version against the latest migration.
+  config defaults to `Database.global_config()` for run, gen, and sync;
+  check without config only validates files. With config, it opens the database read-only to report its stored version;
+  config.user_version is the application's expected version, not the database's current version.
   '''
 
   def get_config() -> DbConfig:
     return config or Database.global_config()
 
   def main_check(args:Namespace) -> None:
-    'Check that the migration files are well-formed: names, version contiguity, and .py migration functions.'
+    'Validate migration files and, with config, report the current database version alongside the latest migration version.'
     files = check_migrations(migrations)
     latest = max((f.version for f in files), default=0)
-    logI('Checked migration files.', count=len(files), latest_version=latest)
-    if config is not None and config.user_version is not None and config.user_version != latest:
-      logW('Latest migration version does not match the configured user_version.', latest=latest,
-        user_version=config.user_version)
+    if config is None:
+      logI('Checked migration files.', latest_version=latest)
+      return
+    with Database.ro(config) as db:
+      current = db.conn.cursor().user_version()
+    logI('Checked migrations.', current_version=current, latest_version=latest)
+    if config.user_version is not None and config.user_version != latest:
+      logW('Latest migration version does not match the configured user_version.', latest_version=latest,
+        configured_version=config.user_version)
 
   def main_run(args:Namespace) -> None:
     'Run all pending versioned migrations, then check the result against the schemas (if provided).'

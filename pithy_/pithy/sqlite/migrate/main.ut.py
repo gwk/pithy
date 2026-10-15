@@ -5,10 +5,14 @@ import os
 import sys
 import tempfile
 from collections.abc import Generator
-from contextlib import contextmanager
+from contextlib import contextmanager, redirect_stdout
+from io import StringIO
+from json import loads
+from unittest.mock import patch
 
 from pithy.fs import make_dirs
-from pithy.logs import adjust_log_level
+from pithy.json import JsonDict
+from pithy.logs import adjust_log_level, render_log_json
 from pithy.sqlite.database import Database, DbConfig
 from pithy.sqlite.migrate.main import main_migrate
 from pithy.sqlite.migrate.transaction import MigrationError
@@ -63,6 +67,13 @@ def table_names(config:DbConfig, schema:str='main') -> list[str]:
       f"SELECT name FROM {schema}.sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name")]
 
 
+def check_records(pkg:str, config:DbConfig|None=None) -> list[JsonDict]:
+  output = StringIO()
+  with redirect_stdout(output), patch('pithy.logs.render_log_fn', render_log_json), adjust_log_level('info'):
+    main_migrate(pkg, config=config, argv=['check'])
+  return [loads(line) for line in output.getvalue().splitlines()]
+
+
 # check: a valid package passes without a config or database.
 @utest_run
 def _test_check() -> None:
@@ -75,7 +86,58 @@ def m0002_gadgets(c:Cursor) -> None:
   with migrations_pkg() as (pkg, d):
     write_migration(d, 'm0001_widgets.sql', 'CREATE TABLE widgets (id INTEGER PRIMARY KEY);')
     write_migration(d, 'm0002_gadgets.py', py)
-    with adjust_log_level('warn'): main_migrate(pkg, argv=['check'])
+    utest_val([{'level': 'info', '_': 'Checked migration files.', 'latest_version': 2}], check_records(pkg))
+
+
+# check: report stored versions independently of the configured version and the number of migration files.
+@utest_run
+def _test_check_versions() -> None:
+  for current in (0, 1, 2, 3):
+    for configured in (None, 2, 4):
+      with tempfile.TemporaryDirectory() as root, migrations_pkg() as (pkg, d):
+        config = make_group_config(root, user_version=configured)
+        write_migration(d, 'm0001_widgets.sql', 'CREATE TABLE widgets (id INTEGER PRIMARY KEY);')
+        write_migration(d, 'm0002_a.sql', '-- First file in version 2.\n')
+        write_migration(d, 'm0002_b.sql', '-- Second file in version 2.\n')
+        with adjust_log_level('error'), Database.rw(config) as db:
+          with db.conn:
+            for name in config.names: db.conn.cursor().set_user_version(name, current)
+        records = check_records(pkg, config)
+        status = [r for r in records if r['_'] == 'Checked migrations.']
+        utest_val([{'level': 'info', '_': 'Checked migrations.', 'current_version': current, 'latest_version': 2}], status)
+        utest_val(False, any('count' in r for r in records))
+        mismatch = [r for r in records if 'configured_version' in r]
+        utest_val([{'level': 'warn', '_': 'Latest migration version does not match the configured user_version.',
+          'latest_version': 2, 'configured_version': 4}] if configured == 4 else [], mismatch)
+        with adjust_log_level('error'), Database.ro(config) as db:
+          utest_val([current, current], [db.conn.cursor().user_version(name) for name in config.names])
+        with adjust_log_level('error'):
+          utest_val([], table_names(config), 'check did not apply migrations')
+
+
+# check: an empty package has latest version 0; attached database mismatches are still reported.
+@utest_run
+def _test_check_empty_and_attached_mismatch() -> None:
+  with tempfile.TemporaryDirectory() as root, migrations_pkg() as (pkg, _d):
+    config = make_group_config(root)
+    utest_val([{'level': 'info', '_': 'Checked migrations.', 'current_version': 0, 'latest_version': 0}],
+      check_records(pkg, config))
+    with Database.rw(config) as db:
+      with db.conn: db.conn.cursor().set_user_version('aux', 1)
+    records = check_records(pkg, config)
+    utest_val(True, any(r['level'] == 'warn' and 'Attached user_version is out of sync' in str(r['_']) for r in records))
+
+
+# check: a configured but missing database fails without creating database files or reporting a current version.
+@utest_run
+def _test_check_missing_database() -> None:
+  with tempfile.TemporaryDirectory() as root, migrations_pkg() as (pkg, _d):
+    config = DbConfig(names=('main',), data_dir=root, user_version=2)
+    output = StringIO()
+    with redirect_stdout(output):
+      utest_exc(SystemExit, main_migrate, pkg, config=config, argv=['check'])
+    utest_val('', output.getvalue())
+    utest_val(False, os.path.exists(config.path('main')))
 
 
 # check: a .py migration missing its stem-named function raises.

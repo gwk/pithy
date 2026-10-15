@@ -51,8 +51,12 @@ The script must run in the application's environment, because `.py` migrations c
 
 ## Commands
 
-* `check`: validate the migrations package without touching a database: file naming, version contiguity,
-  and that each `.py` migration imports cleanly and defines its stem-named function.
+* `check`: validate file naming, version contiguity, and that each `.py` migration imports cleanly and defines its stem-named function.
+  With an explicit config, open the database group read-only and report `current_version` (the stored `main.user_version`) alongside `latest_version` (the highest migration file version, or 0 when there are no files).
+  The configured `user_version` is the application's expected version; it is not used as the current database version.
+  Existing warnings report attached database version mismatches and differences from the configured version.
+  Missing or unreadable databases fail the check; they are not created or reported as version 0.
+  Without config, only validate the files and report `latest_version`.
 * `run [-target N] [-rerun] [-dry-run]`: run all pending versioned migrations; the target defaults to `config.user_version`.
   After migrating to the latest version, the database is diffed against the declared schemas and any remaining drift
   is reported as a warning: the migration files should produce exactly the declared schemas.
