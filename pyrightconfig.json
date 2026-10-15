@@ -1,4 +1,12 @@
 {
+  "exclude": [
+    "**/_build/**",
+    "_misc/**",
+    "dist/**",
+    "**/__pycache__",
+    "**/.*",
+    "**/node_modules"
+  ],
   "pythonVersion": "3.14",
   "reportPrivateImportUsage": false
 }

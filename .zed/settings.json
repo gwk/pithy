@@ -1,6 +1,6 @@
 // See: https://zed.dev/docs/configuring-zed#settings-files
 {
-  "file_scan_exclusions": ["**/.DS_Store", "**/__pycache__"],
+  "file_scan_exclusions": ["**/.DS_Store", "**/__pycache__", "**/_build"],
   "file_scan_inclusions": [
     ".claude",
     "_todo.md",
