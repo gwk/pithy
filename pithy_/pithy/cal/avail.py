@@ -3,7 +3,10 @@
 '''
 Availability within a local wall-clock day, represented by normalized five-minute intervals.
 
-Intervals are half-open. Slot boundaries run from 0 through 288; 288 is the following midnight.
+Intervals are half-open. A minute offset is a position measured in minutes from midnight, from 0 through 1440.
+A slot boundary index is a position on the five-minute grid, from 0 through 288.
+The final boundary in either unit denotes midnight at the end of the day.
+A duration in minutes measures an interval's length; a cadence in minutes measures the spacing between candidate starts.
 This module does not resolve dates, time zones, recurrence, or daylight-saving transitions.
 Callers must resolve those separately when turning a wall-clock schedule into actual appointments.
 '''
@@ -22,7 +25,11 @@ day_slots = day_minutes // slot_minutes
 
 @dataclass(frozen=True, init=False)
 class DaySlots:
-  '''An immutable union of five-minute slots, sorted and merged into disjoint, nonadjacent intervals.'''
+  '''
+  An immutable union of five-minute slots, sorted and merged into disjoint, nonadjacent intervals.
+
+  Each pair in `ranges` contains the start and end slot boundary indices of a half-open interval.
+  '''
 
   ranges:tuple[tuple[int,int],...]
 
@@ -41,17 +48,19 @@ class DaySlots:
 
   @classmethod
   def from_minutes(cls, ranges:Iterable[tuple[int,int]]) -> DaySlots:
-    'Construct from minute-of-day boundaries. Reject boundaries not divisible by five; do not round.'
+    'Construct from pairs of minute offsets. Raise ValueError for invalid offsets or slot misalignment; do not round.'
     return cls((slot_for_minute(start), slot_for_minute(end)) for start, end in ranges)
 
 
   @property
   def minute_ranges(self) -> tuple[tuple[int,int],...]:
+    'Return the half-open intervals as pairs of minute offsets.'
     return tuple((start * slot_minutes, end * slot_minutes) for start, end in self.ranges)
 
 
   @property
   def total_minutes(self) -> int:
+    'Return the total occupied duration in minutes.'
     return sum(end - start for start, end in self.ranges) * slot_minutes
 
 
@@ -99,16 +108,21 @@ class DaySlots:
 
 
   def contains_minutes(self, start:int, end:int) -> bool:
-    'Return whether the whole interval is contained. An empty interval is contained in every set.'
+    '''
+    Return whether the whole interval between the start and end minute offsets is contained.
+
+    An empty interval is contained in every set.
+    '''
     interval = DaySlots.from_minutes(((start, end),))
     return not (interval - self)
 
 
   def start_minutes(self, *, duration_minutes:int, step_minutes:int=slot_minutes) -> list[int]:
     '''
-    Return starts that fit the entire duration, with cadence anchored to midnight.
+    Return start minute offsets that fit the entire duration, with cadence anchored to midnight.
 
-    Duration and cadence must be positive multiples of five. Durations longer than a day yield no starts.
+    Duration and cadence are measured in minutes and must be positive multiples of five.
+    Durations longer than a day yield no starts.
     '''
     for name, value in (('duration_minutes', duration_minutes), ('step_minutes', step_minutes)):
       if type(value) is not int or value <= 0 or value % slot_minutes:
@@ -133,7 +147,7 @@ def slot_for_minute(minute:int) -> int:
 
 
 def minute_for_time(value:time) -> int:
-  'Convert a naive, five-minute-aligned time to minutes from midnight, rejecting sub-minute precision.'
+  'Convert a naive time on a slot boundary to a minute offset, rejecting sub-minute precision.'
   if value.tzinfo is not None or value.second or value.microsecond or value.minute % slot_minutes:
     raise ValueError(f'Expected a naive, five-minute-aligned time without seconds or microseconds: {value!r}.')
   return value.hour * 60 + value.minute
