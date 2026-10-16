@@ -50,7 +50,8 @@ as analyzed by `pithy.python.deps`. Callers are not shown here; query them with 
 Dotted targets resolve statically through the running Python environment; see `pithy.python.package.resolve_module_installed`.
 '''
 
-import ast
+from ast import (AnnAssign, Assign, AsyncFunctionDef, ClassDef, Constant, Expr, FunctionDef, get_docstring, get_source_segment,
+  If, List, Module, Name, parse as ast_parse, Pass, stmt as ast_stmt, Try, TryStar, Tuple, TypeAlias, With)
 from fnmatch import fnmatchcase
 from io import StringIO
 from sys import exit, stderr
@@ -69,9 +70,9 @@ _context_keywords_ = ['api', 'ast', 'code navigation', 'decorators', 'definition
 
 
 type DocsMode = Literal['default','first','full','none']
-type Def = ast.FunctionDef|ast.AsyncFunctionDef|ast.ClassDef
-type Assign = ast.Assign|ast.AnnAssign|ast.TypeAlias
-type Member = Def|Assign
+type Def = FunctionDef|AsyncFunctionDef|ClassDef
+type Assignment = Assign|AnnAssign|TypeAlias
+type Member = Def|Assignment
 
 ellipsis = '…' # The Unicode ellipsis marks elisions; unlike `...` it is never a Python token.
 
@@ -168,7 +169,7 @@ class ModuleSummary:
     self.text = text
     self.lines = text.split('\n')
     if self.lines[-1] == '': self.lines.pop()
-    self.tree = ast.parse(text, filename=path)
+    self.tree = ast_parse(text, filename=path)
     self.width = len(str(len(self.lines)))
     self.header_ranges = definition_header_ranges(text)
     self.last_printed_line = 0
@@ -195,17 +196,17 @@ class ModuleSummary:
     for member, qualname, selected in self.walk(self.tree.body, '', selectors, public=public, assigns=assigns, members=expand):
       self.separate_item(self.full_range(member)[0])
       if selected:
-        if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+        if isinstance(member, (FunctionDef, AsyncFunctionDef, ClassDef)):
           self.print_header(member)
           self.print_doc(member, mode=docs)
           note_indent = ' ' * (len(self.prefix(member.lineno)) + member.col_offset + 2)
-          if isinstance(member, ast.ClassDef) and not expand and (counts := self.member_counts(member, public=public, assigns=assigns)):
+          if isinstance(member, ClassDef) and not expand and (counts := self.member_counts(member, public=public, assigns=assigns)):
             print(f'{note_indent}members: {counts}')
           if uses and (text := uses.get(qualname)):
             print(f'{note_indent}uses: {text}')
         else:
           self.print_assign(member)
-      elif isinstance(member, ast.ClassDef): # An unselected class containing selected members is shown for context.
+      elif isinstance(member, ClassDef): # An unselected class containing selected members is shown for context.
         self.print_header(member)
 
 
@@ -218,7 +219,7 @@ class ModuleSummary:
     printed_through = 0
     for member, qualname, selected in self.walk(self.tree.body, '', selectors, public=public, assigns=True):
       if selected: start, end = self.full_range(member)
-      elif isinstance(member, ast.ClassDef): start, end = self.header_range(member)
+      elif isinstance(member, ClassDef): start, end = self.header_range(member)
       else: continue
       # A selected class already includes its descendants; overlapping selectors must not repeat source lines.
       start = max(start, printed_through + 1)
@@ -227,7 +228,7 @@ class ModuleSummary:
       printed_through = max(printed_through, end)
 
 
-  def walk(self, body:list[ast.stmt], prefix:str, selectors:list[str], *, public:bool, assigns:bool, members:bool=True
+  def walk(self, body:list[ast_stmt], prefix:str, selectors:list[str], *, public:bool, assigns:bool, members:bool=True
    ) -> Iterator[tuple[Member,str,bool]]:
     '''
     Yield (member, qualname, selected) for each definition and assignment, in source order.
@@ -235,14 +236,14 @@ class ModuleSummary:
     An unselected class is yielded as unselected only if it contains selected members, and only those members follow.
     '''
     for stmt in body:
-      if isinstance(stmt, (ast.If, ast.Try, ast.TryStar, ast.With)): # Conditional definitions are summarized in place.
+      if isinstance(stmt, (If, Try, TryStar, With)): # Conditional definitions are summarized in place.
         for sub_body in sub_bodies(stmt):
           yield from self.walk(sub_body, prefix, selectors, public=public, assigns=assigns, members=members)
         continue
       names = member_names(stmt)
       if not names: continue
       if public and all(n.startswith('_') for n in names): continue
-      if isinstance(stmt, ast.ClassDef):
+      if isinstance(stmt, ClassDef):
         qualname = prefix + stmt.name
         if is_selected(qualname, stmt.name, selectors):
           yield stmt, qualname, True
@@ -253,14 +254,14 @@ class ModuleSummary:
             yield stmt, qualname, False
             yield from inner
         continue
-      if not isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
+      if not isinstance(stmt, (FunctionDef, AsyncFunctionDef)):
         if not assigns: continue
-      assert isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Assign, ast.AnnAssign, ast.TypeAlias))
+      assert isinstance(stmt, (FunctionDef, AsyncFunctionDef, Assign, AnnAssign, TypeAlias))
       if any(is_selected(prefix + n, n, selectors) for n in names):
         yield stmt, prefix + names[0], True
 
 
-  def member_counts(self, node:ast.ClassDef, *, public:bool, assigns:bool) -> str:
+  def member_counts(self, node:ClassDef, *, public:bool, assigns:bool) -> str:
     '''
     Describe the direct members of a class that `-members` would list, e.g. `3 methods, 1 class, 2 attributes`.
     Empty if the class has no listed members.
@@ -268,8 +269,8 @@ class ModuleSummary:
     kinds = (('method', 'methods'), ('class', 'classes'), ('attribute', 'attributes'))
     counts = [0, 0, 0]
     for member, _, _ in self.walk(node.body, '', [], public=public, assigns=assigns, members=False):
-      if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)): counts[0] += 1
-      elif isinstance(member, ast.ClassDef): counts[1] += 1
+      if isinstance(member, (FunctionDef, AsyncFunctionDef)): counts[0] += 1
+      elif isinstance(member, ClassDef): counts[1] += 1
       else: counts[2] += 1
     return ', '.join(f'{n} {plural if n > 1 else singular}' for (singular, plural), n in zip(kinds, counts) if n)
 
@@ -277,13 +278,13 @@ class ModuleSummary:
   def check_selectors(self, selectors:list[str]) -> list[str]:
     'Return the selectors that match no definition in the module.'
     qualnames:set[tuple[str,str]] = set()
-    def collect(body:list[ast.stmt], prefix:str) -> None:
+    def collect(body:list[ast_stmt], prefix:str) -> None:
       for stmt in body:
-        if isinstance(stmt, (ast.If, ast.Try, ast.TryStar, ast.With)):
+        if isinstance(stmt, (If, Try, TryStar, With)):
           for sub_body in sub_bodies(stmt): collect(sub_body, prefix)
           continue
         for n in member_names(stmt): qualnames.add((prefix + n, n))
-        if isinstance(stmt, ast.ClassDef): collect(stmt.body, prefix + stmt.name + '.')
+        if isinstance(stmt, ClassDef): collect(stmt.body, prefix + stmt.name + '.')
     collect(self.tree.body, '')
     return [s for s in selectors if not any(is_selected(q, n, [s]) for q, n in qualnames)]
 
@@ -297,7 +298,7 @@ class ModuleSummary:
   def full_range(self, node:Member) -> tuple[int,int]:
     'The inclusive line range of a definition or assignment, including decorators.'
     start = node.lineno
-    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+    if isinstance(node, (FunctionDef, AsyncFunctionDef, ClassDef)):
       start = self.header_range(node)[0]
     return start, node.end_lineno or node.lineno
 
@@ -342,25 +343,25 @@ class ModuleSummary:
     self.print_line(end, line)
 
 
-  def print_assign(self, node:Assign) -> None:
+  def print_assign(self, node:Assignment) -> None:
     'Print the first source line of an assignment, marking a multi-line statement with an ellipsis.'
     suffix = f' {ellipsis}' if node.end_lineno and node.end_lineno > node.lineno else ''
     self.print_line(node.lineno, f'{self.lines[node.lineno-1]}{suffix}')
 
 
-  def print_doc(self, node:ast.Module|Def, *, mode:DocsMode) -> None:
+  def print_doc(self, node:Module|Def, *, mode:DocsMode) -> None:
     '''
     Print the docstring of a module or definition according to `mode`.
     The `default` mode shows a module docstring in full and summarizes definition docstrings; `first` summarizes both.
     '''
     if mode == 'none': return
-    doc = ast.get_docstring(node)
+    doc = get_docstring(node)
     if doc is None: return
     doc_node = node.body[0]
     start, end = doc_node.lineno, doc_node.end_lineno or doc_node.lineno
-    header_end = 0 if isinstance(node, ast.Module) else self.header_range(node)[1]
+    header_end = 0 if isinstance(node, Module) else self.header_range(node)[1]
     if mode == 'first' or (mode == 'default' and header_end):
-      assert isinstance(doc_node, ast.Expr) and isinstance(doc_node.value, ast.Constant)
+      assert isinstance(doc_node, Expr) and isinstance(doc_node.value, Constant)
       lineno = self.first_doc_line(doc_node.value)
       if lineno is None or lineno <= header_end: return
       self.print_doc_summary(doc, lineno, end, indent=' ' * doc_node.col_offset)
@@ -387,9 +388,9 @@ class ModuleSummary:
       self.print_line(lineno + i, f'{indent}{open_q}{line}{close_q}')
 
 
-  def first_doc_line(self, value:ast.Constant) -> int|None:
+  def first_doc_line(self, value:Constant) -> int|None:
     'Locate the source line of the first nonblank content line of a docstring literal, without decoding escapes.'
-    source = ast.get_source_segment(self.text, value)
+    source = get_source_segment(self.text, value)
     assert source is not None
     # Parentheses allow adjacent literals on separate lines, including their original indentation.
     for token in generate_tokens(StringIO('(' + source + ')').readline):
@@ -405,10 +406,10 @@ def is_complete_header_body(node:Def, header_end:int) -> bool:
   'True if the body on the header line needs no elision: it is the docstring, or the whole body is a `...` or `pass` stub.'
   first = node.body[0]
   if first.lineno != header_end: return False
-  if ast.get_docstring(node) is not None: return True
+  if get_docstring(node) is not None: return True
   if len(node.body) != 1: return False
-  if isinstance(first, ast.Pass): return True
-  return isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant) and first.value.value is ...
+  if isinstance(first, Pass): return True
+  return isinstance(first, Expr) and isinstance(first.value, Constant) and first.value.value is ...
 
 
 def definition_header_ranges(text:str) -> dict[int,HeaderRange]:
@@ -443,22 +444,22 @@ def definition_header_ranges(text:str) -> dict[int,HeaderRange]:
   return ranges
 
 
-def sub_bodies(stmt:ast.If|ast.Try|ast.TryStar|ast.With) -> list[list[ast.stmt]]:
-  if isinstance(stmt, ast.If): return [stmt.body, stmt.orelse]
-  if isinstance(stmt, ast.With): return [stmt.body]
+def sub_bodies(stmt:If|Try|TryStar|With) -> list[list[ast_stmt]]:
+  if isinstance(stmt, If): return [stmt.body, stmt.orelse]
+  if isinstance(stmt, With): return [stmt.body]
   return [stmt.body, *(h.body for h in stmt.handlers), stmt.orelse, stmt.finalbody]
 
 
-def member_names(stmt:ast.stmt) -> list[str]:
+def member_names(stmt:ast_stmt) -> list[str]:
   'The names bound by a definition or a simple assignment statement; empty for other statements.'
-  if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)): return [stmt.name]
-  if isinstance(stmt, ast.TypeAlias): return [stmt.name.id]
-  if isinstance(stmt, ast.AnnAssign): return [stmt.target.id] if isinstance(stmt.target, ast.Name) else []
-  if isinstance(stmt, ast.Assign):
+  if isinstance(stmt, (FunctionDef, AsyncFunctionDef, ClassDef)): return [stmt.name]
+  if isinstance(stmt, TypeAlias): return [stmt.name.id]
+  if isinstance(stmt, AnnAssign): return [stmt.target.id] if isinstance(stmt.target, Name) else []
+  if isinstance(stmt, Assign):
     names:list[str] = []
     for target in stmt.targets:
-      els = target.elts if isinstance(target, (ast.Tuple, ast.List)) else [target]
-      names.extend(el.id for el in els if isinstance(el, ast.Name))
+      els = target.elts if isinstance(target, (Tuple, List)) else [target]
+      names.extend(el.id for el in els if isinstance(el, Name))
     return names
   return []
 
