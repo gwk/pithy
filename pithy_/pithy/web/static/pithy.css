@@ -590,7 +590,6 @@ button.dangerous:where(:not(:disabled)):active { background-color: #990000; }
 
 form.grid, .form_grid {
   width: 100%;
-  margin: 1em 0;
   display: grid;
   grid-template-columns: max-content 1fr;
   align-items: baseline;

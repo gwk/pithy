@@ -80,7 +80,7 @@ class ControlsHtmxUpdate(Endpoint):
 def controls_htmx() -> Div:
   'Return a grid of the standard interactive HTML form controls, each posting its own updates with htmx.'
 
-  outer = Div()
+  outer = Div(cl='flow')
   div = outer.append(Div(cl='form_grid'))
   url = '/htmx/controls/update.htmx'
   # The update endpoint returns a complete replacement for the panel, so swap the element itself, not its contents.

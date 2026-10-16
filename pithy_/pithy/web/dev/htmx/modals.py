@@ -133,6 +133,7 @@ def edit_modal_htmx(request:Request, user_id:int) -> HtmxResponse:
           hx_post=url, hx_trigger='change', hx_swap='none'), ui_text(mode))
         for mode in ui_modes]),
     ]),
+    cl='flow',
   )
   modal['aria-labelledby'] = 'edit-user-title'
   return HtmxResponse(modal)

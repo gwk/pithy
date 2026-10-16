@@ -24,8 +24,6 @@ body > nav a.current-nav-section-link {
   gap: var(--flow-gap);
 }
 
-.controls-demo-layout > .panel { margin-top: 1em; }
-
 .footnote-ref a { text-decoration: none; }
 .footnote-ref a:hover { text-decoration: underline; }
 
