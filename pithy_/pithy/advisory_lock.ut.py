@@ -4,7 +4,7 @@ from subprocess import run
 from sys import executable
 from tempfile import TemporaryDirectory
 
-from pithy.advisory_lock import advisory_lock, AdvisoryLockError
+from pithy.advisory_lock import advisory_lock, AdvisoryLockError, is_advisory_locked
 from pithy.path import Path
 from utest import utest, utest_exc, utest_run
 
@@ -49,3 +49,24 @@ def test_body_exception() -> None:
 
     utest_exc(error, fail)
     with advisory_lock(path, exclusive=True, blocking=False): pass
+
+
+@utest_run
+def test_lock_probes() -> None:
+  with TemporaryDirectory() as directory:
+    path = str(Path(directory) / 'lock')
+    for exclusive in (False, True):
+      for exclusively in (False, True):
+        utest(False, is_advisory_locked, path, exclusively=exclusively)
+      with advisory_lock(path, exclusive=exclusive):
+        result = run([executable, '-c', '''
+from sys import argv
+from pithy.advisory_lock import is_advisory_locked
+assert is_advisory_locked(argv[1], exclusively=False)
+assert is_advisory_locked(argv[1], exclusively=True) == (argv[2] == 'True')
+''', path, str(exclusive)], capture_output=True, text=True, timeout=10)
+        utest((0, '', ''), lambda: (result.returncode, result.stdout, result.stderr))
+      for exclusively in (False, True):
+        utest(False, is_advisory_locked, path, exclusively=exclusively)
+      # An uncontended probe must release its temporary lock.
+      with advisory_lock(path, exclusive=True, blocking=False): pass

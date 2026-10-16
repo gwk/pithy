@@ -180,12 +180,22 @@ def hold_advisory_lock(lock_path:str, *, exclusive:bool, blocking:bool=True, all
   acquire_advisory_lock(lock_path, exclusive=exclusive, blocking=blocking, allow_group=allow_group, on_wait=on_wait)
 
 
-def is_advisory_locked(lock_path:str, *, allow_group:bool=False) -> bool:
-  'Return True if any process currently holds an advisory lock on `lock_path` (shared or exclusive).'
+def is_advisory_locked(lock_path:str, *, exclusively:bool, allow_group:bool=False) -> bool:
+  '''
+  Return whether the file has an advisory lock of the specified kind.
+
+  `exclusively` is required and describes the existing lock to detect:
+  * `exclusively=True`: Return True only for an exclusive holder; shared holders do not count.
+  * `exclusively=False`: Return True for any holder, shared or exclusive.
+
+  Detecting an exclusive holder uses a shared probe, so concurrent probes of this kind do not conflict with each other.
+  Detecting any holder uses an exclusive probe. An uncontended probe acquires and releases its lock before returning False.
+  This is a snapshot of lock contention, not a guarantee that a service is ready or responsive.
+  '''
   mode = 0o660 if allow_group else 0o600
   fd = os_open(lock_path, O_RDWR | O_CREAT, mode)
   try:
-    flock(fd, LOCK_EX | LOCK_NB)
+    flock(fd, (LOCK_SH if exclusively else LOCK_EX) | LOCK_NB)
     return False
   except BlockingIOError:
     return True
