@@ -148,6 +148,10 @@ In modules with commands, the module docstring can offer a summary but should no
 These get surfaced progressively by `pithy.python.summarize` so they are the most appropriate place for knowledge about class/function behavior.
 High level explanations of internals are acceptable, but prefer to push internal implementation details into comments.
 
+Use attribute docstrings to document the meaning and contract of constants, attributes and type aliases: place a literal string immediately after the declaration, on a new line at the same indentation.
+Use the same summary-block structure as definition docstrings; `pithy.python.summarize` displays these through its existing `-docs` modes and includes them in selected `-full` output.
+Keep implementation explanations in comments.
+
 ### Comments
 
 For the most part, code comments should be used to explain non-obvious aspects and rationale, not to merely narrate the following line.

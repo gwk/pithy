@@ -8,6 +8,11 @@ then the module docstring, then one entry per definition in source order:
 * The source lines of the definition header, including every decorator and multi-line signature, each prefixed with its line number.
 * The docstring source, including quotes and indentation, with line numbers.
 Module-level and class-level assignments are shown by their first source line.
+Assignments, annotated declarations and type aliases may have an attribute docstring: a literal string expression
+as the next statement in the same block, on a subsequent line. Comments and blank lines may intervene.
+The docstring documents the whole assignment, including all names in chained or unpacking assignments.
+Consecutive literal-string statements extend any docstring as additional paragraphs. Each string is cleaned independently.
+Attribute docstrings follow `-docs` and are included in selected `-full` output.
 By default a class is followed by a `members:` line counting its methods, nested classes and class-level assignments;
 `-members` lists them beneath the class instead, as does selecting the class. Functions nested inside functions are never shown.
 
@@ -53,6 +58,7 @@ Dotted targets resolve statically through the running Python environment; see `p
 from ast import (AnnAssign, Assign, AsyncFunctionDef, ClassDef, Constant, Expr, FunctionDef, get_docstring, get_source_segment,
   If, List, Module, Name, parse as ast_parse, Pass, stmt as ast_stmt, Try, TryStar, Tuple, TypeAlias, With)
 from fnmatch import fnmatchcase
+from inspect import cleandoc
 from io import StringIO
 from sys import exit, stderr
 from tokenize import COMMENT, DEDENT, generate_tokens, INDENT, NEWLINE, NL, OP, STRING
@@ -172,6 +178,7 @@ class ModuleSummary:
     self.tree = ast_parse(text, filename=path)
     self.width = len(str(len(self.lines)))
     self.header_ranges = definition_header_ranges(text)
+    self.assignment_docs = assignment_docstrings(self.tree.body)
     self.last_printed_line = 0
 
 
@@ -206,6 +213,7 @@ class ModuleSummary:
             print(f'{note_indent}uses: {text}')
         else:
           self.print_assign(member)
+          self.print_doc(member, mode=docs)
       elif isinstance(member, ClassDef): # An unselected class containing selected members is shown for context.
         self.print_header(member)
 
@@ -296,11 +304,14 @@ class ModuleSummary:
 
 
   def full_range(self, node:Member) -> tuple[int,int]:
-    'The inclusive line range of a definition or assignment, including decorators.'
+    'The inclusive line range of a definition or assignment, including decorators and attribute docstrings.'
     start = node.lineno
     if isinstance(node, (FunctionDef, AsyncFunctionDef, ClassDef)):
       start = self.header_range(node)[0]
-    return start, node.end_lineno or node.lineno
+    end_node:Member|Expr = node
+    if isinstance(node, (Assign, AnnAssign, TypeAlias)) and (docs := self.assignment_docs.get(node)):
+      end_node = docs[-1]
+    return start, end_node.end_lineno or end_node.lineno
 
 
   def prefix(self, lineno:int) -> str:
@@ -349,24 +360,37 @@ class ModuleSummary:
     self.print_line(node.lineno, f'{self.lines[node.lineno-1]}{suffix}')
 
 
-  def print_doc(self, node:Module|Def, *, mode:DocsMode) -> None:
+  def print_doc(self, node:Module|Member, *, mode:DocsMode) -> None:
     '''
     Print the docstring of a module or definition according to `mode`.
     The `default` mode shows a module docstring in full and summarizes definition docstrings; `first` summarizes both.
     '''
     if mode == 'none': return
-    doc = get_docstring(node)
-    if doc is None: return
-    doc_node = node.body[0]
-    start, end = doc_node.lineno, doc_node.end_lineno or doc_node.lineno
-    header_end = 0 if isinstance(node, Module) else self.header_range(node)[1]
+    if isinstance(node, (Assign, AnnAssign, TypeAlias)):
+      doc_nodes = self.assignment_docs.get(node, [])
+      header_end = node.lineno
+    else:
+      doc_nodes = consecutive_docstrings(node.body)
+      header_end = 0 if isinstance(node, Module) else self.header_range(node)[1]
+    if not doc_nodes: return
+    parts:list[str] = []
+    first_content:Expr|None = None
+    for doc_node in doc_nodes:
+      assert isinstance(doc_node.value, Constant) and isinstance(doc_node.value.value, str)
+      part = cleandoc(doc_node.value.value)
+      if part.strip():
+        parts.append(part)
+        if first_content is None: first_content = doc_node
     if mode == 'first' or (mode == 'default' and header_end):
-      assert isinstance(doc_node, Expr) and isinstance(doc_node.value, Constant)
-      lineno = self.first_doc_line(doc_node.value)
+      if first_content is None: return
+      assert isinstance(first_content.value, Constant)
+      lineno = self.first_doc_line(first_content.value)
       if lineno is None or lineno <= header_end: return
-      self.print_doc_summary(doc, lineno, end, indent=' ' * doc_node.col_offset)
+      self.print_doc_summary('\n\n'.join(parts), lineno, first_content.end_lineno or lineno,
+        indent=' ' * first_content.col_offset)
       return
-    self.print_lines((max(start, header_end + 1), end))
+    for doc_node in doc_nodes:
+      self.print_lines((max(doc_node.lineno, header_end + 1), doc_node.end_lineno or doc_node.lineno))
 
 
   def print_doc_summary(self, doc:str, lineno:int, end:int, *, indent:str) -> None:
@@ -400,6 +424,31 @@ class ModuleSummary:
       for offset, line in enumerate(literal[len(quote):-len(quote)].split('\n')):
         if line.strip(): return value.lineno + token.start[0] - 1 + offset
     return None
+
+
+def assignment_docstrings(body:list[ast_stmt]) -> dict[Assignment,list[Expr]]:
+  'Associate assignments with following literal strings within the module and class blocks summarized by this tool.'
+  docs:dict[Assignment,list[Expr]] = {}
+  for idx, stmt in enumerate(body):
+    if isinstance(stmt, ClassDef):
+      docs.update(assignment_docstrings(stmt.body))
+    elif isinstance(stmt, (If, Try, TryStar, With)):
+      for sub_body in sub_bodies(stmt): docs.update(assignment_docstrings(sub_body))
+    elif isinstance(stmt, (Assign, AnnAssign, TypeAlias)) and idx + 1 < len(body):
+      following = body[idx + 1]
+      if (isinstance(following, Expr) and isinstance(following.value, Constant)
+       and isinstance(following.value.value, str) and following.lineno > (stmt.end_lineno or stmt.lineno)):
+        docs[stmt] = consecutive_docstrings(body[idx + 1:])
+  return docs
+
+
+def consecutive_docstrings(body:list[ast_stmt]) -> list[Expr]:
+  'Collect leading literal-string statements, stopping at the first other statement.'
+  docs:list[Expr] = []
+  for stmt in body:
+    if not (isinstance(stmt, Expr) and isinstance(stmt.value, Constant) and isinstance(stmt.value.value, str)): break
+    docs.append(stmt)
+  return docs
 
 
 def is_complete_header_body(node:Def, header_end:int) -> bool:
