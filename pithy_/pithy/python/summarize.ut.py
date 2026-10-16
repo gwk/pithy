@@ -16,10 +16,11 @@ def full_output(text:str, selectors:list[str]) -> str:
   return out.getvalue()
 
 
-def summary_output(text:str, selectors:list[str], docs:DocsMode='none', locs:bool=False, members:bool=False) -> str:
+def summary_output(text:str, selectors:list[str], docs:DocsMode='none', locs:bool=False, members:bool=False,
+ public:bool=False, assigns:bool=True) -> str:
   summary = ModuleSummary('sample.py', text, locs=locs)
   with redirect_stdout(out := StringIO()):
-    summary.print_summary(selectors, docs=docs, public=False, assigns=True, members=members)
+    summary.print_summary(selectors, docs=docs, public=public, assigns=assigns, members=members)
   return out.getvalue()
 
 
@@ -490,3 +491,73 @@ utest("sample.py: sample, 5 lines.\n1: value = 1\n3: 'Details.'\n", summary_outp
   "value = 1\n''\n'Details.'\npass\n'Unattached.'\n", ['value'], 'first')
 utest("sample.py: sample, 5 lines.\n1: value = 1\n2: 'Summary.'\n4: 'Details.'\n", summary_output,
   "value = 1\n'Summary.'\n# More documentation.\n'Details.'\npass\n", ['value'], 'full')
+
+
+# Constructor attributes retain source order, repeated declarations, and their enclosing headers.
+constructor_source = """\
+class C:
+  value:int
+  def __init__(this, /):
+    this.value = 1
+    'First.'
+    this.value:int = 2
+    'Second.'
+    this.hidden = 3
+"""
+constructor_header = 'sample.py: sample, 8 lines.\n1: class C:\n'
+constructor_entries = ("3:   def __init__(this, /):\n4:     this.value = 1\n5:     'First.'\n"
+  "6:     this.value:int = 2\n7:     'Second.'\n")
+utest(constructor_header + '2:   value:int\n' + constructor_entries,
+  summary_output, constructor_source, ['C'], 'default')
+utest(constructor_header + '2:   value:int\n' + constructor_entries,
+  summary_output, constructor_source, ['C.value'], 'default')
+utest(constructor_header + '\n' + constructor_entries,
+  summary_output, constructor_source, ['C.__init__'], 'default')
+utest(constructor_header + '     members: 1 method, 3 attributes\n', summary_output, constructor_source, [])
+utest(constructor_header + '     members: 3 attributes\n', summary_output, constructor_source, [], public=True)
+utest(constructor_header + '2:   value:int\n' + constructor_entries,
+  summary_output, constructor_source, [], 'default', members=True, public=True)
+utest(constructor_header + '\n3:   def __init__(this, /):\n',
+  summary_output, constructor_source, ['C'], 'full', assigns=False)
+utest(constructor_header + '2:   value:int\n3:   def __init__(this, /):\n4:     this.value = 1\n\n6:     this.value:int = 2\n',
+  summary_output, constructor_source, ['C'], 'none')
+utest(constructor_header + '2:   value:int\n' + constructor_entries,
+  full_output, constructor_source, ['C.value'])
+utest(full_output(constructor_source, ['C']), full_output, constructor_source, ['C', 'C.value', 'C.__init__'])
+utest([], ModuleSummary('sample.py', constructor_source).check_selectors, ['C.value', 'value', 'C.__init__'])
+utest(['C.hidden'], ModuleSummary('sample.py', constructor_source).check_selectors, ['C.hidden'])
+
+# Only documented direct receiver assignments qualify, including private attributes and additional strings.
+constructor_scope_source = """\
+class C:
+  def __init__(self):
+    self._private = 1
+    'Private.'
+    self.public = 2
+    'Public.'
+    'Details.'
+    other.value = 3
+    'Other receiver.'
+    local = 4
+    'Local.'
+    if enabled:
+      self.conditional = 5
+      'Conditional.'
+    def nested():
+      self.nested = 6
+      'Nested.'
+  def method(self):
+    self.later = 7
+    'Other method.'
+"""
+utest(['C.value', 'C.local', 'C.conditional', 'C.nested', 'C.later'],
+  ModuleSummary('sample.py', constructor_scope_source).check_selectors,
+  ['C._private', 'C.public', 'C.value', 'C.local', 'C.conditional', 'C.nested', 'C.later'])
+utest("sample.py: sample, 20 lines.\nsample.py:1: class C:\nsample.py:2:   def __init__(self):\n\n"
+  "sample.py:5:     self.public = 2\nsample.py:6:     'Public.'…\n",
+  summary_output, constructor_scope_source, ['C.public'], 'default', locs=True, public=True)
+utest('sample.py: sample, 20 lines.\n',
+  summary_output, constructor_scope_source, ['C._private'], 'default', public=True)
+utest("sample.py: sample, 20 lines.\n 1: class C:\n 2:   def __init__(self):\n\n"
+  " 5:     self.public = 2\n 6:     'Public.'\n 7:     'Details.'\n",
+  full_output, constructor_scope_source, ['C.public'])

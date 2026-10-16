@@ -15,6 +15,11 @@ Consecutive literal-string statements extend any docstring as additional paragra
 Attribute docstrings follow `-docs` and are included in selected `-full` output.
 By default a class is followed by a `members:` line counting its methods, nested classes and class-level assignments;
 `-members` lists them beneath the class instead, as does selecting the class. Functions nested inside functions are never shown.
+Expanded classes also show documented direct instance-attribute assignments in `__init__`, beneath its header.
+The receiver is the first positional parameter. Attributes inside compound statements are omitted.
+Selectors use `Class.attribute`; selecting `Class.__init__` includes its documented attributes.
+Repeated declarations remain separate entries in source order and in member counts.
+`-public` filters attribute names independently of the constructor name; `-no-assigns` hides these entries.
 
 Numbered lines preserve source text and positions, with the Unicode ellipsis marking the tool's own elisions:
 * A multi-line assignment shows its first line followed by ` …`.
@@ -55,8 +60,8 @@ as analyzed by `pithy.python.deps`. Callers are not shown here; query them with 
 Dotted targets resolve statically through the running Python environment; see `pithy.python.package.resolve_module_installed`.
 '''
 
-from ast import (AnnAssign, Assign, AsyncFunctionDef, ClassDef, Constant, Expr, FunctionDef, get_docstring, get_source_segment,
-  If, List, Module, Name, parse as ast_parse, Pass, stmt as ast_stmt, Try, TryStar, Tuple, TypeAlias, With)
+from ast import (AnnAssign, Assign, AsyncFunctionDef, Attribute, ClassDef, Constant, Expr, FunctionDef, get_docstring,
+  get_source_segment, If, List, Module, Name, parse as ast_parse, Pass, stmt as ast_stmt, Try, TryStar, Tuple, TypeAlias, With)
 from fnmatch import fnmatchcase
 from inspect import cleandoc
 from io import StringIO
@@ -214,7 +219,7 @@ class ModuleSummary:
         else:
           self.print_assign(member)
           self.print_doc(member, mode=docs)
-      elif isinstance(member, ClassDef): # An unselected class containing selected members is shown for context.
+      elif isinstance(member, (ClassDef, FunctionDef, AsyncFunctionDef)): # Enclosing definitions provide context.
         self.print_header(member)
 
 
@@ -227,7 +232,7 @@ class ModuleSummary:
     printed_through = 0
     for member, qualname, selected in self.walk(self.tree.body, '', selectors, public=public, assigns=True):
       if selected: start, end = self.full_range(member)
-      elif isinstance(member, ClassDef): start, end = self.header_range(member)
+      elif isinstance(member, (ClassDef, FunctionDef, AsyncFunctionDef)): start, end = self.header_range(member)
       else: continue
       # A selected class already includes its descendants; overlapping selectors must not repeat source lines.
       start = max(start, printed_through + 1)
@@ -236,28 +241,42 @@ class ModuleSummary:
       printed_through = max(printed_through, end)
 
 
-  def walk(self, body:list[ast_stmt], prefix:str, selectors:list[str], *, public:bool, assigns:bool, members:bool=True
-   ) -> Iterator[tuple[Member,str,bool]]:
+  def walk(self, body:list[ast_stmt], prefix:str, selectors:list[str], *, public:bool, assigns:bool, members:bool=True,
+   in_class:bool=False) -> Iterator[tuple[Member,str,bool]]:
     '''
     Yield (member, qualname, selected) for each definition and assignment, in source order.
     A selected class is yielded, and if `members` is set all of its members are yielded as selected.
-    An unselected class is yielded as unselected only if it contains selected members, and only those members follow.
+    Unselected classes and constructors are yielded as context only when they contain selected members.
+    Constructor attributes use their enclosing class prefix and are included only when documented.
     '''
     for stmt in body:
       if isinstance(stmt, (If, Try, TryStar, With)): # Conditional definitions are summarized in place.
         for sub_body in sub_bodies(stmt):
-          yield from self.walk(sub_body, prefix, selectors, public=public, assigns=assigns, members=members)
+          yield from self.walk(sub_body, prefix, selectors, public=public, assigns=assigns, members=members, in_class=in_class)
         continue
       names = member_names(stmt)
       if not names: continue
+      if in_class and isinstance(stmt, (FunctionDef, AsyncFunctionDef)) and stmt.name == '__init__':
+        qualname = prefix + stmt.name
+        selected = not (public and stmt.name.startswith('_')) and is_selected(qualname, stmt.name, selectors)
+        attributes:list[tuple[Member,str,bool]] = []
+        if assigns:
+          for assignment, attr_names in self.constructor_attributes(stmt):
+            visible = [n for n in attr_names if not public or not n.startswith('_')]
+            if visible and (selected or any(is_selected(prefix + n, n, selectors) for n in visible)):
+              attributes.append((assignment, prefix + visible[0], True))
+        if selected or attributes:
+          yield stmt, qualname, selected
+          yield from attributes
+        continue
       if public and all(n.startswith('_') for n in names): continue
       if isinstance(stmt, ClassDef):
         qualname = prefix + stmt.name
         if is_selected(qualname, stmt.name, selectors):
           yield stmt, qualname, True
-          if members: yield from self.walk(stmt.body, qualname + '.', [], public=public, assigns=assigns)
+          if members: yield from self.walk(stmt.body, qualname + '.', [], public=public, assigns=assigns, in_class=True)
         else:
-          inner = list(self.walk(stmt.body, qualname + '.', selectors, public=public, assigns=assigns))
+          inner = list(self.walk(stmt.body, qualname + '.', selectors, public=public, assigns=assigns, in_class=True))
           if inner:
             yield stmt, qualname, False
             yield from inner
@@ -269,6 +288,22 @@ class ModuleSummary:
         yield stmt, prefix + names[0], True
 
 
+  def constructor_attributes(self, node:FunctionDef|AsyncFunctionDef) -> Iterator[tuple[Assignment,list[str]]]:
+    'Yield documented direct assignments to attributes of the constructor receiver, without merging repeated names.'
+    params = [*node.args.posonlyargs, *node.args.args]
+    if not params: return
+    receiver = params[0].arg
+    for stmt in node.body:
+      if not isinstance(stmt, (Assign, AnnAssign)) or stmt not in self.assignment_docs: continue
+      targets = stmt.targets if isinstance(stmt, Assign) else [stmt.target]
+      names:list[str] = []
+      for target in targets:
+        els = target.elts if isinstance(target, (Tuple, List)) else [target]
+        names.extend(el.attr for el in els
+          if isinstance(el, Attribute) and isinstance(el.value, Name) and el.value.id == receiver)
+      if names: yield stmt, names
+
+
   def member_counts(self, node:ClassDef, *, public:bool, assigns:bool) -> str:
     '''
     Describe the direct members of a class that `-members` would list, e.g. `3 methods, 1 class, 2 attributes`.
@@ -276,7 +311,8 @@ class ModuleSummary:
     '''
     kinds = (('method', 'methods'), ('class', 'classes'), ('attribute', 'attributes'))
     counts = [0, 0, 0]
-    for member, _, _ in self.walk(node.body, '', [], public=public, assigns=assigns, members=False):
+    for member, _, selected in self.walk(node.body, '', [], public=public, assigns=assigns, members=False, in_class=True):
+      if not selected: continue
       if isinstance(member, (FunctionDef, AsyncFunctionDef)): counts[0] += 1
       elif isinstance(member, ClassDef): counts[1] += 1
       else: counts[2] += 1
@@ -293,6 +329,9 @@ class ModuleSummary:
           continue
         for n in member_names(stmt): qualnames.add((prefix + n, n))
         if isinstance(stmt, ClassDef): collect(stmt.body, prefix + stmt.name + '.')
+        elif prefix and isinstance(stmt, (FunctionDef, AsyncFunctionDef)) and stmt.name == '__init__':
+          for _, names in self.constructor_attributes(stmt):
+            for n in names: qualnames.add((prefix + n, n))
     collect(self.tree.body, '')
     return [s for s in selectors if not any(is_selected(q, n, [s]) for q, n in qualnames)]
 
@@ -427,10 +466,10 @@ class ModuleSummary:
 
 
 def assignment_docstrings(body:list[ast_stmt]) -> dict[Assignment,list[Expr]]:
-  'Associate assignments with following literal strings within the module and class blocks summarized by this tool.'
+  'Associate assignments with following literal strings in module, class and constructor bodies.'
   docs:dict[Assignment,list[Expr]] = {}
   for idx, stmt in enumerate(body):
-    if isinstance(stmt, ClassDef):
+    if isinstance(stmt, ClassDef) or isinstance(stmt, (FunctionDef, AsyncFunctionDef)) and stmt.name == '__init__':
       docs.update(assignment_docstrings(stmt.body))
     elif isinstance(stmt, (If, Try, TryStar, With)):
       for sub_body in sub_bodies(stmt): docs.update(assignment_docstrings(sub_body))
