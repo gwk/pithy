@@ -7,8 +7,9 @@ from http import HTTPStatus
 from io import BufferedReader
 from os import _exit as os_exit
 from queue import Full as QueueFull, LifoQueue
-from socket import AF_INET, SHUT_WR, SO_REUSEADDR, SOCK_STREAM, socket as Socket, SOL_SOCKET
-from threading import Event, Thread
+from selectors import DefaultSelector, EVENT_READ
+from socket import AF_INET, SHUT_WR, SO_REUSEADDR, SOCK_STREAM, socket as Socket, socketpair, SOL_SOCKET
+from threading import Event, Lock, Thread
 from time import monotonic
 from typing import cast
 from urllib.parse import urlsplit as url_split
@@ -255,6 +256,10 @@ class WebServer:
     self.app = app
     self.config = config
     self._stop = Event()
+    self._lock = Lock()  # Guards _serving, which decides whether shutdown() or serve_forever() closes the sockets.
+    self._serving = False
+    self._wakeup_reader, self._wakeup_writer = socketpair()
+    self._wakeup_writer.setblocking(False)
     self._conn_queue: LifoQueue[ConnQueueItem|None] = LifoQueue(maxsize=config.max_queued)
     self._workers: list[Thread] = []
 
@@ -263,7 +268,8 @@ class WebServer:
     socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
     socket.bind((config.host, config.port))
     socket.listen(config.backlog)
-    socket.settimeout(1.0) # This is the timeout for accepting new connections, not for client connections.
+    socket.setblocking(False)
+    #^ On macOS accepted sockets inherit the non-blocking flag; _handle_connection resets it with settimeout.
 
     self.scheme = 'http'
     self.host = config.host
@@ -287,32 +293,52 @@ class WebServer:
       self._workers.append(thread)
 
     try:
-      while not self._stop.is_set():
-        try:
-          conn_sock, client_addr = self._socket.accept()
-        except TimeoutError:
-          continue
-        except OSError:
-          if self._stop.is_set(): break  # shutdown() closes the socket to unblock accept(); the resulting OSError is expected.
-          raise
-        try:
-          self._conn_queue.put_nowait((conn_sock, client_addr))
-        except QueueFull:
-          logI('Queue full; dropping connection.', client_addr=client_addr)
-          conn_sock.close()
+      with self._lock:
+        if self._stop.is_set(): return  # shutdown() was called first and has already closed the sockets.
+        self._serving = True
+      with DefaultSelector() as selector:
+        selector.register(self._wakeup_reader, EVENT_READ)
+        selector.register(self._socket, EVENT_READ)
+        while not self._stop.is_set():
+          selector.select()
+          #^ The wakeup reader is never drained; it only becomes readable once _stop is set, so the loop exits.
+          if self._stop.is_set(): break
+          try: conn_sock, client_addr = self._socket.accept()
+          except BlockingIOError: continue  # The pending connection was reset before it could be accepted.
+          try:
+            self._conn_queue.put_nowait((conn_sock, client_addr))
+          except QueueFull:
+            logI('Queue full; dropping connection.', client_addr=client_addr)
+            conn_sock.close()
     except KeyboardInterrupt:
       logI('Interrupted.')
     finally:
-      try: self._socket.close()
-      except OSError: pass
+      with self._lock:
+        self._serving = False
+        self._close_sockets()
       for _ in self._workers: self._conn_queue.put(None)  # Signal each worker to exit.
       for thread in self._workers: thread.join()
 
 
   def shutdown(self) -> None:
-    self._stop.set()
-    try: self._socket.close()
-    except OSError: pass  # The socket may already be closed (e.g. if finally block in serve_forever() ran first).
+    '''
+    Request shutdown, waking the accept loop immediately. Active requests finish before serve_forever returns.
+
+    Closing a listening socket from another thread does not reliably wake accept on Unix, so a socket pair is used instead.
+    If serve_forever is not running then the sockets are closed here, so that a server that never served does not leak them.
+    '''
+    with self._lock:
+      if self._stop.is_set(): return
+      self._stop.set()
+      if self._serving: self._wakeup_writer.send(b'\0')
+      else: self._close_sockets()
+
+
+  def _close_sockets(self) -> None:
+    'Close the listener and the wakeup pair; safe to call repeatedly.'
+    self._socket.close()
+    self._wakeup_reader.close()
+    self._wakeup_writer.close()
 
 
   def _worker(self) -> None:
