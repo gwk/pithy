@@ -8,7 +8,9 @@ fixtures/sample/mod.py: sample.mod, 82 lines.
 36:   '''
 37:   def inner() -> None: pass
 38:   return f'{a}{b}'
+
 56: @dataclass
 57: class Point:
+
 66:   @property
 67:   def is_origin(self) -> bool: return self.x == 0 and self.y == 0

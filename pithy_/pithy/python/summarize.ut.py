@@ -47,6 +47,7 @@ utest(full_class + '6: def other(): pass\n', full_output, class_source, ['*'])
 utest('''\
 sample.py: sample, 6 lines.
 1: class Outer:
+
 4:   class Inner:
 5:     def nested(self): pass
 6: def other(): pass
@@ -76,6 +77,7 @@ sample.py: sample, 14 lines.
  2:   decorator
  3: )
  4: class C:
+
  7:   @(
  8:     decorator
  9:   )
@@ -247,6 +249,7 @@ utest('''\
 sample.py: sample, 4 lines.
 sample.py:1: class C:
 sample.py:2:   'Docs.'
+
 sample.py:4:   def m(self): pass
 ''', summary_output, "class C:\n  'Docs.'\n\n  def m(self): pass\n", [], 'full', True, True)
 
@@ -269,6 +272,7 @@ sample.py: sample, 9 lines.
 1: def one(): …
 2: def stub(): ...
 3: def commented():  # Trailing comment.
+
 5: def doc(): 'Header docstring.'
 6: class C: pass
 7: value = { …
@@ -298,6 +302,7 @@ sample.py: sample, 12 lines.
  1: def f():
  3:   '''Line one.
  4:   Line two.'''…
+
  9: def g():
 10:   '''Line one.
 11:   Line two.'''
@@ -331,6 +336,7 @@ utest('''\
 sample.py: sample, 8 lines.
 1: class Outer:
      members: 1 method, 1 class, 2 attributes
+
 8: class Empty: pass
 ''', summary_output, members_source, [])
 utest('''\
@@ -348,6 +354,7 @@ sample.py: sample, 8 lines.
 utest('''\
 sample.py: sample, 8 lines.
 1: class Outer:
+
 5:   class Inner:
 6:     def nested(self): pass
 7:     def again(self): pass
@@ -381,3 +388,34 @@ with TemporaryDirectory() as tmp:
     SummarizeCmd.parse([str(package), '-full']).run()
   utest(True, lambda: 'Interface module.' in out.getvalue())
   utest(False, lambda: 'Implementation module.' in out.getvalue())
+
+
+# Consecutive assignments stay compact; omitted source and blank source lines separate items.
+spacing_source = "a = 1\nb = (\n  2\n)\nc = 3\n\n@decorator\ndef f():\n\n  'Docs.'\n  return a\n"
+spacing_expected = """\
+sample.py: sample, 11 lines.
+ 1: a = 1
+ 2: b = ( …
+
+ 5: c = 3
+
+ 7: @decorator
+ 8: def f():
+10:   'Docs.'
+      uses: a
+"""
+with redirect_stdout(out := StringIO()):
+  summary = ModuleSummary('sample.py', spacing_source)
+  summary.print_summary([], docs='first', public=False, assigns=True, uses={'f': 'a'})
+utest(spacing_expected, out.getvalue)
+
+# File separators span target arguments, in both summary and full output, without leading or trailing blank lines.
+with TemporaryDirectory() as tmp:
+  first = Path(tmp) / 'first.py'
+  second = Path(tmp) / 'second.py'
+  first.write_text('a = 1\n')
+  second.write_text('b = 2\n')
+  for options in ([], ['-full']):
+    with redirect_stdout(out := StringIO()):
+      SummarizeCmd.parse([str(first), str(second), *options]).run()
+    utest(f'{first}: first, 1 lines.\n1: a = 1\n\n{second}: second, 1 lines.\n1: b = 2\n', out.getvalue)

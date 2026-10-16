@@ -1,14 +1,18 @@
 fixtures/sample/mod.py: sample.mod, 82 lines.
 19: _private_const = 'hidden'
+
 41: @overload
 42: def over(x:int) -> int: ...
 43: @overload
 44: def over(x:str) -> str: ...
 45: def over(x): …
+
 56: @dataclass
 57: class Point:
+
 62:   def norm(self) -> float:
 63:     'The L1 norm.'
+
 73:   class Nested:
 74:     'Nested class.'
 75:     def method(self) -> None: pass

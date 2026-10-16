@@ -1,25 +1,34 @@
 fixtures/sample/__init__.py: sample, 1 lines.
 1: 'Sample package for summarize tests.'
+
 fixtures/sample/mod.py: sample.mod, 82 lines.
  2: '''A sample module.
  3: It has a multi-line docstring.'''
+
 22: def plain(x:int) -> int:
 23:   'Return x doubled.'
+
 27: def undocumented(a, b): …
+
 30: def multi_line_sig(a:int,
 31:   b:str) -> str:
 33:   'Join a and b.'…
+
 41: @overload
 42: def over(x:int) -> int: ...
 43: @overload
 44: def over(x:str) -> str: ...
 45: def over(x): …
+
 48: async def fetch(url:str) -> bytes:
 49:   'Fetch a url.'
+
 56: @dataclass
 57: class Point:
 58:   'A point.'
       members: 2 methods, 1 class
+
 79:   def conditional() -> None:
 80:     'Defined conditionally.'
+
 82:   def conditional() -> None: pass

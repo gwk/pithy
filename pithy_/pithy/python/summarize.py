@@ -19,6 +19,7 @@ Numbered lines preserve source text and positions, with the Unicode ellipsis mar
   followed by `…` when more content follows. The blank line is the author's control over what the summary reveals.
 Because `…` is not a Python token, these markers are never confused with a literal `...` in the source.
 Generated module headers and dependency annotations are unnumbered.
+Blank lines separate files and items with discontiguous displayed source ranges; each header and its docstring stay together.
 `-locs` prefixes each numbered line with `path:line: ` instead of the bare line number,
 so that locations survive filtering with grep and are recognized by editors.
 `-docs` selects how much of each docstring is shown:
@@ -109,6 +110,7 @@ class SummarizeCmd(Cmd):
 
   def run(self) -> None:
     ok = True
+    printed_file = False
     for spec in self.targets:
       target, _, sel_text = spec.rpartition(':')
       if not target: target, sel_text = sel_text, ''
@@ -127,6 +129,8 @@ class SummarizeCmd(Cmd):
           unmatched = summary.check_selectors(selectors)
           unmatched_all.intersection_update(unmatched)
           if len(paths) > 1 and len(unmatched) == len(selectors): continue # Omit files where nothing matches.
+        if printed_file: print()
+        printed_file = True
         if self.full: summary.print_full(selectors, public=self.public)
         else:
           uses = None
@@ -167,6 +171,7 @@ class ModuleSummary:
     self.tree = ast.parse(text, filename=path)
     self.width = len(str(len(self.lines)))
     self.header_ranges = definition_header_ranges(text)
+    self.last_printed_line = 0
 
 
   @classmethod
@@ -183,10 +188,12 @@ class ModuleSummary:
     otherwise each class shows a `members:` line counting them.
     `uses` optionally maps top-level symbol names to preformatted dependency text, printed after each docstring.
     '''
+    self.last_printed_line = 0
     print(f'{self.path}: {self.name}, {len(self.lines)} lines.')
     if not selectors: self.print_doc(self.tree, mode=docs)
     expand = members or bool(selectors)
     for member, qualname, selected in self.walk(self.tree.body, '', selectors, public=public, assigns=assigns, members=expand):
+      self.separate_item(self.full_range(member)[0])
       if selected:
         if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
           self.print_header(member)
@@ -203,6 +210,7 @@ class ModuleSummary:
 
 
   def print_full(self, selectors:list[str], *, public:bool) -> None:
+    self.last_printed_line = 0
     print(f'{self.path}: {self.name}, {len(self.lines)} lines.')
     if not selectors:
       self.print_lines((1, len(self.lines)))
@@ -213,7 +221,9 @@ class ModuleSummary:
       elif isinstance(member, ast.ClassDef): start, end = self.header_range(member)
       else: continue
       # A selected class already includes its descendants; overlapping selectors must not repeat source lines.
-      self.print_lines((max(start, printed_through + 1), end))
+      start = max(start, printed_through + 1)
+      if start <= end: self.separate_item(start)
+      self.print_lines((start, end))
       printed_through = max(printed_through, end)
 
 
@@ -298,11 +308,22 @@ class ModuleSummary:
     return f'{lineno:>{self.width}}: '
 
 
+  def separate_item(self, start:int) -> None:
+    'Separate items whose displayed source lines are not contiguous.'
+    if self.last_printed_line and start > self.last_printed_line + 1: print()
+
+
+  def print_line(self, lineno:int, text:str) -> None:
+    'Print a numbered source line and remember its position for item separation.'
+    print(f'{self.prefix(lineno)}{text}')
+    self.last_printed_line = lineno
+
+
   def print_lines(self, line_range:tuple[int,int]) -> None:
     'Print the inclusive 1-based range of source lines, each prefixed with its line number.'
     start, end = line_range
     for lineno in range(start, end + 1):
-      print(f'{self.prefix(lineno)}{self.lines[lineno-1]}')
+      self.print_line(lineno, self.lines[lineno-1])
 
 
   def print_header(self, node:Def) -> None:
@@ -318,13 +339,13 @@ class ModuleSummary:
     rest = line[colon_col+1:].strip()
     if rest and not rest.startswith('#') and not is_complete_header_body(node, end):
       line = f'{line[:colon_col+1]} {ellipsis}'
-    print(f'{self.prefix(end)}{line}')
+    self.print_line(end, line)
 
 
   def print_assign(self, node:Assign) -> None:
     'Print the first source line of an assignment, marking a multi-line statement with an ellipsis.'
     suffix = f' {ellipsis}' if node.end_lineno and node.end_lineno > node.lineno else ''
-    print(f'{self.prefix(node.lineno)}{self.lines[node.lineno-1]}{suffix}')
+    self.print_line(node.lineno, f'{self.lines[node.lineno-1]}{suffix}')
 
 
   def print_doc(self, node:ast.Module|Def, *, mode:DocsMode) -> None:
@@ -358,12 +379,12 @@ class ModuleSummary:
     block = lines[:block_len]
     more = ellipsis if any(line.strip() for line in lines[block_len:]) else ''
     if len(block) == 1 or end - lineno + 1 < len(block):
-      print(f'{self.prefix(lineno)}{indent}{repr(chr(10).join(block))}{more}')
+      self.print_line(lineno, f'{indent}{repr(chr(10).join(block))}{more}')
       return
     for i, line in enumerate(block):
       open_q = "'''" if i == 0 else ''
       close_q = f"'''{more}" if i == len(block) - 1 else ''
-      print(f'{self.prefix(lineno + i)}{indent}{open_q}{line}{close_q}')
+      self.print_line(lineno + i, f'{indent}{open_q}{line}{close_q}')
 
 
   def first_doc_line(self, value:ast.Constant) -> int|None:

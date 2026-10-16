@@ -1,13 +1,19 @@
 fixtures/sample/mod.py: sample.mod, 82 lines.
 30: def multi_line_sig(a:int,
 31:   b:str) -> str:
+
 56: @dataclass
 57: class Point:
       uses: dataclasses.dataclass
+
 62:   def norm(self) -> float:
+
 66:   @property
 67:   def is_origin(self) -> bool: …
+
 69:   @staticmethod
 70:   def _secret() -> None:
+
 73:   class Nested:
+
 75:     def method(self) -> None: pass

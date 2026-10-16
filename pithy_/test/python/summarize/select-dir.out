@@ -1,6 +1,9 @@
 fixtures/sample/mod.py: sample.mod, 82 lines.
 56: @dataclass
 57: class Point:
+
 62:   def norm(self) -> float:
+
 73:   class Nested:
+
 75:     def method(self) -> None: pass
