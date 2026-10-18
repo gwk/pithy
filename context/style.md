@@ -48,6 +48,7 @@ filler, or marketing/casual/feel-good language.
 * No bare `# type: ignore`; always add error codes.
 * Error handling: early returns, custom exceptions where they clarify intent or need to be caught, explicit error messages.
 * Docstrings: single quotes for brief docs, triple single-quotes for multi-line. Use markdown syntax, not rst.
+* Do not use triple-quotes for single line strings.
 * `if __name__ == '__main__': main()` should always be inlined, not two lines.
 * If you encounter circular import problems:
   * Factor out interdependent code from `__init__` into leaf submodules. This reduces the most common circularity problems.
