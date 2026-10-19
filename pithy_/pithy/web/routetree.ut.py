@@ -2,8 +2,30 @@
 
 from datetime import date
 
+from pithy.web.errors import BadRequestError
 from pithy.web.routetree import RouteComponentPattern, RouteTree
+from pithy.web.util import decode_path_segments
 from utest import utest, utest_exc, utest_run, utest_run_exc
+
+
+def get[V](tree:RouteTree[V], path:str) -> tuple[V,dict]|None:
+  'Match a raw path the way the router does: by decoded segments.'
+  return tree.get(decode_path_segments(path))
+
+
+@utest_run
+def _() -> None:
+  'RouteTree.get: matches decoded segments; an encoded slash stays within its segment.'
+  tree:RouteTree[str] = RouteTree()
+  tree.insert('/users/{name}', 'user')
+  tree.insert('/users/{name}/posts', 'posts')
+  tree.insert('/files/{p:path}', 'files')
+  tree.finalize()
+  utest(('user', {'name': 'al ice'}), get, tree, '/users/al%20ice')
+  utest(None, get, tree, '/users/a/b') # Two segments: the second is neither 'posts' nor absent.
+  utest_exc(BadRequestError, get, tree, '/users/a%2Fb') # An encoded slash is refused rather than matched.
+  utest_exc(BadRequestError, get, tree, '/us%2Fers/a')
+  utest(('files', {'p': 'dir x/f/g.txt'}), get, tree, '/files/dir%20x/f/g.txt')
 
 
 @utest_run
@@ -94,13 +116,13 @@ def _() -> None:
   tree.insert('/users/{id:int}/posts', 'user_posts')
   tree.finalize()
 
-  utest(('users', {}), tree.get, '/users')
-  utest(('user', {'id': 42}), tree.get, '/users/42')
-  utest(('user', {'id': -1}), tree.get, '/users/-1')
-  utest(('user_posts', {'id': 42}), tree.get, '/users/42/posts')
-  utest(None, tree.get, '/users/abc') # int pattern doesn't match.
-  utest(None, tree.get, '/nonexistent')
-  utest(None, tree.get, '/users/42/unknown')
+  utest(('users', {}), get, tree, '/users')
+  utest(('user', {'id': 42}), get, tree, '/users/42')
+  utest(('user', {'id': -1}), get, tree, '/users/-1')
+  utest(('user_posts', {'id': 42}), get, tree, '/users/42/posts')
+  utest(None, get, tree, '/users/abc') # int pattern doesn't match.
+  utest(None, get, tree, '/nonexistent')
+  utest(None, get, tree, '/users/42/unknown')
 
 
 @utest_run
@@ -110,8 +132,8 @@ def _() -> None:
   tree.insert('/files/{p:path}', 'files')
   tree.finalize()
 
-  utest(('files', {'p': 'readme.txt'}), tree.get, '/files/readme.txt')
-  utest(('files', {'p': 'a/b/c.txt'}), tree.get, '/files/a/b/c.txt')
+  utest(('files', {'p': 'readme.txt'}), get, tree, '/files/readme.txt')
+  utest(('files', {'p': 'a/b/c.txt'}), get, tree, '/files/a/b/c.txt')
 
 
 @utest_run
@@ -122,9 +144,9 @@ def _() -> None:
   tree.insert('/items/{id:int}', 'item')
   tree.finalize()
 
-  utest(('special', {}), tree.get, '/items/special') # Fixed wins.
-  utest(('item', {'id': 99}), tree.get, '/items/99') # Pattern matches.
-  utest(None, tree.get, '/items/special/extra') # Fixed "special" has no children.
+  utest(('special', {}), get, tree, '/items/special') # Fixed wins.
+  utest(('item', {'id': 99}), get, tree, '/items/99') # Pattern matches.
+  utest(None, get, tree, '/items/special/extra') # Fixed "special" has no children.
 
 
 @utest_run
@@ -134,10 +156,10 @@ def _() -> None:
   tree.insert('/pages/{n:nat}', 'page')
   tree.finalize()
 
-  utest(('page', {'n': 0}), tree.get, '/pages/0')
-  utest(('page', {'n': 42}), tree.get, '/pages/42')
-  utest(None, tree.get, '/pages/-1')
-  utest(None, tree.get, '/pages/abc')
+  utest(('page', {'n': 0}), get, tree, '/pages/0')
+  utest(('page', {'n': 42}), get, tree, '/pages/42')
+  utest(None, get, tree, '/pages/-1')
+  utest(None, get, tree, '/pages/abc')
 
 
 @utest_run
@@ -147,11 +169,11 @@ def _() -> None:
   tree.insert('/items/{id:pos_int}', 'item')
   tree.finalize()
 
-  utest(('item', {'id': 1}), tree.get, '/items/1')
-  utest(('item', {'id': 42}), tree.get, '/items/42')
-  utest(None, tree.get, '/items/0')
-  utest(None, tree.get, '/items/-1')
-  utest(None, tree.get, '/items/abc')
+  utest(('item', {'id': 1}), get, tree, '/items/1')
+  utest(('item', {'id': 42}), get, tree, '/items/42')
+  utest(None, get, tree, '/items/0')
+  utest(None, get, tree, '/items/-1')
+  utest(None, get, tree, '/items/abc')
 
 
 @utest_run
@@ -161,8 +183,8 @@ def _() -> None:
   tree.insert('/events/{d:date}', 'event')
   tree.finalize()
 
-  utest(('event', {'d': date(2025, 3, 14)}), tree.get, '/events/2025-03-14')
-  utest(None, tree.get, '/events/not-a-date')
+  utest(('event', {'d': date(2025, 3, 14)}), get, tree, '/events/2025-03-14')
+  utest(None, get, tree, '/events/not-a-date')
 
 
 @utest_run
@@ -173,9 +195,9 @@ def _() -> None:
   tree.insert('/things/code-{h:hex}', 'suffixed')
   tree.finalize()
 
-  utest(('prefixed', {'id': 5}), tree.get, '/things/item-5')
-  utest(('suffixed', {'h': 'ff'}), tree.get, '/things/code-ff')
-  utest(None, tree.get, '/things/other-5')
+  utest(('prefixed', {'id': 5}), get, tree, '/things/item-5')
+  utest(('suffixed', {'h': 'ff'}), get, tree, '/things/code-ff')
+  utest(None, get, tree, '/things/other-5')
 
 
 @utest_run
@@ -186,8 +208,8 @@ def _() -> None:
   tree.insert('/a/{id:int}/sub', 'item_sub')
   tree.finalize()
 
-  utest(('item', {'id': 1}), tree.get, '/a/1')
-  utest(('item_sub', {'id': 1}), tree.get, '/a/1/sub')
+  utest(('item', {'id': 1}), get, tree, '/a/1')
+  utest(('item_sub', {'id': 1}), get, tree, '/a/1/sub')
 
 
 @utest_run_exc(ValueError)

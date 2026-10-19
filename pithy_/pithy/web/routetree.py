@@ -112,6 +112,8 @@ class RouteTree(Generic[V]):
   '''
   A generic prefix tree that maps URL path patterns to values of type V.
   Each node may have a value associated with it.
+  Patterns are written in decoded form and matched against decoded request path segments; see `decode_path_segments`,
+  which guarantees that no segment contains a '/'.
   '''
 
   def __init__(self) -> None:
@@ -175,10 +177,9 @@ class RouteTree(Generic[V]):
       subtree.finalize()
 
 
-  def get(self, path:str) -> tuple[V,dict[str,Any]]|None:
-    path = path.removeprefix('/')
-    components = path.split('/')
-    return self._get(components, 0, {})
+  def get(self, segments:list[str]) -> tuple[V,dict[str,Any]]|None:
+    'Match decoded path segments, as produced by `decode_path_segments`.'
+    return self._get(segments, 0, {})
 
 
   def _get(self, components:list[str], idx:int, path_params:dict[str,Any]) -> tuple[V,dict[str,Any]]|None:
@@ -218,23 +219,31 @@ class RouteTree(Generic[V]):
     return None
 
 
-def build_route_tree(routes:dict[str,V]) -> tuple[dict[str,V],RouteTree[V]]:
+type FixedRouteKey = tuple[str,...]
+'The decoded segments of a fixed route path, as `decode_path_segments` would produce them for a matching request.'
+
+
+def build_route_tree(routes:dict[str,V]) -> tuple[dict[FixedRouteKey,V],RouteTree[V]]:
   '''
   Convert a dict of { path_pattern : value } into (fixed_routes, pattern_tree).
-  `fixed_routes` is a dictionary of { path : value } for all paths that uniquely map to a value.
+  `fixed_routes` maps the segment tuple of each pattern-free path to its value, so that lookup by decoded request
+  segments cannot be confused by an encoded slash.
   `pattern_tree` is a path component prefix tree.
   '''
 
-  fixed_routes:dict[str,V] = {}
+  fixed_routes:dict[FixedRouteKey,V] = {}
   pattern_tree:RouteTree[V] = RouteTree()
 
   for (path, value) in routes.items():
     if is_pattern_route(path):
       pattern_tree.insert(path, value)
     else:
-      if path in fixed_routes:
+      if not path.startswith('/'):
+        raise ValueError(f'Route path must start with a slash: {path!r}.')
+      key = tuple(path.removeprefix('/').split('/'))
+      if key in fixed_routes:
         raise ValueError(f'Route path {path!r} is not unique.')
-      fixed_routes[path] = value
+      fixed_routes[key] = value
 
   pattern_tree.finalize()
   return fixed_routes, pattern_tree

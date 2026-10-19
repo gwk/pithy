@@ -3,7 +3,7 @@
 from collections.abc import Mapping
 
 from pithy.web.endpoint import Endpoint, GetHandler
-from pithy.web.errors import MethodNotAllowedError
+from pithy.web.errors import BadRequestError, MethodNotAllowedError
 from pithy.web.handler import RoutableHandler
 from pithy.web.request import Request
 from pithy.web.response import Response
@@ -26,6 +26,12 @@ class EpUser(Endpoint):
     id:int
   def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'user:{fields.id}')
+
+class EpName(Endpoint):
+  class Get:
+    name:str
+  def get(self, request:Request, fields:Get) -> Response:
+    return Response(body=f'name:{fields.name}')
 
 class EpStatic(Endpoint):
   class Get:
@@ -58,6 +64,35 @@ def _() -> None:
   utest((EpUser, {'id': 7}), router.endpoint_for_path, '/users/7')
   utest((EpStatic, {'p': 'dir/file.txt'}), router.endpoint_for_path, '/static/dir/file.txt')
   utest(None, router.endpoint_for_path, '/missing')
+
+
+@utest_run
+def _() -> None:
+  'Router: matches percent-decoded segments and passes decoded path parameters.'
+  router = Router({
+    '/about': EpAbout,
+    '/users/{name}': EpName,
+    '/static/{p:path}': EpStatic,
+  })
+  utest((EpAbout, {}), router.endpoint_for_path, '/ab%6Fut') # An encoded unreserved character is equivalent.
+  utest((EpName, {'name': 'al ice'}), router.endpoint_for_path, '/users/al%20ice')
+  utest(None, router.endpoint_for_path, '/users/a/b')
+  utest((EpStatic, {'p': 'dir x/f/g.txt'}), router.endpoint_for_path, '/static/dir%20x/f/g.txt')
+  utest_exc(BadRequestError, router.endpoint_for_path, '/users/%FF') # Not UTF-8.
+  utest_exc(BadRequestError, router.endpoint_for_path, '/users/a%00b') # NUL.
+  utest_exc(BadRequestError, router.endpoint_for_path, '/users/a%2Fb') # Encoded slash.
+  utest_exc(BadRequestError, router.endpoint_for_path, '/about%2F')
+
+  def dispatch_body(path:str) -> str|None:
+    request = Request(method='GET', scheme='http', host='localhost', port=80,
+      path=path, query_str='', headers={}, client_addr=('127.0.0.1', 0), content_length=None)
+    handler = router.resolve_handler(request)
+    response = handler.handle_request(request)
+    return response.body.decode() if isinstance(response.body, (bytes, bytearray)) else None
+
+  utest('name:caf\u00e9', dispatch_body, '/users/caf%C3%A9')
+  utest('files:a/b c', dispatch_body, '/static/a/b%20c')
+  utest_exc(BadRequestError, dispatch_body, '/users/%FF')
 
 
 @utest_run

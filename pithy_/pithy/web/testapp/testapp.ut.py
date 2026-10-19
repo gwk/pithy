@@ -42,6 +42,12 @@ def _() -> None:
     utest('name=alice', fetch, '/users/alice')
     utest('name=bob', fetch, '/users/bob')
 
+    # Path parameters arrive percent-decoded; undecodable paths and encoded slashes are 400.
+    utest('name=al ice', fetch, '/users/al%20ice')
+    utest(404, fetch_status, '/users/a/b')
+    utest(400, fetch_status, '/users/%FF')
+    utest(400, fetch_status, '/users/a%2Fb')
+
     # Unmatched path returns 404.
     utest(404, fetch_status, '/nonexistent')
     utest(404, fetch_status, '/items')

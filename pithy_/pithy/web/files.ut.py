@@ -7,6 +7,7 @@ from tempfile import TemporaryDirectory
 from time import time
 
 from pithy.http import format_header_date
+from pithy.path import Path
 from pithy.web.errors import ResponseError
 from pithy.web.files import compute_local_path, ext_media_types, FilesApp, FilesHandler
 from pithy.web.request import Request
@@ -35,7 +36,7 @@ def _() -> None:
     opened:list[BufferedReader] = []
 
     class ReplacingFiles(FilesApp):
-      def transform_file_from_local_fs(self, request:Request, norm_path:str, local_path:str, file:BufferedReader) -> Response:
+      def transform_file_from_local_fs(self, request:Request, norm_path:Path, local_path:Path, file:BufferedReader) -> Response:
         opened.append(file)
         return Response(body=b'replacement')
 
@@ -44,7 +45,7 @@ def _() -> None:
     utest_val(True, opened[-1].closed)
 
     class FailingFiles(FilesApp):
-      def transform_file_from_local_fs(self, request:Request, norm_path:str, local_path:str, file:BufferedReader) -> Response:
+      def transform_file_from_local_fs(self, request:Request, norm_path:Path, local_path:Path, file:BufferedReader) -> Response:
         opened.append(file)
         raise ValueError('transformation failed')
 
@@ -127,6 +128,24 @@ def _() -> None:
 
     utest('text/css;charset=utf-8', content_type, '/static/sub/app.css')
 
+    def status_and_body(path:str) -> tuple[HTTPStatus,bytes]:
+      request = _request(path)
+      try: response = router.resolve_handler(request).handle_request(request)
+      except ResponseError as exc: return (exc.status, b'')
+      body = response.body
+      assert isinstance(body, BufferedReader)
+      try: return (response.status, body.read())
+      finally: body.close()
+
+    # The router decodes the subpath exactly once: a space is decoded, and a literal '%2e%2e' name is reachable
+    # only through its double-encoded form, which cannot be mistaken for a traversal.
+    with open(f'{tmp}/sub/a b.txt', 'w') as f: f.write('spaced')
+    with open(f'{tmp}/sub/%2e%2e.txt', 'w') as f: f.write('literal')
+    utest((HTTPStatus.OK, b'spaced'), status_and_body, '/static/sub/a%20b.txt')
+    utest((HTTPStatus.OK, b'literal'), status_and_body, '/static/sub/%252e%252e.txt')
+    utest((HTTPStatus.FORBIDDEN, b''), status_and_body, '/static/sub/%2e%2e.txt')
+    utest((HTTPStatus.OK, b'body{}'), status_and_body, '/static/%2e%2e/sub/app.css') # Normalized within the mount root.
+
     # A directory without a trailing slash redirects within the mount prefix, using the full request path (not the subpath).
     # The response is built via Response.from_error, exactly as the server does, so the lowercase-header rule is exercised.
     def redirect_location(path:str) -> object:
@@ -139,6 +158,10 @@ def _() -> None:
       return None
 
     utest('/static/sub/', redirect_location, '/static/sub')
+
+    # The location preserves the request's percent-encoding; a decoded name would be an invalid header value.
+    mkdir(f'{tmp}/s\u00fcb d')
+    utest('/static/s%C3%BCb%20d/', redirect_location, '/static/s%C3%BCb%20d')
 
 
 @utest_run
@@ -200,5 +223,40 @@ def _() -> None:
 @utest_run
 def _() -> None:
   'compute_local_path: rejects paths that escape local_dir via `..`.'
-  utest('/root/a.txt', compute_local_path, local_dir='/root', norm_path='/a.txt', map_bare_names_to_html=False)
-  utest_exc(ResponseError, compute_local_path, local_dir='/root', norm_path='/../etc', map_bare_names_to_html=False)
+  utest(Path('/root/a.txt'), compute_local_path, local_dir='/root', norm_path=Path('/a.txt'),
+    as_dir=False, map_bare_names_to_html=False)
+  utest_exc(ResponseError, compute_local_path, local_dir='/root', norm_path=Path('/../etc'),
+    as_dir=False, map_bare_names_to_html=False)
+
+
+@utest_run
+def _() -> None:
+  'FilesApp preserves directory intent independently of normalized paths.'
+  with TemporaryDirectory() as tmp:
+    mkdir(f'{tmp}/sub')
+    with open(f'{tmp}/index.html', 'w') as file: file.write('root')
+    with open(f'{tmp}/sub/index.html', 'w') as file: file.write('directory')
+    with open(f'{tmp}/sub.html', 'w') as file: file.write('page')
+    app = FilesApp(local_dir=tmp, map_bare_names_to_html=True)
+
+    def body(path:str) -> bytes:
+      response = app.handle_request(_request(path))
+      assert isinstance(response.body, BufferedReader)
+      try: return response.body.read()
+      finally: response.close()
+
+    utest(b'root', body, '/')
+    utest(b'root', body, '/sub/../')
+    utest(b'directory', body, '/sub/')
+    utest(b'page', body, '/sub')
+
+    try: app.handle_request(_request('/index.html/'))
+    except ResponseError as exc: utest_val(HTTPStatus.NOT_FOUND, exc.status)
+    else: raise AssertionError('A file cannot satisfy a directory request.')
+
+    try: app.handle_request(_request('/sub/..'))
+    except ResponseError as exc:
+      utest_val(HTTPStatus.MOVED_PERMANENTLY, exc.status)
+      assert exc.headers is not None
+      utest_val('/', exc.headers['location'])
+    else: raise AssertionError('A directory request without a slash must redirect.')

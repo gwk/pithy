@@ -15,6 +15,7 @@ from ..json import Json, parse_json
 from .errors import BadRequestError, decode_or_bad_request
 from .requestconn import AddrPair, RequestConn
 from .response import ResponseError
+from .util import decode_path_segments
 
 
 _context_keywords_ = ['body parsing', 'file upload', 'form data', 'http', 'json', 'multipart', 'query parameters',
@@ -58,7 +59,8 @@ class Request:
   * prevent_client_caching: whether handlers should avoid conditional or cacheable responses.
   * conn: RequestConn object for reading the request body. TODO: privatize.
   * ctx: an empty dictionary for applications to attach request state.
-  * path_parts: URL path split into parts by '/', e.g. ['items', '42'] for path '/items/42' (cached property).
+  * path_segments: percent-decoded path segments, e.g. ['items', '4 2'] for path '/items/4%202' (cached property).
+    See `decode_path_segments` for the exact rules; raises BadRequestError for undecodable segments.
   * content_type: Full Content-Type header value, including any parameters, e.g. 'application/json;charset=utf-8' (cached property).
   * media_type: The bare type/subtype portion of the Content-Type, e.g. 'application/json' (cached property).
     Note: per RFC 9110 the term "media type" includes parameters, but in this codebase `media_type` consistently refers to the
@@ -88,12 +90,9 @@ class Request:
 
 
   @cached_property
-  def path_parts(self) -> list[str]:
+  def path_segments(self) -> list[str]:
     assert self.path.startswith('/')
-    parts = self.path.split('/')
-    if not parts[-1]: del parts[-1]
-    del parts[0]
-    return parts
+    return decode_path_segments(self.path)
 
 
   @cached_property

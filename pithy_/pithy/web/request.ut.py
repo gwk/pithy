@@ -27,6 +27,22 @@ def _make_multipart(boundary:str, *parts:bytes) -> bytes:
   return body
 
 
+# path_segments
+
+@utest_run
+def _() -> None:
+  'path_segments decodes each segment and preserves a trailing slash as an empty segment.'
+  def segments(path:str) -> list[str]:
+    return Request(method='GET', scheme='http', host='localhost', port=80, path=path, query_str='',
+      headers={}, client_addr=('127.0.0.1', 0), content_length=None).path_segments
+  utest_val([''], segments('/'))
+  utest_val(['a', ''], segments('/a/'))
+  utest_val(['a b', 'caf\u00e9'], segments('/a%20b/caf%C3%A9'))
+  utest_exc(BadRequestError, segments, '/%FF')
+  utest_exc(BadRequestError, segments, '/a%00')
+  utest_exc(BadRequestError, segments, '/c%2Fd')
+
+
 # _add_to_param_dict
 
 @utest_run

@@ -8,7 +8,8 @@ from .endpoint import Endpoint, get_endpoint, GetHandler
 from .errors import MethodNotAllowedError, NotFoundError
 from .handler import RequestHandler, RoutableHandler
 from .request import Request
-from .routetree import build_route_tree, RouteTree
+from .routetree import build_route_tree, FixedRouteKey, RouteTree
+from .util import decode_path_segments
 
 
 _context_keywords_ = ['dispatch', 'get functions', 'http', 'method validation', 'path matching', 'prefix tree',
@@ -31,6 +32,8 @@ class Router:
   The router splits the routes into fixed routes and pattern routes.
   Fixed routes are dispatched to via dictionary lookup.
   Pattern routes are stored in a prefix tree, which is traversed to find the appropriate endpoint for a given path.
+  Routes are matched against percent-decoded path segments, so patterns are written in decoded form and handlers
+  receive decoded path parameters; see `decode_path_segments`.
 
   Field converters are resolved on initialization so programming errors with unconstructible field types raise early.
   '''
@@ -49,13 +52,13 @@ class Router:
         handler_cls._resolve_converters()
       handler_routes[path] = handler_cls
     fixed_routes, pattern_tree = build_route_tree(handler_routes)
-    self.fixed_routes:dict[str,type[RoutableHandler]] = fixed_routes
+    self.fixed_routes:dict[FixedRouteKey,type[RoutableHandler]] = fixed_routes
     self.pattern_tree:RouteTree[type[RoutableHandler]] = pattern_tree
 
 
   def resolve_handler(self, request:Request) -> RoutableHandler:
     'Dispatch the request path and return a constructed handler, or raise NotFoundError/MethodNotAllowedError.'
-    result = self.endpoint_for_path(request.path)
+    result = self.endpoint_for_segments(request.path_segments)
     if result is None: raise NotFoundError
     handler_cls, path_params = result
     if request.method not in handler_cls._methods:
@@ -64,9 +67,15 @@ class Router:
 
 
   def endpoint_for_path(self, path:str) -> tuple[type[RoutableHandler],dict[str,Any]]|None:
-    if handler := self.fixed_routes.get(path):
+    'Match a raw request path; raises BadRequestError if it cannot be decoded.'
+    return self.endpoint_for_segments(decode_path_segments(path))
+
+
+  def endpoint_for_segments(self, segments:list[str]) -> tuple[type[RoutableHandler],dict[str,Any]]|None:
+    'Match decoded path segments, as produced by `decode_path_segments`.'
+    if handler := self.fixed_routes.get(tuple(segments)):
       return (handler, {})
-    return self.pattern_tree.get(path)
+    return self.pattern_tree.get(segments)
 
 
 class RouterApp(WebApp):
