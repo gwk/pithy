@@ -59,6 +59,9 @@ Python versions omit the git tag prefix `v` and may include `aN`, `bN` or `rcN` 
 An approved prerelease enables prerelease update checks within that minor series; final versions consider only final releases.
 Ordering is numeric, with alpha before beta before release candidate before final.
 
+Run `common/check-version.sh all` before deployment to check all supported tools against `versions.sh`.
+Alternatively, pass one or more tool names to select checks: `python`, `sqlite`, `uv`, `vector`.
+
 ## Check for updates
 
 From the Pithy root, run `python3 -m tap_ops.releases` to compare installed, approved and latest upstream versions.
