@@ -6,8 +6,9 @@
 
 # Prerequisites:
 # * Run common/build-sqlite.sh first to install a modern sqlite into /usr/local.
-# * macOS: `brew install ca-certificates gdbm ncurses openssl pkg-config readline tcl-tk xz` then `brew upgrade`.
-# * Linux: install the usual build toolchain and headers (clang, zlib, bzip2, xz, readline, gdbm, libffi, openssl).
+# * macOS: `brew install ca-certificates gdbm ncurses openssl@3 pkg-config readline tcl-tk xz`.
+# * Fedora/dnf: required packages are checked below; missing packages produce a `dnf install` command.
+# * Other Linux: install the usual build toolchain and headers (clang, zlib, bzip2, xz, readline, gdbm, libffi, openssl).
 
 # Run this as your normal (non-root) user. It escalates with sudo only to create the install prefix.
 # The makefile compiles a large amount of stdlib bytecode during install;
@@ -31,12 +32,6 @@ exe() { echo "+ $*"; "$@"; }
 [[ $EUID -ne 0 ]] || fail "Run this as your normal user, not root; the script escalates with sudo only where needed."
 
 
-which pkg-config || {
-  echo "Missing required tool."
-  [[ $(uname) == "Darwin" ]]  && echo 'On macOS: `brew install gdbm gtk4 make openssl@3 readline pkg-config xz zstd`.'
-  exit 1
-}
-
 reuse_build=0
 if [[ "${1:-}" == '-reuse-build' ]]; then
   reuse_build=1
@@ -54,6 +49,37 @@ case "$(uname)" in
   *) fail "Unsupported platform: $(uname)." ;;
 esac
 echo "platform: $platform; python: $py_point_version; prefix: $prefix."
+
+# Check dependencies.
+if [[ $platform == mac ]]; then
+  command -v brew >/dev/null || fail "Missing required tool: brew. Install Homebrew first."
+  missing_formulae=()
+  for formula in ca-certificates gdbm ncurses openssl@3 pkg-config readline tcl-tk xz; do
+    if installed="$(brew list --formula --versions "$formula")" && [[ -n "$installed" ]]; then
+      echo "$installed"
+    else
+      missing_formulae+=("$formula")
+    fi
+  done
+  [[ ${#missing_formulae[@]} -eq 0 ]] || fail "Missing Homebrew dependencies. Run: brew install ${missing_formulae[*]}"
+elif command -v dnf >/dev/null; then
+  command -v rpm >/dev/null || fail "Missing required tool: rpm."
+  required_packages=(
+    clang make pkgconf-pkg-config curl tar xz
+    bzip2-devel gdbm-devel libffi-devel libzstd-devel ncurses-devel openssl-devel readline-devel tk-devel xz-devel zlib-devel
+  )
+  missing_packages=()
+  for package in "${required_packages[@]}"; do
+    # Query providers so replacements such as zlib-ng-compat-devel satisfy zlib-devel.
+    if installed="$(rpm -q --whatprovides "$package")"; then
+      echo "$installed"
+    else
+      missing_packages+=("$package")
+    fi
+  done
+  [[ ${#missing_packages[@]} -eq 0 ]] || fail "Missing build dependencies. Run: sudo dnf install ${missing_packages[*]}"
+fi
+command -v pkg-config >/dev/null || fail "Missing required tool: pkg-config."
 
 
 # Install setup. This step happens early so that the sudo authorization is instant.
@@ -255,6 +281,7 @@ check_import() {
   if out="$("$py" -c "$1" 2>&1)"; then
     echo "ok:   $2${out:+ - $out}"
   else
+    [[ "${3:-}" != required ]] || fail "$2 unavailable: $out"
     echo "NOTE: $2 unavailable."
   fi
 }
@@ -263,7 +290,7 @@ echo
 echo "verifying modules:"
 check_import 'import lzma' 'lzma (xz)'
 check_import 'import readline; print("backend:", readline.backend)' 'readline'
-check_import 'import ssl; print(ssl.OPENSSL_VERSION)' 'ssl (openssl)'
+check_import 'import ssl; print(ssl.OPENSSL_VERSION)' 'ssl (openssl)' required
 check_import 'import sqlite3; print(sqlite3.sqlite_version)' 'sqlite3'
 check_import 'import dbm.gnu' 'dbm.gnu (gdbm)'
 check_import 'import tkinter; print("tk", tkinter.TkVersion)' 'tkinter'
