@@ -497,6 +497,14 @@ class WebServer:
       logE('Unhandled application exception.', exc=exc, client_addr=conn.client_addr, method=method, path=request.path)
       response = self._internal_server_error_response(method=method).set_connection_close()
 
+    # Empty requests have a pending EndOfMessage even when the handler has no reason to read a body.
+    # Consume it after dispatch rather than before: next_data asserts SEND_BODY, so consuming earlier would break
+    # a handler that explicitly reads the empty body.
+    if conn.h11_conn.their_state is h11_SEND_BODY and 'transfer-encoding' not in headers and content_length in (None, 0):
+      completion = conn.h11_conn.next_event() # Empty framing guarantees completion without a socket read.
+      if not isinstance(completion, h11_EndOfMessage):
+        raise HttpStateError(f'Expected EndOfMessage for empty request; received: {completion!r}.')
+
     # An unconsumed EndOfMessage prevents reuse, including when application dispatch raises ResponseError.
     if conn.h11_conn.their_state is h11_SEND_BODY: response.set_connection_close()
     return response

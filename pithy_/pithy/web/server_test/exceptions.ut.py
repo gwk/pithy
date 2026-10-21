@@ -133,6 +133,53 @@ def test_error_connections(base_url:str) -> None:
     conn.close()
 
 
+def test_empty_request_connections(base_url:str) -> None:
+  'Complete empty requests without requiring handlers to read them, preserving explicit body reads and close requests.'
+  url = urlsplit(base_url)
+  assert url.hostname is not None
+  for method, path, headers, status, body in (
+    ('GET', '/ok', {}, 200, b'ok'),
+    ('HEAD', '/ok', {}, 200, b''),
+    ('POST', '/ok', {'Content-Length': '0'}, 200, b'ok'),
+    ('GET', '/read-small-body', {}, 200, b'read ok'),
+    ('POST', '/read-small-body', {'Content-Length': '0'}, 200, b'read ok'),
+    ('GET', '/reject-at-resolve', {}, 400, None),
+    ('GET', '/reject-at-prepare', {}, 400, None),
+    ('GET', '/raise-bad-request', {}, 400, None),
+  ):
+    conn = HTTPConnection(url.hostname, url.port, timeout=2)
+    try:
+      conn.request(method, path, headers=headers)
+      socket = conn.sock
+      assert socket is not None
+      response = conn.getresponse()
+      utest(status, int, response.status)
+      utest(None, response.getheader, 'connection', _utest_label=f'{method} {path}')
+      received = response.read()
+      if body is not None: utest(body, bytes, received)
+      else: utest(True, lambda: b'bad input' in received)
+      conn.request('GET', '/ok', headers={'Connection': 'close'})
+      utest(True, lambda: conn.sock is socket, _utest_label=f'{method} {path}')
+      response = conn.getresponse()
+      utest(200, int, response.status)
+      utest('close', response.getheader, 'connection')
+      utest(b'ok', response.read)
+    finally:
+      conn.close()
+
+  # Framing, not the method or Content-Length alone, determines whether a request is empty.
+  for headers in ({}, {'Transfer-Encoding': 'chunked'}, {'Transfer-Encoding': 'chunked', 'Content-Length': '0'}):
+    conn = HTTPConnection(url.hostname, url.port, timeout=2)
+    try:
+      conn.request('GET', '/ok', body=b'tiny', headers=headers, encode_chunked='Transfer-Encoding' in headers)
+      response = conn.getresponse()
+      utest(200, int, response.status)
+      utest('close', response.getheader, 'connection')
+      utest(b'ok', response.read)
+    finally:
+      conn.close()
+
+
 def test_server_exceptions() -> None:
   'Test that request and response exceptions do not kill worker threads.'
 
@@ -140,9 +187,10 @@ def test_server_exceptions() -> None:
     m = server_proc.wait_for_pattern(r'"url":"(http://localhost:\d+)"')
     base_url = m.group(1)
     test_error_connections(base_url)
+    test_empty_request_connections(base_url)
 
     utest((500, 'Internal Server Error'), get_status_body, base_url, '/raise')
-    response = requests.get(f'{base_url}/ok', timeout=2)
+    response = requests.get(f'{base_url}/ok', headers={'Connection': 'close'}, timeout=2)
     utest('no-cache, no-store, must-revalidate', response.headers.get, 'cache-control')
     utest((200, 'ok'), get_status_body, base_url, '/ok')
     # NotImplementedError: 501 with a fixed body that does not leak the exception message.
