@@ -483,16 +483,11 @@ class WebServer:
 
         handler.prepare(request)
         response = handler.handle_request(request)
-        # The handler may or may not read the body.
-        if conn.h11_conn.their_state is h11_SEND_BODY: # The handler did not read the body.
-          response.set_connection_close() # The connection cannot be reused since the body was not read.
 
       except ResponseError as exc:
         response = Response.from_error(exc, method=method)
       except BodyTooLargeError:
-        response = (
-          Response(HTTPStatus.CONTENT_TOO_LARGE, body='Content Too Large', media_type='text/plain')
-          .set_connection_close()) # The body was not fully read, so the connection cannot be reused.
+        response = Response(HTTPStatus.CONTENT_TOO_LARGE, body='Content Too Large', media_type='text/plain')
       except NotImplementedError as exc:
         logE('Not implemented.', exc=exc, client_addr=conn.client_addr, method=method, path=request.path)
         response = (
@@ -502,6 +497,8 @@ class WebServer:
       logE('Unhandled application exception.', exc=exc, client_addr=conn.client_addr, method=method, path=request.path)
       response = self._internal_server_error_response(method=method).set_connection_close()
 
+    # An unconsumed EndOfMessage prevents reuse, including when application dispatch raises ResponseError.
+    if conn.h11_conn.their_state is h11_SEND_BODY: response.set_connection_close()
     return response
 
 

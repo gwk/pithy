@@ -1,8 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from http import HTTPStatus
+from http.client import HTTPConnection
 from io import BufferedReader
 from sys import argv, executable
+from urllib.parse import urlsplit
 
 import requests
 from pithy.web.app import WebApp
@@ -37,6 +39,15 @@ def file_response(cls:type[Response]) -> Response:
 
 class ServerExceptionTestApp(WebApp):
 
+  def resolve_handler(self, request:Request) -> ServerExceptionTestApp:
+    if request.path == '/reject-at-resolve': raise BadRequestError('bad input')
+    return self
+
+
+  def prepare(self, request:Request) -> None:
+    if request.path == '/reject-at-prepare': raise BadRequestError('bad input')
+
+
   def handle_request(self, request:Request) -> Response:
     match request.path:
       case '/ok': return Response(body='ok', media_type='text/plain')
@@ -47,6 +58,14 @@ class ServerExceptionTestApp(WebApp):
       case '/raise-not-implemented': raise NotImplementedError('not yet')
       case '/raise-not-implemented-empty': raise NotImplementedError
       case '/raise-bad-request': raise BadRequestError('bad input')
+      case '/reject-partial-body':
+        assert request.conn is not None
+        chunk = request.conn.read_some(max_bytes=8)
+        assert chunk and b'tiny'.startswith(chunk)
+        raise BadRequestError('bad input')
+      case '/reject-read-body':
+        request.read_body(max_bytes=8)
+        raise BadRequestError('bad input')
       case '/broken-response': return BrokenResponse(body='unreachable', media_type='text/plain')
       case '/file': return file_response(Response)
       case '/broken-file-response': return file_response(BrokenResponse)
@@ -70,12 +89,57 @@ def post_status_body(base_url:str, path:str, data:bytes) -> tuple[int,str]:
   return (resp.status_code, resp.text)
 
 
+def test_error_connections(base_url:str) -> None:
+  'Advertise closure for unread bodies, and reuse the connection after a fully consumed request.'
+  for path in ('/reject-at-resolve', '/reject-at-prepare', '/raise-bad-request'):
+    response = requests.post(f'{base_url}{path}', data=b'tiny', timeout=2)
+    utest(400, int, response.status_code)
+    utest('close', response.headers.get, 'connection', _utest_label=path)
+    utest(True, lambda: 'bad input' in response.text)
+
+  url = urlsplit(base_url)
+  assert url.hostname is not None
+  conn = HTTPConnection(url.hostname, url.port, timeout=2)
+  try:
+    # Send only half the declared body so the handler cannot consume it all in one read.
+    conn.putrequest('POST', '/reject-partial-body')
+    conn.putheader('Content-Length', '8')
+    conn.endheaders(b'tiny')
+    socket = conn.sock
+    assert socket is not None
+    response_partial = conn.getresponse()
+    utest(400, int, response_partial.status)
+    utest('close', response_partial.getheader, 'connection')
+    socket.sendall(b'rest') # Let the server finish draining before closing.
+    utest(True, lambda: b'bad input' in response_partial.read())
+  finally:
+    conn.close()
+
+  conn = HTTPConnection(url.hostname, url.port, timeout=2)
+  try:
+    conn.request('POST', '/reject-read-body', body=b'tiny')
+    socket = conn.sock
+    assert socket is not None
+    response_read = conn.getresponse()
+    utest(400, int, response_read.status)
+    utest(None, response_read.getheader, 'connection')
+    utest(True, lambda: b'bad input' in response_read.read())
+    conn.request('POST', '/read-small-body', body=b'tiny')
+    utest(True, lambda: conn.sock is socket) # A reconnect must not hide a failure to reuse the socket.
+    response_ok = conn.getresponse()
+    utest(200, int, response_ok.status)
+    utest(b'read ok', response_ok.read)
+  finally:
+    conn.close()
+
+
 def test_server_exceptions() -> None:
   'Test that request and response exceptions do not kill worker threads.'
 
   with TestProcess([executable, __file__, 'serve'], merge_stderr=True) as server_proc:
     m = server_proc.wait_for_pattern(r'"url":"(http://localhost:\d+)"')
     base_url = m.group(1)
+    test_error_connections(base_url)
 
     utest((500, 'Internal Server Error'), get_status_body, base_url, '/raise')
     response = requests.get(f'{base_url}/ok', timeout=2)
