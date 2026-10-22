@@ -198,7 +198,7 @@ def test_server_exceptions() -> None:
     utest((200, 'ok'), get_status_body, base_url, '/ok')
     utest((501, 'Not Implemented'), get_status_body, base_url, '/raise-not-implemented-empty')
     utest((200, 'ok'), get_status_body, base_url, '/ok')
-    # BadRequestError (a ResponseError): 400 with HTML body containing the reason.
+    # BadRequestError (a ResponseError): 400 with a plain text body containing the reason.
     status, body = get_status_body(base_url, '/raise-bad-request')
     utest(400, int, status)
     utest(True, lambda b: 'bad input' in b, body)

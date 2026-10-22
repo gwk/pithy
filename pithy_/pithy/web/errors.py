@@ -16,9 +16,7 @@ class ResponseError(Exception):
   * status:  HTTPStatus.
   * reason: a reason phrase.
 
-  TODO: the generated response should generate a body depending on a specified content type.
-  This will allow users to serve HTML, JSON, or any other kind of error they need.
-  Perhaps the best way to do it is to move response() to WebApp.
+  Error responses are rendered by `pithy.web.errorrender`; `WebApp.error_renderer` selects one by media type.
   '''
 
   def __init__(self, status:HTTPStatus, reason:str='', *, headers:ResponseHeadersDict|None=None):

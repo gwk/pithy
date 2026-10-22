@@ -24,9 +24,10 @@ from pithy.logs import logE, logI
 from ..http import http_method_bytes_to_strs, may_send_body
 from .app import WebApp
 from .env import web_host, web_port
+from .errors import ResponseError
 from .request import AddrPair, Request, RequestConn
 from .requestconn import BodyAlreadyReadError, BodyTooLargeError
-from .response import Response, ResponseError
+from .response import Response
 
 
 _context_keywords_ = ['access logging', 'connection draining', 'h11', 'http 1.1', 'http.server', 'keep alive', 'multithreading',
@@ -485,7 +486,7 @@ class WebServer:
         response = handler.handle_request(request)
 
       except ResponseError as exc:
-        response = Response.from_error(exc, method=method)
+        response = self.app.error_renderer()(request, exc)
       except BodyTooLargeError:
         response = Response(HTTPStatus.CONTENT_TOO_LARGE, body='Content Too Large', media_type='text/plain')
       except NotImplementedError as exc:

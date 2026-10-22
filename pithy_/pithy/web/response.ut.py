@@ -4,7 +4,6 @@ from http import HTTPStatus
 from json import loads
 
 from pithy.html import Div, Span
-from pithy.web.errors import BadRequestError
 from pithy.web.response import CsvResponse, HtmlResponse, HtmxResponse, RedirectResponse, Response
 from utest import utest_exc, utest_run, utest_val
 
@@ -55,14 +54,6 @@ def test_redirect_response() -> None:
 
 utest_exc(ValueError, RedirectResponse, '/x', status=HTTPStatus.OK)
 utest_exc(ValueError, RedirectResponse, '/x', headers={'location':'/y'})
-
-
-@utest_run
-def test_error_punctuation() -> None:
-  for reason in ('Unknown parameter in body.', 'Unknown parameter in body'):
-    response = Response.from_error(BadRequestError(reason), 'GET')
-    assert isinstance(response.body, bytes)
-    utest_val(True, b'<p>400: Unknown parameter in body.</p>' in response.body)
 
 
 @utest_run

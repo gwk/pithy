@@ -1,7 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from dataclasses import dataclass
-from html import escape as html_escape
 from http import HTTPStatus
 from io import BufferedReader
 from os import fstat as os_fstat
@@ -12,13 +11,12 @@ from urllib.parse import quote as url_quote
 from pithy.json import render_json
 
 from ..csv import Quoting, render_csv
-from ..http import format_header_date, may_send_body, non_body_statuses
+from ..http import format_header_date, non_body_statuses
 from ..markup import Mu, MuChildLax
-from .errors import ResponseError
 from .headers import add_header_item, ResponseHeadersDict
 
 
-_context_keywords_ = ['cache control', 'csv', 'error page', 'file body', 'html', 'htmx fragments', 'http', 'json', 'redirect',
+_context_keywords_ = ['cache control', 'csv', 'file body', 'html', 'htmx fragments', 'http', 'json', 'redirect',
   'text']
 
 
@@ -124,23 +122,6 @@ class Response():
     return self
 
 
-  @classmethod
-  def from_error(cls, error:ResponseError, method:str) -> Self:
-    '''
-    Create a response for a raised ResponseError.
-    '''
-    body:ResponseBody|None = None
-    media_type = ''
-    if may_send_body(method, error.status):
-      reason = error.reason or error.status.phrase
-      if not reason.endswith(('.', '!', '?')): reason += '.'
-      body = error_html_format.format(code=error.status.value,
-        reason=html_escape(reason, quote=False))
-      #^ HTML-escape the reason to prevent Cross Site Scripting attacks (see cpython bug #1100201).
-      media_type = error_media_type
-    return cls(error.status, reason=error.reason, headers=error.headers, body=body, media_type=media_type)
-
-
   def set_no_cache_headers(self) -> None:
     'Set response headers which prevent client caching.'
     add_header_item(self.headers, 'cache-control', 'no-cache, no-store, must-revalidate')
@@ -161,22 +142,7 @@ def content_length_for_file(file:BufferedReader) -> int:
 
 
 
-error_html_format = '''\
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>Error: {code}</title>
-</head>
-<body>
-  <p>{code}: {reason}</p>
-</body>
-</html>
-'''
-
-
 html_media_type = 'text/html'
-error_media_type = html_media_type
 
 
 class CsvResponse(Response):

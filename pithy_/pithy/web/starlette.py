@@ -26,6 +26,7 @@ from ..json import render_json
 from ..markup import MuChildLax
 from ..transtruct import bool_str_vals
 from .endpoint import Endpoint
+from .errorrender import render_error_text
 from .errors import ResponseError
 from .request import Request as PithyRequest
 from .requestconn import BodyTooLargeError, BytesConn
@@ -598,14 +599,14 @@ def endpoint_adapter(endpoint_cls:type[Endpoint], *, privileges:tuple[str,...]) 
   # The parameter must be named `request`: `requires` inspects the signature for a parameter named
   # `request` or `websocket` and raises at decoration time otherwise.
   async def adapted(request:Request) -> Response:
+    conn = BytesConn(b'')
+    p_request = request_from_starlette(request, conn)
     try:
-      conn = BytesConn(b'')
-      p_request = request_from_starlette(request, conn)
       endpoint = endpoint_cls(p_request, dict(request.path_params)) # Validates head params; may raise ResponseError.
       conn.set_body(await request.body()) # The body is only available here, in the async function.
       response = await run_in_threadpool(_run_body, endpoint, p_request)
     except ResponseError as e:
-      response = PithyResponse.from_error(e, method=request.method)
+      response = render_error_text(p_request, e)
     except BodyTooLargeError:
       response = PithyResponse(HTTPStatus.CONTENT_TOO_LARGE, body='Content Too Large', media_type='text/plain')
     return convert_response(response, method=request.method)

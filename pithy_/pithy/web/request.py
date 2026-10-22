@@ -12,9 +12,8 @@ from multipart import MultipartError, MultipartParser, parse_options_header
 
 from ..http import http_methods
 from ..json import Json, parse_json
-from .errors import BadRequestError, decode_or_bad_request
+from .errors import BadRequestError, decode_or_bad_request, ResponseError
 from .requestconn import AddrPair, RequestConn
-from .response import ResponseError
 from .util import decode_path_segments
 
 

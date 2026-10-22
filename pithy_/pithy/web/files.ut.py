@@ -8,6 +8,7 @@ from time import time
 
 from pithy.http import format_header_date
 from pithy.path import Path
+from pithy.web.errorrender import render_error_text
 from pithy.web.errors import ResponseError
 from pithy.web.files import compute_local_path, ext_media_types, FilesApp, FilesHandler
 from pithy.web.request import Request
@@ -147,14 +148,14 @@ def _() -> None:
     utest((HTTPStatus.OK, b'body{}'), status_and_body, '/static/%2e%2e/sub/app.css') # Normalized within the mount root.
 
     # A directory without a trailing slash redirects within the mount prefix, using the full request path (not the subpath).
-    # The response is built via Response.from_error, exactly as the server does, so the lowercase-header rule is exercised.
+    # The response is built by the default error renderer, as the server does, so the lowercase-header rule is exercised.
     def redirect_location(path:str) -> object:
       request = _request(path)
       handler = router.resolve_handler(request)
       try: handler.handle_request(request)
       except ResponseError as exc:
         utest_val(HTTPStatus.MOVED_PERMANENTLY, exc.status, desc='directory redirect status')
-        return Response.from_error(exc, method='GET').headers.get('location')
+        return render_error_text(request, exc).headers.get('location')
       return None
 
     utest('/static/sub/', redirect_location, '/static/sub')
