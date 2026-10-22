@@ -3,7 +3,6 @@
 from typing import Any, cast, Iterator
 
 from pithy.date import DateTime
-from pithy.frozendicts import frozendict
 from pithy.secrets import SecretStr
 from pithy.sqlite.backup import StoredVersion
 from pithy.tz import tz_utc

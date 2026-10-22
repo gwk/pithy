@@ -7,7 +7,6 @@ import sqlite3
 from time import monotonic as get_time
 from typing import Any, cast, Iterable, Mapping, overload, Protocol, Self, Sequence, TypeVar
 
-from ..frozendicts import frozendict
 from .row import Row
 from .util import (insert_values_stmt, OnConflictTarget, sql_quote_entity, sql_substitute_exprs, SqlExpr, sqlite_datatypes,
   sqlite_native_val, update_stmt)

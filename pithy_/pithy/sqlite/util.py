@@ -11,7 +11,6 @@ from functools import cache, lru_cache
 from typing import Any, get_args, Iterable, Mapping, NamedTuple
 
 from ..encode import encode_obj
-from ..frozendicts import frozendict
 from ..json import render_json
 from .keywords import sqlite_keywords
 

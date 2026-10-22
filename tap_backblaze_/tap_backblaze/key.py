@@ -4,7 +4,6 @@ from argparse import Namespace
 
 from pithy.argparser import CommandParser
 from pithy.filestatus import path_exists
-from pithy.frozendicts import frozendict
 from pithy.json import out_json
 from pithy.path import path_dir_or_dot
 

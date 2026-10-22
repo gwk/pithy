@@ -4,7 +4,6 @@ import re
 from dataclasses import dataclass, field
 from typing import Mapping, Self
 
-from pithy.frozendicts import frozendict
 from pithy.json import JsonDict, load_json, write_json
 from pithy.secrets import SecretStr
 from pithy.transtruct import Transtructor

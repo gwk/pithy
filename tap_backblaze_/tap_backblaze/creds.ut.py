@@ -3,7 +3,6 @@
 from os import path
 from tempfile import TemporaryDirectory
 
-from pithy.frozendicts import frozendict
 from pithy.secrets import SecretStr
 from tap_backblaze.api.types import B2CreatedApplicationKey
 from tap_backblaze.creds import B2Creds

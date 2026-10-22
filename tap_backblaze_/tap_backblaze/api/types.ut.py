@@ -1,7 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from pithy.date import DateTime
-from pithy.frozendicts import frozendict
 from pithy.json import JsonDict
 from pithy.tz import tz_utc
 from tap_backblaze.api.types import (B2AllowedBucket, B2ApplicationKey, B2Auth, B2Bucket, B2CreatedApplicationKey,

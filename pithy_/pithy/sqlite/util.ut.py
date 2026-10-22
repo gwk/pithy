@@ -2,7 +2,6 @@
 
 from datetime import date as Date, datetime as DateTime, time as Time, UTC
 
-from pithy.frozendicts import frozendict
 from pithy.json import render_json
 from pithy.sqlite.util import (CURRENT_TIME, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP_Z, insert_values_stmt,
   placeholders_for_fields, sql_substitute_exprs, SqlExpr, sqlite_native_val, update_stmt)

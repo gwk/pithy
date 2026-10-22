@@ -14,7 +14,6 @@ from typing import Any, cast, ClassVar, get_args, get_origin, get_type_hints, Li
 
 from typing_extensions import TypeForm  # TODO: import from typing once we require Python 3.15.
 
-from .frozendicts import frozendict
 from .secrets import SecretBytes, SecretStr
 from .type_utils import is_dataclass_instance, is_namedtuple, is_type_namedtuple, normalize_type_form
 

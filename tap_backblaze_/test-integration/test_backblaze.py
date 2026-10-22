@@ -22,7 +22,6 @@ from traceback import print_exc
 
 from pithy.argparser import ArgParser
 from pithy.filestatus import path_exists
-from pithy.frozendicts import frozendict
 from pithy.secrets import SecretStr
 from pithy.sqlite import Conn
 from requests import RequestException

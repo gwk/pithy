@@ -11,7 +11,6 @@ from dataclasses import dataclass, field
 from typing import Self
 
 from pithy.date import DateTime
-from pithy.frozendicts import frozendict
 from pithy.json import Json, JsonDict
 from pithy.secrets import SecretStr
 from pithy.tz import tz_utc
