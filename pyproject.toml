@@ -3,12 +3,12 @@
 
 [tool.uv]
 exclude-newer = "14 days"
+constraint-dependencies = ["certifi >= 2026.10.19"]
 
 # Per-package cooldown exceptions.
 [tool.uv.exclude-newer-package]
-librt = "2026-10-02T00:00:00Z"
-mypy = "2026-10-02T00:00:00Z"
-uvicorn = "2026-09-15T00:00:00Z"
+# Emergency exception for the eMudhra CA compromise.
+certifi = "2026-10-22T00:00:00Z"
 
 [tool.uv.workspace]
 members = [
