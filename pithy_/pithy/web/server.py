@@ -396,7 +396,7 @@ class WebServer:
       client_addr = conn.client_addr
       uid = 0
     else:
-      path, query = request.path, request.query_str
+      path, query = request.raw_path, request.query_str
       client_addr = request.client_addr
       uid = request.ctx.get('uid', 0)
     logI('access', c=client_addr[0] if client_addr else '-', u=uid,
@@ -466,7 +466,7 @@ class WebServer:
       scheme='http',
       host=self.config.host,
       port=self.config.port,
-      path=path,
+      raw_path=path,
       query_str=query,
       headers=headers,
       content_length=content_length,
@@ -496,7 +496,7 @@ class WebServer:
         response = self._error_response(conn, request, ResponseError(HTTPStatus.CONTENT_TOO_LARGE, 'Content Too Large'))
         #^ The unread remainder of the body forces a connection close below.
       except NotImplementedError as exc:
-        logE('Not implemented.', exc=exc, client_addr=conn.client_addr, method=method, path=request.path)
+        logE('Not implemented.', exc=exc, client_addr=conn.client_addr, method=method, path=request.raw_path)
         response = self._error_response(conn, request, ResponseError(HTTPStatus.NOT_IMPLEMENTED, 'Not Implemented'))
         #^ The fixed reason does not leak the exception message.
       original_body = response.body
@@ -506,7 +506,7 @@ class WebServer:
         if response.body is not original_body: close_response_body(original_body)
         #^ Covers a replaced body whether the hook returned a new response, mutated the input, or raised after mutating.
     except Exception as exc:
-      logE('Unhandled application exception.', exc=exc, client_addr=conn.client_addr, method=method, path=request.path)
+      logE('Unhandled application exception.', exc=exc, client_addr=conn.client_addr, method=method, path=request.raw_path)
       if response is not None: close_response_body(response.body)
       response = self._internal_server_error_response(method=method).set_connection_close()
 
@@ -532,7 +532,7 @@ class WebServer:
     try: response = self.app.error_response(request, error)
     except Exception as exc:
       logE('error_response hook failed; deferring.', exc=exc, client_addr=conn.client_addr, method=request.method,
-        path=request.path)
+        path=request.raw_path)
       response = None
     return response if response is not None else render_error_text(request, error)
 

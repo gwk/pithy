@@ -71,7 +71,7 @@ class WebApp(RequestHandler):
     Override to consult other signals, e.g. the Accept header or a query parameter.
     '''
     try: segment = request.path_segments[-1]
-    except ResponseError: segment = request.path.rpartition('/')[2]
+    except ResponseError: segment = request.raw_path.rpartition('/')[2]
     return error_media_type_for_path(segment, default=self.error_media_type,
       extension_media_types=self.error_extension_media_types)
 

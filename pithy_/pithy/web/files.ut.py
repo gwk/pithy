@@ -19,7 +19,7 @@ from utest import utest, utest_exc, utest_run, utest_val
 
 def _request(path:str, headers:dict[str,str]|None=None) -> Request:
   return Request(method='GET', scheme='http', host='localhost', port=80,
-    path=path, query_str='', headers=headers or {}, client_addr=('127.0.0.1', 0), content_length=None)
+    raw_path=path, query_str='', headers=headers or {}, client_addr=('127.0.0.1', 0), content_length=None)
 
 
 def _serve(app:FilesApp, path:str, headers:dict[str,str]|None=None) -> Response:

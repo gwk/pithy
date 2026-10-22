@@ -14,7 +14,7 @@ from utest import utest, utest_exc, utest_run, utest_val
 
 
 def _request(method:str='GET') -> Request:
-  return Request(method=method, scheme='http', host='localhost', port=80, path='/', query_str='', headers={},
+  return Request(method=method, scheme='http', host='localhost', port=80, raw_path='/', query_str='', headers={},
     client_addr=('127.0.0.1', 0), content_length=None)
 
 
@@ -94,7 +94,7 @@ def test_app_defaults() -> None:
 
   def selected(path:str) -> str:
     request = _request()
-    request.path = path
+    request.raw_path = path
     return JsonApp().error_media_type_for(request)
   utest('application/json', selected, '/items')
   utest('text/html', selected, '/items.html')

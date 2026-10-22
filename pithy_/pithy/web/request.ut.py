@@ -14,7 +14,7 @@ def _make_request(media_type:str='', body:bytes=b'', query_str:str='') -> Reques
     headers['content-type'] = media_type
   content_length = len(body) if body else None
   conn = BytesConn(body) if body else None
-  return Request(method='GET', scheme='http', host='localhost', port=80, path='/', query_str=query_str,
+  return Request(method='GET', scheme='http', host='localhost', port=80, raw_path='/', query_str=query_str,
     headers=headers, client_addr=('127.0.0.1', 0), content_length=content_length, conn=conn)
 
 
@@ -33,7 +33,7 @@ def _make_multipart(boundary:str, *parts:bytes) -> bytes:
 def _() -> None:
   'path_segments decodes each segment and preserves a trailing slash as an empty segment.'
   def segments(path:str) -> list[str]:
-    return Request(method='GET', scheme='http', host='localhost', port=80, path=path, query_str='',
+    return Request(method='GET', scheme='http', host='localhost', port=80, raw_path=path, query_str='',
       headers={}, client_addr=('127.0.0.1', 0), content_length=None).path_segments
   utest_val([''], segments('/'))
   utest_val(['a', ''], segments('/a/'))
@@ -41,6 +41,21 @@ def _() -> None:
   utest_exc(BadRequestError, segments, '/%FF')
   utest_exc(BadRequestError, segments, '/a%00')
   utest_exc(BadRequestError, segments, '/c%2Fd')
+
+
+# path
+
+@utest_run
+def _() -> None:
+  'path is the canonical decoded path, re-encoding only percent signs within segments.'
+  def path(raw_path:str) -> str:
+    return Request(method='GET', scheme='http', host='localhost', port=80, raw_path=raw_path, query_str='',
+      headers={}, client_addr=('127.0.0.1', 0), content_length=None).path
+  utest_val('/a b/c', path('/a%20b/c'))
+  utest_val('/100%25', path('/100%25'))
+  utest_val('/a/', path('/a/'))
+  utest_val('/', path('/'))
+  utest_exc(BadRequestError, path, '/bad%ff')
 
 
 # _add_to_param_dict

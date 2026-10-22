@@ -48,7 +48,9 @@ class Request:
   * scheme: URL scheme, e.g. 'http' or 'https'.
   * host: Host header value.
   * port: Port number.
-  * path: URL path, e.g. '/items/42'.
+  * raw_path: URL path in wire form, still percent-encoded, e.g. '/items/4%202'.
+    Use it for logging, echoing the request faithfully, and as the eventual escape hatch for routes that accept encoded slashes.
+    Never use it for routing or for prefix or equality decisions; it can disagree with the decoded segments.
   * query_str: raw URL query string, e.g. 'foo=bar&baz=qux'.
   * headers: HTTP headers.
     * Keys are normalized to lower case.
@@ -58,8 +60,13 @@ class Request:
   * prevent_client_caching: whether handlers should avoid conditional or cacheable responses.
   * conn: RequestConn object for reading the request body. TODO: privatize.
   * ctx: an empty dictionary for applications to attach request state.
-  * path_segments: percent-decoded path segments, e.g. ['items', '4 2'] for path '/items/4%202' (cached property).
+  * path_segments: canonical percent-decoded path segments, e.g. ['items', '4 2'] for raw path '/items/4%202'
+    (cached property). Routing and any prefix or equality decision on the path must use these or `path`.
     See `decode_path_segments` for the exact rules; raises BadRequestError for undecodable segments.
+  * path: canonical decoded path string built from `path_segments`, e.g. '/items/4 2' (cached property).
+    Use it for display, redirects within the app and simple comparisons.
+    Within each segment a decoded '%' is re-encoded as '%25' and a decoded '/' as '%2F', so the string stays unambiguous;
+    otherwise it equals the fully decoded path. Raises BadRequestError for undecodable paths.
   * content_type: Full Content-Type header value, including any parameters, e.g. 'application/json;charset=utf-8' (cached property).
   * media_type: The bare type/subtype portion of the Content-Type, e.g. 'application/json' (cached property).
     Note: per RFC 9110 the term "media type" includes parameters, but in this codebase `media_type` consistently refers to the
@@ -72,7 +79,7 @@ class Request:
   scheme:str
   host:str
   port:int
-  path:str
+  raw_path:str
   query_str:str
   headers:dict[str,str]
   client_addr:AddrPair
@@ -90,8 +97,23 @@ class Request:
 
   @cached_property
   def path_segments(self) -> list[str]:
-    assert self.path.startswith('/')
-    return decode_path_segments(self.path)
+    'The canonical percent-decoded path segments; raises BadRequestError for undecodable paths.'
+    assert self.raw_path.startswith('/')
+    return decode_path_segments(self.raw_path)
+
+
+  @cached_property
+  def path(self) -> str:
+    '''
+    The canonical decoded path, built by joining `path_segments` with '/' after a leading '/'.
+
+    Within each segment '%' is re-encoded as '%25' and '/' as '%2F', so the result is unambiguous and reversible.
+    In all other respects it equals the fully decoded path; a trailing slash is preserved.
+    Raises BadRequestError for undecodable paths, through `path_segments`.
+    '''
+    # `decode_path_segments` currently refuses encoded slashes, so the '/' replacement is dormant.
+    # It keeps the meaning of this property stable if a converter later opts in to encoded slashes.
+    return '/' + '/'.join(seg.replace('%', '%25').replace('/', '%2F') for seg in self.path_segments)
 
 
   @cached_property

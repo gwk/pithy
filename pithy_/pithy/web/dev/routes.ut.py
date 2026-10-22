@@ -9,7 +9,7 @@ from utest import utest_run, utest_val
 
 def _request(path:str) -> Request:
   return Request(method='GET', scheme='http', host='localhost', port=80,
-    path=path, query_str='', headers={}, client_addr=('127.0.0.1', 0), content_length=None)
+    raw_path=path, query_str='', headers={}, client_addr=('127.0.0.1', 0), content_length=None)
 
 
 def _content_type(router:Router, path:str) -> object:

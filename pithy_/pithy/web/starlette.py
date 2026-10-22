@@ -5,6 +5,7 @@ from http import HTTPStatus
 from io import BufferedReader
 from time import sleep
 from typing import Any, cast, Iterable, Mapping, overload, Sequence
+from urllib.parse import quote as url_quote, urlsplit as url_split
 
 from starlette.authentication import requires
 from starlette.background import BackgroundTask
@@ -537,7 +538,7 @@ def request_from_starlette(s_request:Request, conn:BytesConn) -> PithyRequest:
     scheme=scheme,
     host=url.hostname or '',
     port=url.port or (443 if scheme == 'https' else 80),
-    path=url.path,
+    raw_path=_raw_path_from_scope(scope, url.path),
     query_str=url.query,
     headers=headers,
     client_addr=client_addr,
@@ -545,6 +546,20 @@ def request_from_starlette(s_request:Request, conn:BytesConn) -> PithyRequest:
     conn=conn,
     ctx=ctx,
   )
+
+
+def _raw_path_from_scope(scope:Scope, decoded_path:str) -> str:
+  '''
+  The wire-form request path from the ASGI scope, converted to str as the native server converts the h11 target.
+  ASGI `raw_path` excludes the query string. Bytes that are not ASCII are percent-encoded rather than rejected,
+  so that `Request.path_segments` decodes them or rejects invalid UTF-8 as a bad request.
+  '''
+  raw = scope.get('raw_path')
+  if raw is None: # The scope key is optional in ASGI; re-encode Starlette's decoded path as an approximation.
+    return url_quote(decoded_path, safe="/!$&'()*+,;=:@~") or '/'
+  try: target = raw.decode('ascii')
+  except UnicodeDecodeError: target = url_quote(raw, safe="/%!$&'()*+,;=:@~")
+  return url_split(target).path or '/'
 
 
 def convert_response(p_response:PithyResponse, *, method:str='GET') -> Response:
@@ -606,7 +621,10 @@ def endpoint_adapter(endpoint_cls:type[Endpoint], *, privileges:tuple[str,...]) 
       conn.set_body(await request.body()) # The body is only available here, in the async function.
       response = await run_in_threadpool(_run_body, endpoint, p_request)
     except ResponseError as e:
-      media_type = error_media_type_for_path(p_request.path, default=default_error_media_type)
+      # Mirror `WebApp.error_media_type_for`: the decoded final segment, or the raw one if the path is undecodable.
+      try: segment = p_request.path_segments[-1]
+      except ResponseError: segment = p_request.raw_path.rpartition('/')[2]
+      media_type = error_media_type_for_path(segment, default=default_error_media_type)
       response = default_error_renderers[media_type](p_request, e)
     except BodyTooLargeError:
       response = PithyResponse(HTTPStatus.CONTENT_TOO_LARGE, body='Content Too Large', media_type='text/plain')

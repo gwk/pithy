@@ -17,7 +17,7 @@ router = Router(routes)
 def request(path:str, data:dict[str,str]|None=None, *, query:str='') -> Response:
   body = urlencode(data).encode() if data is not None else b''
   req = Request(method='POST' if data is not None else 'GET', scheme='http', host='localhost', port=80,
-    path=path, query_str=query, headers={'content-type': 'application/x-www-form-urlencoded'} if data is not None else {},
+    raw_path=path, query_str=query, headers={'content-type': 'application/x-www-form-urlencoded'} if data is not None else {},
     client_addr=('127.0.0.1', 0), content_length=len(body) if data is not None else None,
     conn=BytesConn(body) if data is not None else None)
   handler = router.resolve_handler(req)

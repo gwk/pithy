@@ -65,7 +65,7 @@ class TestEndpoint(Endpoint):
     return Response(body='ok')
 
 
-request = Request(method='GET', scheme='http', host='localhost', port=80, path='/', query_str='',
+request = Request(method='GET', scheme='http', host='localhost', port=80, raw_path='/', query_str='',
   headers={}, client_addr=('127.0.0.1', 0), content_length=None)
 try: TestEndpoint(request, path_params={'payload': payload})
 except Exception as e:

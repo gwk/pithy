@@ -85,7 +85,7 @@ def _() -> None:
 
   def dispatch_body(path:str) -> str|None:
     request = Request(method='GET', scheme='http', host='localhost', port=80,
-      path=path, query_str='', headers={}, client_addr=('127.0.0.1', 0), content_length=None)
+      raw_path=path, query_str='', headers={}, client_addr=('127.0.0.1', 0), content_length=None)
     handler = router.resolve_handler(request)
     response = handler.handle_request(request)
     return response.body.decode() if isinstance(response.body, (bytes, bytearray)) else None
@@ -105,7 +105,7 @@ def _() -> None:
 
   def dispatch_body(path:str) -> str|None:
     request = Request(method='GET', scheme='http', host='localhost', port=80,
-      path=path, query_str='', headers={}, client_addr=('127.0.0.1', 0), content_length=None)
+      raw_path=path, query_str='', headers={}, client_addr=('127.0.0.1', 0), content_length=None)
     try:
       handler = router.resolve_handler(request)
     except Exception:
@@ -128,7 +128,7 @@ def _() -> None:
 
   def dispatch(method:str, path:str) -> str|None:
     request = Request(method=method, scheme='http', host='localhost', port=80,
-      path=path, query_str='', headers={}, client_addr=('127.0.0.1', 0), content_length=None)
+      raw_path=path, query_str='', headers={}, client_addr=('127.0.0.1', 0), content_length=None)
     try:
       handler = router.resolve_handler(request)
     except MethodNotAllowedError:
@@ -167,7 +167,7 @@ def _() -> None:
 
   def dispatch(method:str, path:str, query_str:str='') -> bytes|bytearray|None:
     request = Request(method=method, scheme='http', host='localhost', port=80,
-      path=path, query_str=query_str, headers={}, client_addr=('127.0.0.1', 0), content_length=None)
+      raw_path=path, query_str=query_str, headers={}, client_addr=('127.0.0.1', 0), content_length=None)
     handler = app.resolve_handler(request)
     handler.prepare_for_request(request)
     body = handler.handle_request(request).body

@@ -8,7 +8,7 @@ from tempfile import TemporaryDirectory
 from pithy.web.endpoint import Endpoint
 from pithy.web.request import Request as PithyRequest
 from pithy.web.response import Response as PithyResponse
-from pithy.web.starlette import convert_response, endpoint_adapter, endpoint_route
+from pithy.web.starlette import _raw_path_from_scope, convert_response, endpoint_adapter, endpoint_route
 from starlette.authentication import AuthCredentials
 from starlette.exceptions import HTTPException
 from starlette.requests import Request as StarletteRequest
@@ -61,6 +61,12 @@ class ItemEndpoint(Endpoint):
     id:int
   def get(self, request:PithyRequest, fields:Get) -> PithyResponse:
     return PithyResponse(body=f'id={fields.id}')
+
+
+class PathEndpoint(Endpoint):
+  class Get: pass
+  def get(self, request:PithyRequest, fields:Get) -> PithyResponse:
+    return PithyResponse(body=f'{request.raw_path}|{request.path}')
 
 
 class FormEndpoint(Endpoint):
@@ -164,6 +170,20 @@ def _() -> None:
   'Adapter: path params already typed by Starlette pass through pithy conversion.'
   resp = _run(ItemEndpoint, path='/items/7', path_params={'id': 7})
   utest_val(b'id=7', resp.body)
+
+
+@utest_run
+def _() -> None:
+  'Adapter: raw_path is the wire form from the ASGI scope, not the path that Starlette decoded.'
+  resp = _run(PathEndpoint, path='/a b/100%', scope_extra={'raw_path': b'/a%20b/100%25'})
+  utest_val(b'/a%20b/100%25|/a b/100%25', resp.body)
+
+
+@utest_run
+def _() -> None:
+  'Adapter: without a scope raw_path, the decoded path is re-quoted.'
+  utest_val('/a%20b/caf%C3%A9', _raw_path_from_scope({'type': 'http'}, '/a b/caf\u00e9'))
+  utest_val('/a%20b', _raw_path_from_scope({'type': 'http', 'raw_path': b'/a%20b'}, '/ignored'))
 
 
 @utest_run

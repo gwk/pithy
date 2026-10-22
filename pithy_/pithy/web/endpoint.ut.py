@@ -29,8 +29,8 @@ def _make_request(query:dict[str,str|int|list[str]]|None=None, *, media_type:str
   content_length = len(body) if body else None
   conn = BytesConn(body) if media_type else None
   # A body implies POST; GET, HEAD and DELETE requests reject bodies.
-  return Request(method=('POST' if media_type else 'GET'), scheme='http', host='localhost', port=80, path='/', query_str=query_str,
-    headers=headers, client_addr=('127.0.0.1', 0), content_length=content_length, conn=conn)
+  return Request(method=('POST' if media_type else 'GET'), scheme='http', host='localhost', port=80, raw_path='/',
+    query_str=query_str, headers=headers, client_addr=('127.0.0.1', 0), content_length=content_length, conn=conn)
 
 
 def _method_request(method:str, query:dict[str,str|int|list[str]]|None=None, *, media_type:str='', body:bytes=b'') -> Request:
@@ -1621,7 +1621,7 @@ def _() -> None:
 # Body size validation at construction (the content_length head check).
 
 def _make_body_request(*, content_length:int|None, headers:dict[str,str]|None=None) -> Request:
-  return Request(method='POST', scheme='http', host='localhost', port=80, path='/', query_str='name=a',
+  return Request(method='POST', scheme='http', host='localhost', port=80, raw_path='/', query_str='name=a',
     headers=headers or {}, client_addr=('127.0.0.1', 0), content_length=content_length, conn=None)
 
 
@@ -1724,7 +1724,7 @@ def _() -> None:
   router = Router({'/items/{item_id:int}': get_endpoint(item)})
 
   def respond(query:dict[str,str|int|list[str]], method:str='GET') -> bytes:
-    req = replace(_method_request(method, query), path='/items/7')
+    req = replace(_method_request(method, query), raw_path='/items/7')
     handler = router.resolve_handler(req)
     handler.prepare_for_request(req)
     body = handler.handle_request(req).body

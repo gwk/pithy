@@ -119,9 +119,9 @@ class _FilesServing:
     if is_dir(local_path, follow=True):
       if not as_dir: # Redirect browser to path with slash (same behavior as Apache).
         # The location is built from the full raw request path, so mounted handlers redirect within their prefix
-        # and the redirect target stays percent-encoded.
+        # and the redirect target stays percent-encoded; the decoded `path` is not valid in a Location header.
         query = '?' + request.query_str if request.query_str else ''
-        new_url = Path(request.path).collapse_dotdot().str_with_slash() + query
+        new_url = Path(request.raw_path).collapse_dotdot().str_with_slash() + query
         raise ResponseError(status=HTTPStatus.MOVED_PERMANENTLY, headers={'location':new_url})
       index_path = local_path / 'index.html'
       if path_exists(index_path, follow=False):
