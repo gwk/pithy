@@ -169,7 +169,7 @@ def _() -> None:
     request = Request(method=method, scheme='http', host='localhost', port=80,
       path=path, query_str=query_str, headers={}, client_addr=('127.0.0.1', 0), content_length=None)
     handler = app.resolve_handler(request)
-    handler.prepare(request)
+    handler.prepare_for_request(request)
     body = handler.handle_request(request).body
     assert body is None or isinstance(body, (bytes, bytearray))
     return body

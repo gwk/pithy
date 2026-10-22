@@ -197,7 +197,7 @@ class Endpoint(RoutableHandler):
     At this stage body fields are not yet filled, so a subclass hook can reject a request from its path and query fields
     before the body is uploaded. Since the hook serves every handler, its `fields` parameter must be annotated as the union
     of the fields classes of all handlers defined, e.g. `fields:None|Post` when `get` declares no fields class.
-  * The server calls `prepare`, which reads the body (if any), fills body fields, and performs final validation:
+  * The server calls `prepare_for_request`, which reads the body (if any), fills body fields, and performs final validation:
     duplicate params across sources, excess body params, missing required fields.
   * The server calls `handle_request`, which dispatches to the subclass handler for the request method.
   '''
@@ -368,7 +368,7 @@ class Endpoint(RoutableHandler):
   def __init__(self, request:Request, path_params:Mapping[str,object]) -> None:
     '''
     Select the handler for the request method, then create the fields instance and fill it from path and query params.
-    Body fields are filled later by `prepare`.
+    Body fields are filled later by `prepare_for_request`.
     Raises MethodNotAllowedError for an unhandled method, and BadRequestError for duplicate, excess, or unconvertible params.
     '''
     cls = type(self)
@@ -409,7 +409,7 @@ class Endpoint(RoutableHandler):
     return Response(status=HTTPStatus.CONTINUE)
 
 
-  def prepare(self, request:Request) -> None:
+  def prepare_for_request(self, request:Request) -> None:
     '''
     Fill body params and perform final validation.
     Raises BadRequestError on excess body params, duplicate params across sources, or missing required fields.

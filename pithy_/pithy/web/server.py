@@ -481,7 +481,7 @@ class WebServer:
           else:
             return expect_response.set_connection_close() # The body was not read, so the connection cannot be reused.
 
-        handler.prepare(request)
+        handler.prepare_for_request(request)
         response = handler.handle_request(request)
 
       except ResponseError as exc:

@@ -32,7 +32,7 @@ def post_body(path:str, content_type:str, body:bytes) -> Response:
   req = Request(method='POST', scheme='http', host='localhost', port=80, path=path, query_str='',
     headers={'content-type': content_type}, client_addr=('127.0.0.1', 0), content_length=len(body), conn=BytesConn(body))
   handler = router.resolve_handler(req)
-  handler.prepare(req)
+  handler.prepare_for_request(req)
   return handler.handle_request(req)
 
 

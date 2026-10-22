@@ -28,7 +28,7 @@ def request(path:str, data:FormData|None=None) -> Response:
     path=path, query_str='', headers={'content-type': 'application/x-www-form-urlencoded'} if data is not None else {},
     client_addr=('127.0.0.1', 0), content_length=len(body), conn=BytesConn(body))
   handler = router.resolve_handler(req)
-  handler.prepare(req)
+  handler.prepare_for_request(req)
   return handler.handle_request(req)
 
 

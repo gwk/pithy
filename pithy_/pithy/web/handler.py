@@ -20,9 +20,11 @@ class RequestHandler:
     return Response(status=HTTPStatus.CONTINUE)
 
 
-  def prepare(self, request:Request) -> None:
+  def prepare_for_request(self, request:Request) -> None:
     '''
-    Prepare to handle the request.
+    Prepare this handler to handle the request.
+
+    Called after any `100-continue` negotiation and before `handle_request`.
     This is implemented by Endpoint to read the body and fill parameters before handle_request is called.
     '''
     pass

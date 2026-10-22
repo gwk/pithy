@@ -149,7 +149,7 @@ def endpoint_fields(cls:type[Endpoint], **kwargs:str) -> dict[str,Any]:
   'Construct an endpoint with path params, prepare it, and return the populated field values.'
   request = _make_request()
   ep = cls(request=request, path_params=kwargs)
-  ep.prepare(request)
+  ep.prepare_for_request(request)
   return {k: getattr(ep._fields_obj, k) for k in ep._fields}
 
 
@@ -578,19 +578,19 @@ def _() -> None:
   'Endpoint: no fields; the handler receives None.'
   req = _make_request()
   ep = NoFieldEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   response = ep.handle_request(req)
   utest_val(b'ok', response.body)
 
 
-# prepare fills fields and handle_request returns the response.
+# prepare_for_request fills fields and handle_request returns the response.
 
 @utest_run
 def _() -> None:
-  'Endpoint: prepare with query params.'
+  'Endpoint: prepare_for_request with query params.'
   req = _make_request(query=dict(tag='admin'))
   ep = OptionalEndpoint(req, path_params=dict(name='alice'))
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   response = ep.handle_request(req)
   utest_val(b'alice,admin', response.body)
 
@@ -646,48 +646,48 @@ class ListEndpoint(Endpoint):
 
 @utest_run
 def _() -> None:
-  'Endpoint: prepare fills fields from body params.'
+  'Endpoint: prepare_for_request fills fields from body params.'
   req = _make_request(media_type='application/json', body=b'{"name":"alice","tag":"admin"}')
   ep = BodyEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   response = ep.handle_request(req)
   utest_val(b'alice,admin', response.body)
 
 
 @utest_run
 def _() -> None:
-  'Endpoint: prepare detects duplicate query/body params.'
+  'Endpoint: prepare_for_request detects duplicate query/body params.'
   req = _make_request(query=dict(tag='query'), media_type='application/json', body=b'{"tag":"body"}')
   ep = BodyEndpoint(req, path_params=dict(name='alice'))
   expect = ep.handle_expect_100_continue(req)
   utest_val(HTTPStatus.CONTINUE, expect.status)
-  utest_exc(ResponseError, ep.prepare, req)
+  utest_exc(ResponseError, ep.prepare_for_request, req)
 
 
 @utest_run
 def _() -> None:
-  'Endpoint: prepare raises on excess body params.'
+  'Endpoint: prepare_for_request raises on excess body params.'
   req = _make_request(media_type='application/json', body=b'{"name":"alice","extra":"x"}')
   ep = BodyEndpoint(req, path_params={})
-  utest_exc(ResponseError, ep.prepare, req)
+  utest_exc(ResponseError, ep.prepare_for_request, req)
 
 
 @utest_run
 def _() -> None:
-  'Endpoint: prepare raises on missing required field with no body.'
+  'Endpoint: prepare_for_request raises on missing required field with no body.'
   req = _method_request('POST')
   ep = BodyEndpoint(req, path_params={})
-  utest_exc(ResponseError, ep.prepare, req)
+  utest_exc(ResponseError, ep.prepare_for_request, req)
 
 
 # JSON body with non-string value types.
 
 @utest_run
 def _() -> None:
-  'Endpoint: prepare fills int field from JSON body with integer value.'
+  'Endpoint: prepare_for_request fills int field from JSON body with integer value.'
   req = _make_request(media_type='application/json', body=b'{"id":3}')
   ep = IntEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val(3, fields_of(ep).id)
 
 
@@ -696,15 +696,15 @@ def _() -> None:
   'Endpoint: str field rejects JSON integer value.'
   req = _make_request(media_type='application/json', body=b'{"name":123}')
   ep = BodyEndpoint(req, path_params={})
-  utest_exc(ResponseError, ep.prepare, req)
+  utest_exc(ResponseError, ep.prepare_for_request, req)
 
 
 @utest_run
 def _() -> None:
-  'Endpoint: prepare fills list fields from JSON body with array values.'
+  'Endpoint: prepare_for_request fills list fields from JSON body with array values.'
   req = _make_request(media_type='application/json', body=b'{"tags":["a","b"],"counts":[1,2]}')
   ep = ListEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val(['a', 'b'], fields_of(ep).tags)
   utest_val([1, 2], fields_of(ep).counts)
 
@@ -714,7 +714,7 @@ def _() -> None:
   'Endpoint: JSON null fills an optional field with None.'
   req = _make_request(media_type='application/json', body=b'{"name":"alice","tag":null}')
   ep = BodyEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val(None, fields_of(ep).tag)
 
 
@@ -723,7 +723,7 @@ def _() -> None:
   'Endpoint: JSON null for a required field raises BadRequestError.'
   req = _make_request(media_type='application/json', body=b'{"id":null}')
   ep = IntEndpoint(req, path_params={})
-  utest_exc(ResponseError, ep.prepare, req)
+  utest_exc(ResponseError, ep.prepare_for_request, req)
 
 
 @utest_run
@@ -731,7 +731,7 @@ def _() -> None:
   'Endpoint: a single JSON scalar fills a list field as a one-element list.'
   req = _make_request(media_type='application/json', body=b'{"tags":"a","counts":1}')
   ep = ListEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val(['a'], fields_of(ep).tags)
   utest_val([1], fields_of(ep).counts)
 
@@ -741,7 +741,7 @@ def _() -> None:
   'Endpoint: bool field filled from JSON true value.'
   req = _make_request(media_type='application/json', body=b'{"flag":true}')
   ep = BoolEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val(True, fields_of(ep).flag)
 
 
@@ -750,7 +750,7 @@ def _() -> None:
   'Endpoint: malformed JSON body raises BadRequestError.'
   req = _make_request(media_type='application/json', body=b'{not json')
   ep = BodyEndpoint(req, path_params={})
-  utest_exc(ResponseError, ep.prepare, req)
+  utest_exc(ResponseError, ep.prepare_for_request, req)
 
 
 # Nested dataclass fields.
@@ -782,7 +782,7 @@ def _() -> None:
   'Endpoint: nested dataclass field filled from JSON body.'
   req = _make_request(media_type='application/json', body=b'{"point":{"x":1,"y":2}}')
   ep = NestedEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val(Point(1, 2), fields_of(ep).point)
 
 
@@ -791,7 +791,7 @@ def _() -> None:
   'Endpoint: list[dataclass] field filled from JSON body.'
   req = _make_request(media_type='application/json', body=b'{"points":[{"x":1,"y":2},{"x":3,"y":4}]}')
   ep = NestedListEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val([Point(1, 2), Point(3, 4)], fields_of(ep).points)
 
 
@@ -828,7 +828,7 @@ def endpoint_body_fields(cls:type[Endpoint], body:str) -> dict[str,Any]:
   'Construct an endpoint with a urlencoded body, prepare it, and return the populated field values.'
   req = _urlencoded_request(body)
   ep = cls(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   return {k: getattr(ep._fields_obj, k) for k in ep._fields}
 
 
@@ -852,7 +852,7 @@ def _() -> None:
   'Endpoint: list fields filled from repeated query keys.'
   req = _make_request(query=dict(tags=['a', 'b'], counts=['1', '2']))
   ep = ListEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val(['a', 'b'], fields_of(ep).tags)
   utest_val([1, 2], fields_of(ep).counts)
 
@@ -862,7 +862,7 @@ def _() -> None:
   'Endpoint: a single query value fills a list field as a one-element list.'
   req = _make_request(query=dict(tags='a', counts='1'))
   ep = ListEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val(['a'], fields_of(ep).tags)
   utest_val([1], fields_of(ep).counts)
 
@@ -892,7 +892,7 @@ def _() -> None:
   'Endpoint: JSON null for an optional list field is None; the null is not wrapped into a list.'
   req = _make_request(media_type='application/json', body=b'{"tags":null}')
   ep = OptionalListEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val(None, fields_of(ep).tags)
 
 
@@ -904,7 +904,7 @@ def _() -> None:
   utest_val(dict(tags=[]), endpoint_body_fields(ListConverterEndpoint, 'tags=%00'))
   req = _make_request(query=dict(tags='\x00', counts='\x00'))
   ep = ListEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val([], fields_of(ep).tags)
   utest_val([], fields_of(ep).counts)
 
@@ -931,11 +931,11 @@ def _() -> None:
   value = b'Content-Disposition: form-data; name="tags"\r\n\r\na'
   req = _multipart_request('boundary', marker)
   ep = OptionalListEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val([], fields_of(ep).tags)
   req = _multipart_request('boundary', marker, value)
   ep = OptionalListEndpoint(req, path_params={})
-  utest_exc(ResponseError, ep.prepare, req)
+  utest_exc(ResponseError, ep.prepare_for_request, req)
 
 
 @utest_run
@@ -949,11 +949,11 @@ def _() -> None:
   ):
     req = _make_request(media_type='application/json', body=body)
     ep = OptionalListEndpoint(req, path_params={})
-    ep.prepare(req)
+    ep.prepare_for_request(req)
     utest_val(expected, fields_of(ep).tags)
   req = _make_request()
   ep = OptionalListEndpoint(req, path_params=dict(tags='\x00'))
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val(['\x00'], fields_of(ep).tags)
 
 
@@ -962,7 +962,7 @@ def _() -> None:
   'Endpoint: list[str] required but not submitted raises BadRequestError.'
   req = _urlencoded_request('')
   ep = ListEndpoint(req, path_params={})
-  utest_exc(ResponseError, ep.prepare, req)
+  utest_exc(ResponseError, ep.prepare_for_request, req)
 
 
 @utest_run
@@ -970,7 +970,7 @@ def _() -> None:
   'Endpoint: list field same name from query and body raises BadRequestError.'
   req = _make_request(query=dict(tags='a'), media_type='application/x-www-form-urlencoded', body=b'tags=b&counts=1')
   ep = ListEndpoint(req, path_params={})
-  utest_exc(ResponseError, ep.prepare, req)
+  utest_exc(ResponseError, ep.prepare_for_request, req)
 
 
 @utest_run
@@ -978,7 +978,7 @@ def _() -> None:
   'Endpoint: scalar field receiving multiple values raises BadRequestError.'
   req = _urlencoded_request('name=a&name=b')
   ep = BodyEndpoint(req, path_params={})
-  utest_exc(ResponseError, ep.prepare, req)
+  utest_exc(ResponseError, ep.prepare_for_request, req)
 
 
 # UploadedFile fields.
@@ -997,7 +997,7 @@ def _() -> None:
   part = b'Content-Disposition: form-data; name="file"; filename="hello.txt"\r\nContent-Type: application/octet-stream\r\n\r\nhello'
   req = _multipart_request('boundary123', part)
   ep = UploadedFileEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val('hello.txt', fields_of(ep).file.filename)
   utest_val(b'hello', fields_of(ep).file.data)
 
@@ -1007,7 +1007,7 @@ def _() -> None:
   'Endpoint: UploadedFile field raises BadRequestError when given a string value.'
   req = _urlencoded_request('file=not-a-file')
   ep = UploadedFileEndpoint(req, path_params={})
-  utest_exc(ResponseError, ep.prepare, req)
+  utest_exc(ResponseError, ep.prepare_for_request, req)
 
 
 @utest_run
@@ -1016,7 +1016,7 @@ def _() -> None:
   body = b'{"file":{"field_name":"file","filename":"x.txt","data":"hi","content_type":"text/plain"}}'
   req = _make_request(media_type='application/json', body=body)
   ep = UploadedFileEndpoint(req, path_params={})
-  utest_exc(ResponseError, ep.prepare, req)
+  utest_exc(ResponseError, ep.prepare_for_request, req)
 
 
 class MultiFileEndpoint(Endpoint):
@@ -1034,7 +1034,7 @@ def _() -> None:
   part_b = b'Content-Disposition: form-data; name="files"; filename="b.txt"\r\nContent-Type: text/plain\r\n\r\nBBB'
   req = _multipart_request('boundary123', part_a, part_b)
   ep = MultiFileEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val(['a.txt', 'b.txt'], [f.filename for f in fields_of(ep).files])
   utest_val([b'AAA', b'BBB'], [f.data for f in fields_of(ep).files])
 
@@ -1055,7 +1055,7 @@ def _() -> None:
   file_part = b'Content-Disposition: form-data; name="file"; filename="f.bin"\r\nContent-Type: application/octet-stream\r\n\r\n\x00\x01'
   req = _multipart_request('boundary123', text_part, file_part)
   ep = MixedMultipartEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val('hello', fields_of(ep).note)
   utest_val('f.bin', fields_of(ep).file.filename)
   utest_val(b'\x00\x01', fields_of(ep).file.data)
@@ -1095,7 +1095,7 @@ def _() -> None:
   'Endpoint: body_field fills a list field from a JSON array body.'
   req = _make_request(media_type='application/json', body=b'[1,2,3]')
   ep = ListBodyFieldEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val([1, 2, 3], fields_of(ep).payload)
 
 
@@ -1104,7 +1104,7 @@ def _() -> None:
   'Endpoint: body_field fills a scalar field from a JSON scalar body.'
   req = _make_request(media_type='application/json', body=b'42')
   ep = IntBodyFieldEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val(42, fields_of(ep).payload)
 
 
@@ -1113,7 +1113,7 @@ def _() -> None:
   'Endpoint: body_field fills a dataclass field from a JSON object body.'
   req = _make_request(media_type='application/json', body=b'{"x":1,"y":2}')
   ep = PointBodyFieldEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val(Point(1, 2), fields_of(ep).payload)
 
 
@@ -1122,7 +1122,7 @@ def _() -> None:
   'Endpoint: body_field fills a dataclass field from a urlencoded body.'
   req = _urlencoded_request('x=1&y=2')
   ep = PointBodyFieldEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val(Point(1, 2), fields_of(ep).payload)
 
 
@@ -1141,17 +1141,17 @@ def _() -> None:
   'Endpoint: body_field endpoint still fills other fields from query params.'
   req = _make_request(query=dict(label='a'), media_type='application/json', body=b'{"x":1,"y":2}')
   ep = MixedBodyFieldEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val('a', fields_of(ep).label)
   utest_val(Point(1, 2), fields_of(ep).payload)
 
 
 @utest_run
 def _() -> None:
-  'Endpoint: query param sharing the body_field name raises duplicate error at prepare.'
+  'Endpoint: query param sharing the body_field name raises duplicate error at prepare_for_request.'
   req = _make_request(query=dict(payload='1'), media_type='application/json', body=b'2')
   ep = IntBodyFieldEndpoint(req, path_params={})
-  utest_exc(ResponseError, ep.prepare, req)
+  utest_exc(ResponseError, ep.prepare_for_request, req)
 
 
 def _make_bad_body_field_endpoint() -> type[Endpoint]:
@@ -1190,7 +1190,7 @@ def _() -> None:
   'Endpoint: body_field fills an annotation-only payload class from a JSON object body.'
   req = _make_request(media_type='application/json', body=b'{"x":1,"y":2}')
   ep = BarePayloadEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val(1, fields_of(ep).payload.x)
   utest_val(2, fields_of(ep).payload.y)
   utest_val('default', fields_of(ep).payload.note)
@@ -1201,7 +1201,7 @@ def _() -> None:
   'Endpoint: annotation-only payload missing a required key raises BadRequestError.'
   req = _make_request(media_type='application/json', body=b'{"x":1}')
   ep = BarePayloadEndpoint(req, path_params={})
-  utest_exc(ResponseError, ep.prepare, req)
+  utest_exc(ResponseError, ep.prepare_for_request, req)
 
 
 # body_field with a custom Transtructor: a selector chooses a concrete subtype from the top-level body.
@@ -1248,7 +1248,7 @@ def _() -> None:
   'Endpoint: body_field with a selector Transtructor constructs the concrete subtype.'
   req = _make_request(media_type='application/json', body=b'{"kind":"circle","radius":3}')
   ep = ShapeBodyEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val(Circle(kind='circle', radius=3), fields_of(ep).shape)
 
 
@@ -1257,7 +1257,7 @@ def _() -> None:
   'Endpoint: body_field with a selector Transtructor constructs an alternate subtype.'
   req = _make_request(media_type='application/json', body=b'{"kind":"rect","w":2,"h":3}')
   ep = ShapeBodyEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val(Rect(kind='rect', w=2, h=3), fields_of(ep).shape)
 
 
@@ -1284,7 +1284,7 @@ def _() -> None:
   'Endpoint: per-class prefigure reshapes a string into a Point.'
   req = _make_request(media_type='application/json', body=b'{"point":"3,4"}')
   ep = PrefiguredPointEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val(Point(3, 4), fields_of(ep).point)
 
 
@@ -1293,7 +1293,7 @@ def _() -> None:
   'Endpoint: per-class prefigure does not affect other endpoints using the same type.'
   req = _make_request(media_type='application/json', body=b'{"point":"3,4"}')
   ep = NestedEndpoint(req, path_params={})
-  utest_exc(ResponseError, ep.prepare, req)
+  utest_exc(ResponseError, ep.prepare_for_request, req)
 
 
 class ShapeSelectorEndpoint(Endpoint):
@@ -1318,7 +1318,7 @@ def _() -> None:
   'Endpoint: per-class selector constructs the concrete subtype from the body.'
   req = _make_request(media_type='application/json', body=b'{"kind":"rect","w":4,"h":5}')
   ep = ShapeSelectorEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val(Rect(kind='rect', w=4, h=5), fields_of(ep).shape)
 
 
@@ -1362,7 +1362,7 @@ def _() -> None:
   body = urlencode([('kinds','a'), ('kinds','b')]).encode()
   req = _make_request(media_type='application/x-www-form-urlencoded', body=body)
   ep = LiteralListEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val(['a', 'b'], fields_of(ep).kinds)
 
 
@@ -1372,7 +1372,7 @@ def _() -> None:
   body = urlencode([('kinds','a'), ('kinds','c')]).encode()
   req = _make_request(media_type='application/x-www-form-urlencoded', body=body)
   ep = LiteralListEndpoint(req, path_params={})
-  utest_exc(ResponseError, ep.prepare, req)
+  utest_exc(ResponseError, ep.prepare_for_request, req)
 
 
 # A union field with more than one non-primitive member is filled via a selector registered for the union.
@@ -1399,7 +1399,7 @@ def _() -> None:
   'Endpoint: a union field selects the concrete member type from the body.'
   req = _make_request(media_type='application/json', body=b'{"kind":"circle","radius":7}')
   ep = ShapeUnionEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val(Circle(kind='circle', radius=7), fields_of(ep).shape)
 
 
@@ -1501,7 +1501,7 @@ def _() -> None:
   'Endpoint: customizing after the class has handled a request raises TypeError.'
   req = _make_request(query=dict(n='1'))
   ep = LateCustomizationEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val(1, fields_of(ep).n)
   utest_exc(TypeError, LateCustomizationEndpoint.prefigure, Point)
 
@@ -1537,7 +1537,7 @@ utest(frozenset({'GET', 'HEAD'}), lambda: DateEndpoint._methods)
 
 def dispatch(cls:type[Endpoint], req:Request) -> object:
   ep = cls(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   return ep.handle_request(req).body
 
 
@@ -1681,7 +1681,7 @@ def _() -> None:
   'Endpoint: a blank query value is None for optional fields and the empty string for a plain str field.'
   req = _make_request(query=dict(start='', count='', tag='', name=''))
   ep = BlankEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   f = fields_of(ep)
   utest_val((None, None, None, ''), (f.start, f.count, f.tag, f.name))
 
@@ -1691,7 +1691,7 @@ def _() -> None:
   'Endpoint: nonblank query values for optional fields convert as usual.'
   req = _make_request(query=dict(start='2026-03-14T12:00', count='2', tag='t', name='n'))
   ep = BlankEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   f = fields_of(ep)
   utest_val((datetime(2026, 3, 14, 12, 0), 2, 't', 'n'), (f.start, f.count, f.tag, f.name))
 
@@ -1709,11 +1709,11 @@ def _() -> None:
   'Endpoint: JSON can represent null, so an empty string is not converted to None.'
   req = _make_request(media_type='application/json', body=b'{"name":"n","tag":""}')
   ep = BlankEndpoint(req, path_params={})
-  ep.prepare(req)
+  ep.prepare_for_request(req)
   utest_val('', fields_of(ep).tag)
   for body in (b'{"name":"n","start":""}', b'{"name":"n","count":""}', b'{"name":"n","counts":[1,""]}'):
     req = _make_request(media_type='application/json', body=body)
-    utest_exc(ResponseError, BlankEndpoint(req, path_params={}).prepare, req)
+    utest_exc(ResponseError, BlankEndpoint(req, path_params={}).prepare_for_request, req)
 
 
 @utest_run
@@ -1727,7 +1727,7 @@ def _() -> None:
   def respond(query:dict[str,str|int|list[str]], method:str='GET') -> bytes:
     req = replace(_method_request(method, query), path='/items/7')
     handler = router.resolve_handler(req)
-    handler.prepare(req)
+    handler.prepare_for_request(req)
     body = handler.handle_request(req).body
     assert isinstance(body, bytes)
     return body
@@ -1756,7 +1756,7 @@ def _() -> None:
     router = Router({'/': get_endpoint(fn)})
     req = _make_request(query)
     handler = router.resolve_handler(req)
-    handler.prepare(req)
+    handler.prepare_for_request(req)
     utest_val(expected, handler.handle_request(req).body)
 
 
@@ -1777,7 +1777,7 @@ def _() -> None:
 
   req = _make_request(dict(count=3))
   handler = Router({'/': get_endpoint(item)}).resolve_handler(req)
-  handler.prepare(req)
+  handler.prepare_for_request(req)
   response = handler.handle_request(req)
   utest_val(b'3', response.body)
   utest_val('1', response.headers.get('x-traced'))

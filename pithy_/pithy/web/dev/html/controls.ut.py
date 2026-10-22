@@ -21,7 +21,7 @@ def request(path:str, data:dict[str,str]|None=None, *, query:str='') -> Response
     client_addr=('127.0.0.1', 0), content_length=len(body) if data is not None else None,
     conn=BytesConn(body) if data is not None else None)
   handler = router.resolve_handler(req)
-  handler.prepare(req)
+  handler.prepare_for_request(req)
   return handler.handle_request(req)
 
 

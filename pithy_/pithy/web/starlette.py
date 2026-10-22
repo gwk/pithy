@@ -583,7 +583,7 @@ def _run_body(endpoint:Endpoint, request:PithyRequest) -> PithyResponse:
   Synchronous body phase, run in a threadpool: parse the body, fill body fields, and handle the request.
   Exceptions (ResponseError, BodyTooLargeError) propagate to the adapter's single catch site.
   '''
-  endpoint.prepare(request)
+  endpoint.prepare_for_request(request)
   return endpoint.handle_request(request)
 
 

@@ -44,7 +44,7 @@ class ServerExceptionTestApp(WebApp):
     return self
 
 
-  def prepare(self, request:Request) -> None:
+  def prepare_for_request(self, request:Request) -> None:
     if request.path == '/reject-at-prepare': raise BadRequestError('bad input')
 
 
