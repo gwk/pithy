@@ -1,6 +1,6 @@
 # tap_ops
 
-Service deployment and server operations. Requires Python 3.14+ and Pithy.
+Service deployment and server operations. Requires Python 3.15+ and Pithy.
 
 ## Systemd unit reconciliation
 

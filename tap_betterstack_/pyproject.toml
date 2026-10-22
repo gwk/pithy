@@ -11,7 +11,7 @@ dynamic = [
 ]
 name = "tap_betterstack"
 description = "Better Stack Telemetry API and Python dashboard definitions."
-requires-python = ">=3.14"
+requires-python = ">=3.15"
 dependencies = [
   "pithy",
   "requests >= 2.34.2",

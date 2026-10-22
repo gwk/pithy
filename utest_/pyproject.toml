@@ -9,7 +9,7 @@ dynamic = [
 ]
 name = "utest"
 description = "UTest is a simple unit-testing library."
-requires-python = ">=3.14"
+requires-python = ">=3.15"
 dependencies = [
   "pithy",
 ]

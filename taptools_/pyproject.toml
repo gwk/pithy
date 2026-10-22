@@ -9,7 +9,7 @@ dynamic = [
 ]
 name = "taptools"
 description = "Taptools is a collection of comamnd line utilities that depend on the `pithy` package."
-requires-python = ">=3.14"
+requires-python = ">=3.15"
 dependencies = [
   "packaging >= 25.0",
   "pillow >= 12.0.0",

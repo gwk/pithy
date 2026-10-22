@@ -9,7 +9,7 @@ dynamic = [
 ]
 name = "pyrrhus"
 description = "Pyrrhus is a collection of Python utilities backed by Rust extensions."
-requires-python = ">=3.14"
+requires-python = ">=3.15"
 dependencies = []
 keywords = [
   "extension",

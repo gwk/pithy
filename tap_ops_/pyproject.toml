@@ -11,7 +11,7 @@ dynamic = [
 ]
 name = "tap_ops"
 description = "Service deployment and server operations."
-requires-python = ">=3.14"
+requires-python = ">=3.15"
 dependencies = [
   "pithy",
 ]

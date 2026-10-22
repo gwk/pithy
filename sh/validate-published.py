@@ -46,7 +46,7 @@ def main() -> None:
     'UV_EXCLUDE_NEWER', 'UV_EXCLUDE_NEWER_PACKAGE'):
     env.pop(name, None)
   result = subprocess.run([
-    'uv', 'run', '--no-project', '--no-config', '--isolated', '--refresh', '--python', '3.14',
+    'uv', 'run', '--no-project', '--no-config', '--isolated', '--refresh', '--python', '3.15',
     '--default-index', 'https://pypi.org/simple/', '--with', f'{package} @ {artifact_url}',
     'python', '-I', str(script_dir / 'validate-installed.py'), package, version, *extra_imports,
   ], cwd=script_dir.parent, env=env)

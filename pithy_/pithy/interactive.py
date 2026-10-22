@@ -80,7 +80,7 @@ def interact(banner:str='', locals:dict[str,Any]|None=None) -> None:
   if locals is None:
     stack = inspect.stack()
     parent_frame_info = stack[1]
-    locals = parent_frame_info.frame.f_locals
+    locals = dict(parent_frame_info.frame.f_locals)
   errSL('locals:')
   for k, v in locals.items():
     rv = repr(v)

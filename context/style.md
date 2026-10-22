@@ -39,8 +39,8 @@ filler, or marketing/casual/feel-good language.
     `# © {OWNER}. All Rights Reserved.`
 
 ### Python Style
-* Python 3.14+, strict typing with mypy.
-* Do not import `__future__` annotations or use strings for types; 3.14 supports deferred annotations.
+* Python 3.15+, strict typing with mypy.
+* Do not import `__future__` annotations or use strings for types; 3.15 supports deferred annotations.
 * Type hints required.
 * Use the modern `type` keyword and forward references wherever appropriate.
 * Type declarations omit spaces after colons and inside of types, e.g `def f(x:dict[str,int]) -> None: ...`.

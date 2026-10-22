@@ -237,7 +237,7 @@ When writing commit messages:
 * Feel free to put newlines after sentences, semicolons and colons when the lines get long though.
 
 ## Platform Support
-This project targets Python 3.14+ on modern Unix platforms. Windows is not supported.
+This project targets Python 3.15+ on modern Unix platforms. Windows is not supported.
 
 ## Unit Tests
 * Write unit tests using our own library `utest`.

@@ -35,7 +35,7 @@ def main() -> None:
 
 
 def latest_point_release(series:str, prereleases:bool=False) -> str|None:
-  'Return the latest eligible release of `series` (e.g. "3.14"), or None if the query fails or finds no tags.'
+  'Return the latest eligible release of `series` (e.g. "3.15"), or None if the query fails or finds no tags.'
   cmd = ['git', 'ls-remote', '--tags', cpython_url, f'refs/tags/v{series}.*']
   try: proc = run(cmd, stdout=PIPE, stderr=DEVNULL, timeout=30, text=True)
   except (OSError, SubprocessError): return None
