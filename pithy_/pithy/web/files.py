@@ -18,7 +18,7 @@ from .app import WebApp
 from .errors import ResponseError
 from .handler import RoutableHandler
 from .request import Request
-from .response import html_media_type, Response
+from .response import close_response_body, html_media_type, Response
 
 
 _context_keywords_ = ['conditional requests', 'directory listing', 'etag', 'http.server.SimpleHTTPRequestHandler', 'mime types',
@@ -100,7 +100,7 @@ class _FilesServing:
       if self.prevent_client_caching or request.prevent_client_caching: response.set_no_cache_headers()
       return response
     except:
-      response.close()
+      close_response_body(response.body)
       raise
 
 
@@ -154,7 +154,7 @@ class _FilesServing:
       transferred = response.body is file
       return response
     except:
-      if response is not None: response.close()
+      if response is not None: close_response_body(response.body)
       raise
     finally:
       if not transferred: file.close()

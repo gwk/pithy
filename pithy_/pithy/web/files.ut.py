@@ -12,7 +12,7 @@ from pithy.web.errorrender import render_error_text
 from pithy.web.errors import ResponseError
 from pithy.web.files import compute_local_path, ext_media_types, FilesApp, FilesHandler
 from pithy.web.request import Request
-from pithy.web.response import Response
+from pithy.web.response import close_response_body, Response
 from pithy.web.router import Router
 from utest import utest, utest_exc, utest_run, utest_val
 
@@ -25,7 +25,7 @@ def _request(path:str, headers:dict[str,str]|None=None) -> Request:
 def _serve(app:FilesApp, path:str, headers:dict[str,str]|None=None) -> Response:
   'Build a GET request for `path`, serve it through `app`, and return the response with its body closed.'
   response = app.handle_request(_request(path, headers))
-  response.close()
+  close_response_body(response.body)
   return response
 
 
@@ -56,7 +56,7 @@ def _() -> None:
     response = FilesApp(local_dir=tmp).handle_request(_request('/a.txt'))
     assert isinstance(response.body, BufferedReader)
     utest_val(False, response.body.closed)
-    response.close()
+    close_response_body(response.body)
     utest_val(True, response.body.closed)
 
 
@@ -104,7 +104,7 @@ def _() -> None:
 
     request = _request('/static/a.dat')
     response = Router({'/static/{subpath:path}': CustomHandler}).resolve_handler(request).handle_request(request)
-    if isinstance(response.body, BufferedReader): response.body.close()
+    close_response_body(response.body)
     utest_val('application/x-custom', response.headers.get('content-type'), desc='mounted handler uses the override')
 
 
@@ -123,7 +123,7 @@ def _() -> None:
     def content_type(path:str) -> str|None:
       request = _request(path)
       response = router.resolve_handler(request).handle_request(request)
-      if isinstance(response.body, BufferedReader): response.body.close()
+      close_response_body(response.body)
       value = response.headers.get('content-type')
       return value if isinstance(value, str) else None
 
@@ -215,7 +215,7 @@ def _() -> None:
     request = _request('/a.txt', headers={'if-none-match':'"whatever"'})
     request.prevent_client_caching = True
     response = app.handle_request(request)
-    if isinstance(response.body, BufferedReader): response.body.close()
+    close_response_body(response.body)
     utest_val(HTTPStatus.OK, response.status)
     utest_val('no-cache, no-store, must-revalidate', response.headers.get('cache-control'))
     utest_val(False, 'etag' in response.headers)
@@ -244,7 +244,7 @@ def _() -> None:
       response = app.handle_request(_request(path))
       assert isinstance(response.body, BufferedReader)
       try: return response.body.read()
-      finally: response.close()
+      finally: close_response_body(response.body)
 
     utest(b'root', body, '/')
     utest(b'root', body, '/sub/../')

@@ -55,6 +55,19 @@ class ServerExceptionTestApp(WebApp):
     return response
 
 
+  def finish_response(self, request:Request, response:Response) -> Response:
+    if request.path == '/finish-failed-file': raise RuntimeError('finish failed')
+    if request.path == '/finish-rejected-file': raise BadRequestError('finish rejected')
+    if request.path == '/finish-shared-file': return Response(body=response.body)
+    if request.path == '/finish-new-file': return file_response(Response)
+    if request.path in ('/finish-mutated-file', '/finish-mutated-failed-file'):
+      response.body = file_response(Response).body
+      if request.path == '/finish-mutated-failed-file': raise RuntimeError('finish failed after replacing body')
+    if request.path == '/finish-text': return Response(body='replacement')
+    response.headers['x-finish-hook'] = 'finished'
+    return response
+
+
   def handle_request(self, request:Request) -> Response:
     match request.path:
       case '/ok': return Response(body='ok', media_type='text/plain')
@@ -76,6 +89,7 @@ class ServerExceptionTestApp(WebApp):
         raise BadRequestError('bad input')
       case '/broken-response': return BrokenResponse(body='unreachable', media_type='text/plain')
       case '/file': return file_response(Response)
+      case path if path.startswith('/finish-'): return file_response(Response)
       case '/broken-file-response': return file_response(BrokenResponse)
       case '/file-state': return Response(body=','.join(str(file.closed) for file in file_bodies))
       case _: return Response(body='not found', status=HTTPStatus.NOT_FOUND, media_type='text/plain')
@@ -92,10 +106,10 @@ def get_status_body(base_url:str, path:str) -> tuple[int,str]:
   return (resp.status_code, resp.text)
 
 
-def get_status_hook(base_url:str, path:str) -> tuple[int,str|None]:
-  'The status and the header set by the error_response hook, showing whether the response passed through it.'
+def get_status_hooks(base_url:str, path:str) -> tuple[int,str|None,str|None]:
+  'The status and the headers set by the error_response and finish_response hooks, showing which the response passed through.'
   resp = requests.get(f'{base_url}{path}', timeout=2)
-  return (resp.status_code, resp.headers.get('x-error-hook'))
+  return (resp.status_code, resp.headers.get('x-error-hook'), resp.headers.get('x-finish-hook'))
 
 
 def post_status_body(base_url:str, path:str, data:bytes) -> tuple[int,str]:
@@ -203,29 +217,29 @@ def test_server_exceptions() -> None:
     test_error_connections(base_url)
     test_empty_request_connections(base_url)
 
-    # An unhandled exception produces a bare 500 that bypasses the error hook.
+    # An unhandled exception produces a bare 500 that bypasses both hooks.
     utest((500, 'Internal Server Error'), get_status_body, base_url, '/raise')
-    utest((500, None), get_status_hook, base_url, '/raise')
+    utest((500, None, None), get_status_hooks, base_url, '/raise')
     response = requests.get(f'{base_url}/ok', headers={'Connection': 'close'}, timeout=2)
     utest('no-cache, no-store, must-revalidate', response.headers.get, 'cache-control')
-    utest((200, None), get_status_hook, base_url, '/ok')
+    utest((200, None, 'finished'), get_status_hooks, base_url, '/ok') # A normal response passes through finish_response only.
     # NotImplementedError: 501 through the error hook, with a fixed reason that does not leak the exception message.
     status, body = get_status_body(base_url, '/raise-not-implemented')
     utest(501, int, status)
     utest(True, lambda b: 'Not Implemented' in b and 'not yet' not in b, body)
-    utest((501, 'Not Implemented'), get_status_hook, base_url, '/raise-not-implemented')
+    utest((501, 'Not Implemented', 'finished'), get_status_hooks, base_url, '/raise-not-implemented')
     utest((200, 'ok'), get_status_body, base_url, '/ok')
-    utest((501, 'Not Implemented'), get_status_hook, base_url, '/raise-not-implemented-empty')
+    utest((501, 'Not Implemented', 'finished'), get_status_hooks, base_url, '/raise-not-implemented-empty')
     utest((200, 'ok'), get_status_body, base_url, '/ok')
     # BadRequestError (a ResponseError): 400 through the error hook, with a plain text body containing the reason.
     status, body = get_status_body(base_url, '/raise-bad-request')
     utest(400, int, status)
     utest(True, lambda b: 'bad input' in b, body)
-    utest((400, 'Bad Request'), get_status_hook, base_url, '/raise-bad-request')
+    utest((400, 'Bad Request', 'finished'), get_status_hooks, base_url, '/raise-bad-request')
     utest((200, 'ok'), get_status_body, base_url, '/ok')
     # A failing error hook produces a bare 500 without consulting the app again.
     utest((500, 'Internal Server Error'), get_status_body, base_url, '/error-hook-raises')
-    utest((500, None), get_status_hook, base_url, '/error-hook-raises')
+    utest((500, None, None), get_status_hooks, base_url, '/error-hook-raises')
     utest((200, 'ok'), get_status_body, base_url, '/ok')
     # BodyTooLargeError: 413 through the error hook with connection close; a small body still succeeds.
     utest((200, 'read ok'), post_status_body, base_url, '/read-small-body', b'tiny')
@@ -233,6 +247,7 @@ def test_server_exceptions() -> None:
     utest(413, int, response.status_code)
     utest(True, lambda: 'Content Too Large' in response.text)
     utest('Content Too Large', response.headers.get, 'x-error-hook')
+    utest('finished', response.headers.get, 'x-finish-hook')
     utest('close', response.headers.get, 'connection')
     utest((200, 'ok'), get_status_body, base_url, '/ok')
     # A broken Response causes _send_response to fail; the server closes the connection without replying.
@@ -242,6 +257,24 @@ def test_server_exceptions() -> None:
     utest((200, 'True'), get_status_body, base_url, '/file-state')
     utest_exc(requests.exceptions.ConnectionError, get_status_body, base_url, '/broken-file-response')
     utest((200, 'True,True'), get_status_body, base_url, '/file-state')
+    # A failing finish hook closes the discarded file response and bypasses both hooks for the fallback.
+    for path in ('/finish-failed-file', '/finish-rejected-file'):
+      utest((500, None, None), get_status_hooks, base_url, path)
+    utest((200, 'True,True,True,True'), get_status_body, base_url, '/file-state')
+
+    # Body ownership follows the file, including sharing across responses and replacement in place.
+    with open(__file__) as source: expected_body = source.read()
+    count = 4
+    for path, added in (('/finish-shared-file', 1), ('/finish-new-file', 2), ('/finish-mutated-file', 2)):
+      utest((200, expected_body), get_status_body, base_url, path)
+      count += added
+      utest((200, ','.join(['True'] * count)), get_status_body, base_url, '/file-state')
+    utest((200, 'replacement'), get_status_body, base_url, '/finish-text')
+    count += 1
+    utest((200, ','.join(['True'] * count)), get_status_body, base_url, '/file-state')
+    utest((500, 'Internal Server Error'), get_status_body, base_url, '/finish-mutated-failed-file')
+    count += 2
+    utest((200, ','.join(['True'] * count)), get_status_body, base_url, '/file-state')
 
     _ = server_proc.flush_merged()
 

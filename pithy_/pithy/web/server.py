@@ -27,7 +27,7 @@ from .env import web_host, web_port
 from .errors import ResponseError
 from .request import AddrPair, Request, RequestConn
 from .requestconn import BodyAlreadyReadError, BodyTooLargeError
-from .response import Response
+from .response import close_response_body, Response
 
 
 _context_keywords_ = ['access logging', 'connection draining', 'h11', 'http 1.1', 'http.server', 'keep alive', 'multithreading',
@@ -368,11 +368,12 @@ class WebServer:
         method = http_method_bytes_to_strs.get(event.method, '')
         try:
           response = self._handle_connection_cycle(conn, event, method)
+          body = response.body
           try:
             if self.config.prevent_client_caching: response.set_no_cache_headers()
             self._send_response(conn, response=response, method=method)
           finally:
-            response.close()
+            close_response_body(body)
         finally:
           if self.config.log_access: self._log_access(conn, event, start_time)
           conn.request = None # The request is complete; do not let it linger on the connection.
@@ -472,7 +473,8 @@ class WebServer:
       conn=WebServerRequestConn(content_length=content_length, _conn=conn))
 
     app = self.app
-    try: # Outer: 500 server error; unhandled application error, including a failing error_response hook.
+    response:Response|None = None
+    try: # Outer: 500 server error; unhandled application error, including a failing app hook.
       try: # Inner: ResponseError, BodyTooLargeError, NotImplementedError.
         handler = app.resolve_handler(request)
 
@@ -481,10 +483,11 @@ class WebServer:
           if expect_response.status == HTTPStatus.CONTINUE:
             self._send_informational_response(conn.h11_conn, conn.socket, expect_response)
           else:
-            return expect_response.set_connection_close() # The body was not read, so the connection cannot be reused.
+            response = expect_response # Reject before the body is sent; the unread body forces a connection close below.
 
-        handler.prepare_for_request(request)
-        response = handler.handle_request(request)
+        if response is None:
+          handler.prepare_for_request(request)
+          response = handler.handle_request(request)
 
       except ResponseError as exc:
         response = app.error_response(request, exc)
@@ -495,8 +498,15 @@ class WebServer:
         logE('Not implemented.', exc=exc, client_addr=conn.client_addr, method=method, path=request.path)
         response = app.error_response(request, ResponseError(HTTPStatus.NOT_IMPLEMENTED, 'Not Implemented'))
         #^ The fixed reason does not leak the exception message.
+      original_body = response.body
+      try:
+        response = app.finish_response(request, response)
+      finally:
+        if response.body is not original_body: close_response_body(original_body)
+        #^ Covers a replaced body whether the hook returned a new response, mutated the input, or raised after mutating.
     except Exception as exc:
       logE('Unhandled application exception.', exc=exc, client_addr=conn.client_addr, method=method, path=request.path)
+      if response is not None: close_response_body(response.body)
       response = self._internal_server_error_response(method=method).set_connection_close()
 
     # Empty requests have a pending EndOfMessage even when the handler has no reason to read a body.

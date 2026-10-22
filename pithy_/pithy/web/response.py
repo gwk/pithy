@@ -112,11 +112,6 @@ class Response():
       for (k, v) in self.headers.items()]
 
 
-  def close(self) -> None:
-    'Close an owned file body, if present.'
-    if isinstance(self.body, BufferedReader): self.body.close()
-
-
   def set_connection_close(self) -> Self:
     self.headers['connection'] = 'close'
     return self
@@ -128,6 +123,11 @@ class Response():
     add_header_item(self.headers, 'pragma', 'no-cache')
     add_header_item(self.headers, 'expires', '0')
 
+
+
+def close_response_body(body:BinaryResponseBody) -> None:
+  'Close a file body; other body types need no cleanup.'
+  if isinstance(body, BufferedReader): body.close()
 
 
 def content_length_for_file(file:BufferedReader) -> int:

@@ -30,7 +30,7 @@ from .errorrender import render_error_text
 from .errors import ResponseError
 from .request import Request as PithyRequest
 from .requestconn import BodyTooLargeError, BytesConn
-from .response import Response as PithyResponse
+from .response import close_response_body, Response as PithyResponse
 from .static import pithy_web_static_dir_path
 
 
@@ -551,14 +551,14 @@ def convert_response(p_response:PithyResponse, *, method:str='GET') -> Response:
   'Convert a pithy Response into a Starlette Response, preserving the exact status and headers.'
   body = p_response.body
   if not may_send_body(method, p_response.status):
-    p_response.close()
+    close_response_body(body)
     response = Response(content=b'', status_code=p_response.status.value)
   elif isinstance(body, BufferedReader):
     try:
       response = _FileStreamingResponse(p_response, body)
       response.raw_headers = p_response.headers_bytes_list()
     except:
-      p_response.close()
+      close_response_body(body)
       raise
     return response
   else:
@@ -571,12 +571,12 @@ class _FileStreamingResponse(StreamingResponse):
 
   def __init__(self, p_response:PithyResponse, file:BufferedReader) -> None:
     super().__init__(iter(lambda: file.read(64 * 1024), b''), status_code=p_response.status.value)
-    self._p_response = p_response
+    self._file = file
 
 
   async def __call__(self, scope:Scope, receive:Receive, send:Send) -> None:
     try: await super().__call__(scope, receive, send)
-    finally: self._p_response.close()
+    finally: self._file.close()
 
 
 def _run_body(endpoint:Endpoint, request:PithyRequest) -> PithyResponse:

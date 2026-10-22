@@ -1,9 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from io import BufferedReader
-
 from pithy.web.dev.routes import routes
 from pithy.web.request import Request
+from pithy.web.response import close_response_body
 from pithy.web.router import Router
 from utest import utest_run, utest_val
 
@@ -16,7 +15,7 @@ def _request(path:str) -> Request:
 def _content_type(router:Router, path:str) -> object:
   request = _request(path)
   response = router.resolve_handler(request).handle_request(request)
-  if isinstance(response.body, BufferedReader): response.body.close()
+  close_response_body(response.body)
   return response.headers.get('content-type')
 
 

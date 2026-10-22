@@ -25,8 +25,10 @@ class WebApp(RequestHandler):
 
   A ResponseError raised during these steps is turned into a response by `error_response`;
   the default renders it with the `error_renderers` entry for `error_media_type`.
+  Normal responses, rejections from step 2 and responses produced by `error_response` pass through `finish_response`.
   Protocol rejections before Request construction bypass the application entirely.
-  An unhandled exception, including an exception from `error_response`, produces a bare 500 without consulting the app again.
+  An unhandled exception, including an exception from either response hook, produces a bare 500 without consulting the app
+  again.
   '''
 
   error_media_type:ClassVar[str] = default_error_media_type
@@ -57,6 +59,21 @@ class WebApp(RequestHandler):
     An exception raised here produces a bare 500.
     '''
     return self.error_renderers[self.error_media_type](request, error)
+
+
+  def finish_response(self, request:Request, response:Response) -> Response:
+    '''
+    Adjust a response before it is sent; the default returns it unchanged.
+    Override to apply policy headers to normal responses and responses produced by `error_response`.
+    An exception raised here, including ResponseError, produces a bare 500 without calling either hook again.
+
+    Body ownership: the server closes the body of the returned response after sending it.
+    If the hook replaces the body, by returning a different response or by assigning `response.body`,
+    the server closes the original body; the returned response may also reuse the original body.
+    If the hook raises, the server closes the original body and any replacement attached to the input response.
+    Overrides are responsible for closing any intermediate bodies they allocate and discard internally.
+    '''
+    return response
 
 
   def resolve_handler(self, request:Request) -> RequestHandler:
