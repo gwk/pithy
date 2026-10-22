@@ -3,7 +3,8 @@
 from collections.abc import Mapping
 from typing import Any, ClassVar
 
-from .errorrender import bare_media_type, default_error_media_type, default_error_renderers, ErrorRenderer
+from .errorrender import (bare_media_type, default_error_extension_media_types, default_error_media_type,
+  default_error_renderers, error_media_type_for_path, ErrorRenderer)
 from .errors import ResponseError
 from .handler import RequestHandler
 from .request import Request
@@ -23,42 +24,71 @@ class WebApp(RequestHandler):
   3. If not rejected, the handler's `prepare_for_request` prepares to handle the request, e.g. by reading the body.
   4. The handler's `handle_request` produces a response.
 
-  A ResponseError raised during these steps is turned into a response by `error_response`;
-  the default renders it with the `error_renderers` entry for `error_media_type`.
+  A ResponseError raised during these steps is turned into a response by `error_response`,
+  or by the built-in plain text renderer if that returns None or raises; a raise is logged.
+  The default selects a renderer from `error_renderers` by the request path extension; see `error_media_type_for`.
+
   Normal responses, rejections from step 2 and responses produced by `error_response` pass through `finish_response`.
   Protocol rejections before Request construction bypass the application entirely.
-  An unhandled exception, including an exception from either response hook, produces a bare 500 without consulting the app
-  again.
+  An unhandled exception elsewhere, including from `finish_response`, produces a bare 500 without consulting the app again.
   '''
 
   error_media_type:ClassVar[str] = default_error_media_type
-  'The bare media type of error responses. It must be a key of `error_renderers`; this is checked when the subclass is defined.'
+  'The bare media type of error responses for paths without an extension, e.g. `text/html` for a page app.'
+
+  error_extension_media_types:ClassVar[Mapping[str,str]] = default_error_extension_media_types
+  '''
+  Lowercase path extensions mapped to the bare media type of their error responses; other extensions get plain text.
+  Override with a mapping that extends `default_error_extension_media_types`, e.g. to add `jsonl`.
+  '''
 
   error_renderers:ClassVar[Mapping[str,ErrorRenderer]] = default_error_renderers
   '''
   Error renderers keyed by bare media type.
   Override with a mapping that extends `default_error_renderers`, e.g. to render a styled HTML page.
+  Every media type that `error_media_type` and `error_extension_media_types` name, and `text/plain`, must have an entry;
+  this is checked when the subclass is defined.
   '''
 
 
   def __init_subclass__(cls, **kwargs:Any) -> None:
     super().__init_subclass__(**kwargs)
-    media_type = cls.error_media_type
-    if media_type != bare_media_type(media_type):
-      raise TypeError(f'{cls.__qualname__}.error_media_type must be a bare media type without parameters: {media_type!r}.')
-    if media_type not in cls.error_renderers:
-      raise TypeError(f'{cls.__qualname__}.error_media_type {media_type!r} has no entry in error_renderers.')
+    media_types = {cls.error_media_type, 'text/plain', *cls.error_extension_media_types.values()}
+    for media_type in sorted(media_types):
+      if media_type != bare_media_type(media_type):
+        raise TypeError(f'{cls.__qualname__}: error media types must be bare, without parameters: {media_type!r}.')
+      if media_type not in cls.error_renderers:
+        raise TypeError(f'{cls.__qualname__}: error media type {media_type!r} has no entry in error_renderers.')
 
 
-  def error_response(self, request:Request, error:ResponseError) -> Response:
+  def error_media_type_for(self, request:Request) -> str:
     '''
-    Build the response for a ResponseError raised during application dispatch or body handling.
+    Select the bare media type of the error response for a request; the default `error_response` renders with it.
+    The default decides by the path extension: none gives `error_media_type`, a listed one gives its mapped type and
+    any other gives plain text; see `error_media_type_for_path`.
+    The extension is taken from the percent-decoded final segment, as routing sees it, so `/items%2Ejson` selects JSON;
+    a path that cannot be decoded selects from its raw final segment.
+    Override to consult other signals, e.g. the Accept header or a query parameter.
+    '''
+    try: segment = request.path_segments[-1]
+    except ResponseError: segment = request.path.rpartition('/')[2]
+    return error_media_type_for_path(segment, default=self.error_media_type,
+      extension_media_types=self.error_extension_media_types)
+
+
+  def error_response(self, request:Request, error:ResponseError) -> Response|None:
+    '''
+    Build the response for a ResponseError raised during application dispatch or body handling,
+    or return None to defer to the built-in plain text renderer.
+
     BodyTooLargeError and NotImplementedError from those steps are converted to ResponseError and pass through this hook.
-    The default renders with the `error_renderers` entry for `error_media_type`.
-    Override to choose the renderer per request, e.g. from the Accept header or the resolved handler.
-    An exception raised here produces a bare 500.
+    Unmatched paths and rejections before routing pass through it too, so the selection must not assume a handler.
+
+    The default renders with the `error_renderers` entry for `error_media_type_for(request)`.
+    Override `error_media_type_for` to change the selection, or this method to change how errors are built.
+    An exception raised here is logged and treated as a deferral.
     '''
-    return self.error_renderers[self.error_media_type](request, error)
+    return self.error_renderers[self.error_media_type_for(request)](request, error)
 
 
   def finish_response(self, request:Request, response:Response) -> Response:

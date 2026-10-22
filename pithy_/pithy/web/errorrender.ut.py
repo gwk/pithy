@@ -4,8 +4,9 @@ from http import HTTPStatus
 from json import loads
 
 from pithy.web.app import WebApp
-from pithy.web.errorrender import (bare_media_type, default_error_media_type, default_error_renderers, error_reason,
-  render_error_html, render_error_problem_json, render_error_text)
+from pithy.web.errorrender import (bare_media_type, default_error_extension_media_types, default_error_media_type,
+  default_error_renderers, error_media_type_for_path, error_reason, path_extension, render_error_html,
+  render_error_problem_json, render_error_text)
 from pithy.web.errors import BadRequestError, MethodNotAllowedError, NotFoundError, ResponseError
 from pithy.web.request import Request
 from pithy.web.response import Response
@@ -80,19 +81,37 @@ def test_defaults() -> None:
 
 @utest_run
 def test_app_defaults() -> None:
-  'A WebApp without customization renders plain text errors; a declared media type selects its renderer.'
+  'A WebApp without customization renders plain text errors; declarations and the path extension select the renderer.'
   response = WebApp().error_response(_request(), NotFoundError())
+  assert response is not None
   utest_val(b'404: Not Found.\n', response.body)
 
   class JsonApp(WebApp):
     error_media_type = 'application/json'
-  utest_val('application/problem+json', JsonApp().error_response(_request(), NotFoundError()).headers['content-type'])
+  json_response = JsonApp().error_response(_request(), NotFoundError())
+  assert json_response is not None
+  utest_val('application/problem+json', json_response.headers['content-type'])
+
+  def selected(path:str) -> str:
+    request = _request()
+    request.path = path
+    return JsonApp().error_media_type_for(request)
+  utest('application/json', selected, '/items')
+  utest('text/html', selected, '/items.html')
+  utest('text/plain', selected, '/items.csv')
+  # The extension comes from the decoded final segment, as routing sees it; an undecodable path uses the raw segment.
+  utest('text/html', selected, '/items%2Ehtml')
+  utest('text/html', selected, '/items.h%74ml')
+  utest('text/html', selected, '/bad%ff.html')
+  utest('application/json', selected, '/bad%ff')
 
   def render_custom(request:Request, error:ResponseError) -> Response:
     return Response(error.status, body='custom', media_type='text/plain')
   class CustomApp(WebApp):
     error_renderers = {**default_error_renderers, 'text/plain': render_custom}
-  utest_val(b'custom', CustomApp().error_response(_request(), NotFoundError()).body)
+  custom_response = CustomApp().error_response(_request(), NotFoundError())
+  assert custom_response is not None
+  utest_val(b'custom', custom_response.body)
 
   def define_unrenderable() -> None:
     class UnrenderableApp(WebApp):
@@ -103,3 +122,44 @@ def test_app_defaults() -> None:
     class ParameterizedApp(WebApp):
       error_media_type = 'text/plain;charset=utf-8'
   utest_exc(TypeError, define_parameterized)
+
+  def define_unrenderable_extension() -> None:
+    class UnrenderableExtensionApp(WebApp):
+      error_extension_media_types = {**default_error_extension_media_types, 'csv': 'text/csv'}
+  utest_exc(TypeError, define_unrenderable_extension)
+
+
+@utest_run
+def test_media_type_for_path() -> None:
+  utest('', path_extension, '/')
+  utest('', path_extension, '/users/7')
+  utest('', path_extension, '/.well-known/x')
+  utest('json', path_extension, '/users/7.JSON')
+  utest('gz', path_extension, '/dl/archive.tar.gz')
+  utest('css', path_extension, '/v1.2/app.css')
+  utest('', path_extension, '/releases/1.2')
+  utest('', path_extension, '/releases/1.0rc1')
+  utest('', path_extension, '/dl/archive.7z') # Digit-led extensions are ignored along with version suffixes.
+  utest('mp3', path_extension, '/media/song.mp3')
+  utest('', path_extension, '/trailing.')
+
+  select = lambda path: error_media_type_for_path(path, default='text/html')
+  utest('text/html', select, '/')
+  utest('text/html', select, '/users/7')
+  utest('text/html', select, '/users/7.htmx')
+  utest('application/json', select, '/users/7.json')
+  utest('text/plain', select, '/static/app.css')
+  utest('text/plain', select, '/report.csv')
+  utest('text/plain', select, '/.well-known/x.unknown')
+  utest('text/html', select, '/releases/1.0rc1')
+  utest('application/x-jsonl', lambda: error_media_type_for_path('/log.jsonl', default='text/html',
+    extension_media_types={'jsonl': 'application/x-jsonl'}))
+
+
+@utest_run
+def test_htmx_fragment() -> None:
+  request = _request()
+  request.headers['hx-request'] = 'true'
+  response = render_error_html(request, BadRequestError('bad input'))
+  utest_val(b'<p>400: bad input.</p>\n', response.body)
+  utest_val('text/html;charset=utf-8', response.headers['content-type'])

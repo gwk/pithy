@@ -24,6 +24,7 @@ from pithy.logs import logE, logI
 from ..http import http_method_bytes_to_strs, may_send_body
 from .app import WebApp
 from .env import web_host, web_port
+from .errorrender import render_error_text
 from .errors import ResponseError
 from .request import AddrPair, Request, RequestConn
 from .requestconn import BodyAlreadyReadError, BodyTooLargeError
@@ -490,13 +491,13 @@ class WebServer:
           response = handler.handle_request(request)
 
       except ResponseError as exc:
-        response = app.error_response(request, exc)
+        response = self._error_response(conn, request, exc)
       except BodyTooLargeError:
-        response = app.error_response(request, ResponseError(HTTPStatus.CONTENT_TOO_LARGE, 'Content Too Large'))
+        response = self._error_response(conn, request, ResponseError(HTTPStatus.CONTENT_TOO_LARGE, 'Content Too Large'))
         #^ The unread remainder of the body forces a connection close below.
       except NotImplementedError as exc:
         logE('Not implemented.', exc=exc, client_addr=conn.client_addr, method=method, path=request.path)
-        response = app.error_response(request, ResponseError(HTTPStatus.NOT_IMPLEMENTED, 'Not Implemented'))
+        response = self._error_response(conn, request, ResponseError(HTTPStatus.NOT_IMPLEMENTED, 'Not Implemented'))
         #^ The fixed reason does not leak the exception message.
       original_body = response.body
       try:
@@ -520,6 +521,20 @@ class WebServer:
     # An unconsumed EndOfMessage prevents reuse, including when application dispatch raises ResponseError.
     if conn.h11_conn.their_state is h11_SEND_BODY: response.set_connection_close()
     return response
+
+
+  def _error_response(self, conn:_Conn, request:Request, error:ResponseError) -> Response:
+    '''
+    Render an expected application error with the app's `error_response`, or with the built-in plain text renderer
+    if the hook returns None or raises. A raise is logged, so a broken hook degrades the format of the response
+    rather than its status.
+    '''
+    try: response = self.app.error_response(request, error)
+    except Exception as exc:
+      logE('error_response hook failed; deferring.', exc=exc, client_addr=conn.client_addr, method=request.method,
+        path=request.path)
+      response = None
+    return response if response is not None else render_error_text(request, error)
 
 
   def _internal_server_error_response(self, *, method:str) -> Response:

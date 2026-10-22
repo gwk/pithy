@@ -48,9 +48,11 @@ class ServerExceptionTestApp(WebApp):
     if request.path == '/reject-at-prepare': raise BadRequestError('bad input')
 
 
-  def error_response(self, request:Request, error:ResponseError) -> Response:
+  def error_response(self, request:Request, error:ResponseError) -> Response|None:
     if request.path == '/error-hook-raises': raise RuntimeError('error hook failed')
+    if request.path == '/error-hook-defers': return None
     response = super().error_response(request, error)
+    assert response is not None
     response.headers['x-error-hook'] = error.status.phrase
     return response
 
@@ -78,7 +80,8 @@ class ServerExceptionTestApp(WebApp):
       case '/raise-not-implemented': raise NotImplementedError('not yet')
       case '/raise-not-implemented-empty': raise NotImplementedError
       case '/raise-bad-request': raise BadRequestError('bad input')
-      case '/error-hook-raises': raise BadRequestError('bad input')
+      case '/error-hook-raises' | '/error-hook-defers': raise BadRequestError('bad input')
+      case '/raise-bad-request.json' | '/raise-bad-request.css': raise BadRequestError('bad input')
       case '/reject-partial-body':
         assert request.conn is not None
         chunk = request.conn.read_some(max_bytes=8)
@@ -110,6 +113,17 @@ def get_status_hooks(base_url:str, path:str) -> tuple[int,str|None,str|None]:
   'The status and the headers set by the error_response and finish_response hooks, showing which the response passed through.'
   resp = requests.get(f'{base_url}{path}', timeout=2)
   return (resp.status_code, resp.headers.get('x-error-hook'), resp.headers.get('x-finish-hook'))
+
+
+def get_error_details(base_url:str, path:str) -> tuple[int,str|None,str,str|None,str|None]:
+  '''
+  The status, content type, body and hook headers of an error response.
+  Helpers return tuples rather than Response objects: a live Response holds its keep-alive socket open,
+  and the single worker thread would then wait out the connection timeout before serving the next request.
+  '''
+  resp = requests.get(f'{base_url}{path}', timeout=2)
+  return (resp.status_code, resp.headers.get('content-type'), resp.text, resp.headers.get('x-error-hook'),
+    resp.headers.get('x-finish-hook'))
 
 
 def post_status_body(base_url:str, path:str, data:bytes) -> tuple[int,str]:
@@ -237,9 +251,15 @@ def test_server_exceptions() -> None:
     utest(True, lambda b: 'bad input' in b, body)
     utest((400, 'Bad Request', 'finished'), get_status_hooks, base_url, '/raise-bad-request')
     utest((200, 'ok'), get_status_body, base_url, '/ok')
-    # A failing error hook produces a bare 500 without consulting the app again.
-    utest((500, 'Internal Server Error'), get_status_body, base_url, '/error-hook-raises')
-    utest((500, None, None), get_status_hooks, base_url, '/error-hook-raises')
+    # An app hook that raises or defers falls through to the plain text renderer, keeping the status; finish still runs.
+    for path in ('/error-hook-raises', '/error-hook-defers'):
+      utest((400, 'text/plain;charset=utf-8', '400: bad input.\n', None, 'finished'), get_error_details, base_url, path)
+    utest((200, 'ok'), get_status_body, base_url, '/ok')
+    # The path extension selects the renderer: JSON for .json, plain text for any file-like extension.
+    utest((400, 'application/problem+json', '{"detail":"bad input","status":400,"title":"Bad Request"}\n', 'Bad Request', 'finished'),
+      get_error_details, base_url, '/raise-bad-request.json')
+    utest((400, 'text/plain;charset=utf-8', '400: bad input.\n', 'Bad Request', 'finished'),
+      get_error_details, base_url, '/raise-bad-request.css')
     utest((200, 'ok'), get_status_body, base_url, '/ok')
     # BodyTooLargeError: 413 through the error hook with connection close; a small body still succeeds.
     utest((200, 'read ok'), post_status_body, base_url, '/read-small-body', b'tiny')
