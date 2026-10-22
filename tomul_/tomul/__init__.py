@@ -28,7 +28,6 @@ from collections.abc import Iterator, Mapping, Sequence
 from datetime import date, datetime, time
 from decimal import Decimal
 from tomllib import load as load_toml, loads as parse_toml
-from types import MappingProxyType
 from typing import Any, IO
 
 
@@ -48,7 +47,7 @@ escaped_chars_multiline = escaped_chars_inline - {'\n'}
 bare_key_chars = frozenset('abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' '0123456789' '-_')
 max_line_len = 128
 
-char_escapes = MappingProxyType({ # TODO: use frozendict in Python3.15.
+char_escapes = frozendict({
   '\b': '\\b',
   '\n': '\\n',
   '\f': '\\f',
