@@ -574,7 +574,6 @@ dependencies = [
     { name = "requests" },
     { name = "starlette" },
     { name = "tolkien" },
-    { name = "typing-extensions" },
 ]
 
 [package.metadata]
@@ -592,7 +591,6 @@ requires-dist = [
     { name = "requests", specifier = ">=2.34.2" },
     { name = "starlette", specifier = ">=1.3.1" },
     { name = "tolkien", editable = "tolkien_" },
-    { name = "typing-extensions", specifier = ">=4.13" },
 ]
 
 [[package]]

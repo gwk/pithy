@@ -10,9 +10,7 @@ from itertools import zip_longest
 from operator import or_
 from os import environ
 from types import NoneType
-from typing import Any, cast, ClassVar, get_args, get_origin, get_type_hints, Literal, TypeVar, Union
-
-from typing_extensions import TypeForm  # TODO: import from typing once we require Python 3.15.
+from typing import Any, cast, ClassVar, get_args, get_origin, get_type_hints, Literal, TypeForm, TypeVar, Union
 
 from .secrets import SecretBytes, SecretStr
 from .type_utils import is_dataclass_instance, is_namedtuple, is_type_namedtuple, normalize_type_form

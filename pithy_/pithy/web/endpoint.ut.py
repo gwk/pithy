@@ -8,7 +8,7 @@ from functools import wraps
 from http import HTTPStatus
 from traceback import format_exception
 from types import NoneType
-from typing import Annotated, Any, ClassVar, Literal, TypeVar
+from typing import Annotated, Any, ClassVar, Literal, TypeForm, TypeVar
 from urllib.parse import urlencode
 
 from pithy.transtruct import Transtructor
@@ -18,7 +18,6 @@ from pithy.web.request import Request, UploadedFile
 from pithy.web.requestconn import BodyTooLargeError, BytesConn
 from pithy.web.response import Response
 from pithy.web.router import Router
-from typing_extensions import TypeForm  # TODO: import from typing once we require Python 3.15.
 from utest import utest, utest_exc, utest_run, utest_val
 
 

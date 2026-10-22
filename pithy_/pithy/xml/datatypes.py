@@ -5,9 +5,7 @@ Base class and utilities for generated Xml datatypes; see the craft-xml-datatype
 '''
 
 from dataclasses import dataclass
-from typing import Any, Callable, ClassVar, Iterable, TypeVar
-
-from typing_extensions import TypeForm  # TODO: import from typing once we require Python 3.15.
+from typing import Any, Callable, ClassVar, Iterable, TypeForm, TypeVar
 
 from ..transtruct import Ctx, Transtructor
 

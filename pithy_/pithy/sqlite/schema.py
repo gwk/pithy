@@ -6,10 +6,9 @@ _context_keywords_ = ['column definitions', 'constraints', 'database', 'ddl', 'g
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, Callable, Iterable, Self
+from typing import Any, Callable, Iterable, Self, TypeForm
 
 from tolkien import Source
-from typing_extensions import TypeForm  # TODO: import from typing once we require Python 3.15.
 
 from ..dict import dict_strict_inverse
 from ..parse import Syn

@@ -9,7 +9,7 @@ from argparse import ArgumentParser, Namespace
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from tomllib import load as load_toml
-from typing import Any, Callable, Iterable, Iterator, TextIO
+from typing import Any, Callable, Iterable, Iterator, TextIO, TypeForm
 
 from pithy.dict import dict_remap_keys_mut
 from pithy.io import errL
@@ -19,7 +19,6 @@ from pithy.strings import truncate_repr_with_ellipsis
 from pithy.transtruct import bool_vals, Ctx, Transtructor
 from pithy.xml.datatypes import ChildAttrInfo
 from pithy.xml.xmldict import XmlDict, XmlDictParser, XmlError
-from typing_extensions import TypeForm  # TODO: import from typing once we require Python 3.15.
 
 
 _context_keywords_ = ['code generation', 'dataclasses', 'example documents', 'schema inference', 'type inference',

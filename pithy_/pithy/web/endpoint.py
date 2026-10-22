@@ -6,9 +6,7 @@ from dataclasses import dataclass, replace
 from http import HTTPStatus
 from inspect import (get_annotations, isasyncgenfunction, iscoroutinefunction, isfunction, isgeneratorfunction, Parameter,
   signature)
-from typing import Any, ClassVar, Concatenate, get_args, get_origin, Literal, Union
-
-from typing_extensions import TypeForm
+from typing import Any, ClassVar, Concatenate, get_args, get_origin, Literal, TypeForm, Union
 
 from ..default import Default
 from ..transtruct import _limited_repr, dbg_transtruct, PrefigureFn, SelectorFn, TranstructFn, Transtructor, TranstructorError

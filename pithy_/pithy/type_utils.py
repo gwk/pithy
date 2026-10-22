@@ -4,9 +4,7 @@ from abc import abstractmethod
 from collections import Counter
 from dataclasses import Field, is_dataclass
 from typing import (Annotated, Any, Callable, cast, ClassVar, get_args, get_origin, Literal, overload, Protocol,
-  runtime_checkable, Type, TypeAliasType, TypeIs, TypeVar, Union)
-
-from typing_extensions import TypeForm  # TODO: import from typing once we require Python 3.15.
+  runtime_checkable, Type, TypeAliasType, TypeForm, TypeIs, TypeVar, Union)
 
 
 _context_keywords_ = ['Annotated', 'Literal', 'TypeAliasType', 'TypeForm', 'dataclasses.is_dataclass', 'generic types',

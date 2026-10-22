@@ -5,11 +5,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime, time
 from traceback import format_exception
-from typing import Annotated, Any, ClassVar, Literal, NamedTuple
+from typing import Annotated, Any, ClassVar, Literal, NamedTuple, TypeForm
 
 from pithy.secrets import SecretStr
 from pithy.transtruct import Transtructor, TranstructorError
-from typing_extensions import TypeForm  # TODO: import from typing once we require Python 3.15.
 from utest import utest, utest_exc, utest_val
 
 
