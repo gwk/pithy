@@ -2,7 +2,7 @@
 
 from operator import add, sub
 
-from pithy.date import Date, DateDelta, DateRange, is_leap_year, Time, time_add, TimeDelta
+from pithy.date import Date, DateDelta, DateRange, DateTime, dt_BdY, is_leap_year, Time, time_add, TimeDelta
 from utest import utest, utest_exc, utest_seq, utest_symmetric, utest_val
 
 
@@ -25,3 +25,7 @@ utest(Time(hour=1, minute=30), time_add, Time(hour=1), TimeDelta(minutes=30))
 utest(Time(hour=0, minute=30), time_add, Time(hour=1), TimeDelta(minutes=-30))
 utest_exc(ValueError, time_add, Time(hour=23, minute=30), TimeDelta(hours=1))
 utest_exc(ValueError, time_add, Time(hour=0, minute=30), TimeDelta(hours=-1))
+
+
+utest('January 1, 2020', dt_BdY, Date(2020, 1, 1))
+utest('October 21, 2026', dt_BdY, DateTime(2026, 10, 21, 9, 30))

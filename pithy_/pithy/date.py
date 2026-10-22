@@ -209,6 +209,11 @@ def dt_Ymd_IMp(dt:DateTime, *, compact:bool=False, sep:str='') -> str:
   return f'{dt:%Y-%m-%d}{sep}{time}'
 
 
+def dt_BdY(dt:DateTime|Date) -> str:
+  'Format a DateTime or Date as e.g. "January 1, 2020".'
+  return f'{dt:%B} {dt.day}, {dt.year}'
+
+
 def dt_interval_IM(start:DateTime|Time, end:DateTime|Time) -> str:
   'Format a DateTime or Time range as e.g. "4:00-5:00".'
   return f'{dt_IM(start)}-{dt_IM(end)}'
