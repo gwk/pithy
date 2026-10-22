@@ -471,9 +471,10 @@ class WebServer:
       prevent_client_caching=self.config.prevent_client_caching,
       conn=WebServerRequestConn(content_length=content_length, _conn=conn))
 
-    try: # Outer: 500 server error; unhandled application error.
-      try: # Inner: ResponseError, NotImplementedError.
-        handler = self.app.resolve_handler(request)
+    app = self.app
+    try: # Outer: 500 server error; unhandled application error, including a failing error_response hook.
+      try: # Inner: ResponseError, BodyTooLargeError, NotImplementedError.
+        handler = app.resolve_handler(request)
 
         if conn.h11_conn.client_is_waiting_for_100_continue:
           expect_response = handler.handle_expect_100_continue(request)
@@ -486,14 +487,14 @@ class WebServer:
         response = handler.handle_request(request)
 
       except ResponseError as exc:
-        response = self.app.error_renderer()(request, exc)
+        response = app.error_response(request, exc)
       except BodyTooLargeError:
-        response = Response(HTTPStatus.CONTENT_TOO_LARGE, body='Content Too Large', media_type='text/plain')
+        response = app.error_response(request, ResponseError(HTTPStatus.CONTENT_TOO_LARGE, 'Content Too Large'))
+        #^ The unread remainder of the body forces a connection close below.
       except NotImplementedError as exc:
         logE('Not implemented.', exc=exc, client_addr=conn.client_addr, method=method, path=request.path)
-        response = (
-          Response(HTTPStatus.NOT_IMPLEMENTED, body='Not Implemented', media_type='text/plain')
-          .set_connection_close())
+        response = app.error_response(request, ResponseError(HTTPStatus.NOT_IMPLEMENTED, 'Not Implemented'))
+        #^ The fixed reason does not leak the exception message.
     except Exception as exc:
       logE('Unhandled application exception.', exc=exc, client_addr=conn.client_addr, method=method, path=request.path)
       response = self._internal_server_error_response(method=method).set_connection_close()

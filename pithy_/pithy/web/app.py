@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from typing import Any, ClassVar
 
 from .errorrender import bare_media_type, default_error_media_type, default_error_renderers, ErrorRenderer
+from .errors import ResponseError
 from .handler import RequestHandler
 from .request import Request
 from .response import Response
@@ -15,7 +16,17 @@ _context_keywords_ = ['application', 'dispatch', 'http', 'request lifecycle', 'r
 class WebApp(RequestHandler):
   '''
   The application object that the server consults for every request.
-  A ResponseError raised while handling a request is rendered by the `error_renderers` entry for `error_media_type`.
+
+  The server drives a fixed lifecycle, in this order:
+  1. `resolve_handler` routes to a handler (the default is `self`).
+  2. The handler's `handle_expect_100_continue`, when applicable, accepts or rejects the request before its body is read.
+  3. If not rejected, the handler's `prepare_for_request` prepares to handle the request, e.g. by reading the body.
+  4. The handler's `handle_request` produces a response.
+
+  A ResponseError raised during these steps is turned into a response by `error_response`;
+  the default renders it with the `error_renderers` entry for `error_media_type`.
+  Protocol rejections before Request construction bypass the application entirely.
+  An unhandled exception, including an exception from `error_response`, produces a bare 500 without consulting the app again.
   '''
 
   error_media_type:ClassVar[str] = default_error_media_type
@@ -37,9 +48,15 @@ class WebApp(RequestHandler):
       raise TypeError(f'{cls.__qualname__}.error_media_type {media_type!r} has no entry in error_renderers.')
 
 
-  def error_renderer(self) -> ErrorRenderer:
-    'The renderer selected by `error_media_type`.'
-    return self.error_renderers[self.error_media_type]
+  def error_response(self, request:Request, error:ResponseError) -> Response:
+    '''
+    Build the response for a ResponseError raised during application dispatch or body handling.
+    BodyTooLargeError and NotImplementedError from those steps are converted to ResponseError and pass through this hook.
+    The default renders with the `error_renderers` entry for `error_media_type`.
+    Override to choose the renderer per request, e.g. from the Accept header or the resolved handler.
+    An exception raised here produces a bare 500.
+    '''
+    return self.error_renderers[self.error_media_type](request, error)
 
 
   def resolve_handler(self, request:Request) -> RequestHandler:

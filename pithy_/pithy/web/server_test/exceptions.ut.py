@@ -8,7 +8,7 @@ from urllib.parse import urlsplit
 
 import requests
 from pithy.web.app import WebApp
-from pithy.web.errors import BadRequestError
+from pithy.web.errors import BadRequestError, ResponseError
 from pithy.web.request import Request
 from pithy.web.response import Response
 from pithy.web.server import ServerConfig, WebServer
@@ -48,6 +48,13 @@ class ServerExceptionTestApp(WebApp):
     if request.path == '/reject-at-prepare': raise BadRequestError('bad input')
 
 
+  def error_response(self, request:Request, error:ResponseError) -> Response:
+    if request.path == '/error-hook-raises': raise RuntimeError('error hook failed')
+    response = super().error_response(request, error)
+    response.headers['x-error-hook'] = error.status.phrase
+    return response
+
+
   def handle_request(self, request:Request) -> Response:
     match request.path:
       case '/ok': return Response(body='ok', media_type='text/plain')
@@ -58,6 +65,7 @@ class ServerExceptionTestApp(WebApp):
       case '/raise-not-implemented': raise NotImplementedError('not yet')
       case '/raise-not-implemented-empty': raise NotImplementedError
       case '/raise-bad-request': raise BadRequestError('bad input')
+      case '/error-hook-raises': raise BadRequestError('bad input')
       case '/reject-partial-body':
         assert request.conn is not None
         chunk = request.conn.read_some(max_bytes=8)
@@ -82,6 +90,12 @@ def serve() -> None:
 def get_status_body(base_url:str, path:str) -> tuple[int,str]:
   resp = requests.get(f'{base_url}{path}', timeout=2)
   return (resp.status_code, resp.text)
+
+
+def get_status_hook(base_url:str, path:str) -> tuple[int,str|None]:
+  'The status and the header set by the error_response hook, showing whether the response passed through it.'
+  resp = requests.get(f'{base_url}{path}', timeout=2)
+  return (resp.status_code, resp.headers.get('x-error-hook'))
 
 
 def post_status_body(base_url:str, path:str, data:bytes) -> tuple[int,str]:
@@ -189,23 +203,37 @@ def test_server_exceptions() -> None:
     test_error_connections(base_url)
     test_empty_request_connections(base_url)
 
+    # An unhandled exception produces a bare 500 that bypasses the error hook.
     utest((500, 'Internal Server Error'), get_status_body, base_url, '/raise')
+    utest((500, None), get_status_hook, base_url, '/raise')
     response = requests.get(f'{base_url}/ok', headers={'Connection': 'close'}, timeout=2)
     utest('no-cache, no-store, must-revalidate', response.headers.get, 'cache-control')
+    utest((200, None), get_status_hook, base_url, '/ok')
+    # NotImplementedError: 501 through the error hook, with a fixed reason that does not leak the exception message.
+    status, body = get_status_body(base_url, '/raise-not-implemented')
+    utest(501, int, status)
+    utest(True, lambda b: 'Not Implemented' in b and 'not yet' not in b, body)
+    utest((501, 'Not Implemented'), get_status_hook, base_url, '/raise-not-implemented')
     utest((200, 'ok'), get_status_body, base_url, '/ok')
-    # NotImplementedError: 501 with a fixed body that does not leak the exception message.
-    utest((501, 'Not Implemented'), get_status_body, base_url, '/raise-not-implemented')
+    utest((501, 'Not Implemented'), get_status_hook, base_url, '/raise-not-implemented-empty')
     utest((200, 'ok'), get_status_body, base_url, '/ok')
-    utest((501, 'Not Implemented'), get_status_body, base_url, '/raise-not-implemented-empty')
-    utest((200, 'ok'), get_status_body, base_url, '/ok')
-    # BadRequestError (a ResponseError): 400 with a plain text body containing the reason.
+    # BadRequestError (a ResponseError): 400 through the error hook, with a plain text body containing the reason.
     status, body = get_status_body(base_url, '/raise-bad-request')
     utest(400, int, status)
     utest(True, lambda b: 'bad input' in b, body)
+    utest((400, 'Bad Request'), get_status_hook, base_url, '/raise-bad-request')
     utest((200, 'ok'), get_status_body, base_url, '/ok')
-    # BodyTooLargeError: 413 with connection close; a small body still succeeds.
+    # A failing error hook produces a bare 500 without consulting the app again.
+    utest((500, 'Internal Server Error'), get_status_body, base_url, '/error-hook-raises')
+    utest((500, None), get_status_hook, base_url, '/error-hook-raises')
+    utest((200, 'ok'), get_status_body, base_url, '/ok')
+    # BodyTooLargeError: 413 through the error hook with connection close; a small body still succeeds.
     utest((200, 'read ok'), post_status_body, base_url, '/read-small-body', b'tiny')
-    utest((413, 'Content Too Large'), post_status_body, base_url, '/read-small-body', b'0123456789ABCDEF')
+    response = requests.post(f'{base_url}/read-small-body', data=b'0123456789ABCDEF', timeout=2)
+    utest(413, int, response.status_code)
+    utest(True, lambda: 'Content Too Large' in response.text)
+    utest('Content Too Large', response.headers.get, 'x-error-hook')
+    utest('close', response.headers.get, 'connection')
     utest((200, 'ok'), get_status_body, base_url, '/ok')
     # A broken Response causes _send_response to fail; the server closes the connection without replying.
     utest_exc(requests.exceptions.ConnectionError, get_status_body, base_url, '/broken-response')

@@ -16,7 +16,7 @@ class ResponseError(Exception):
   * status:  HTTPStatus.
   * reason: a reason phrase.
 
-  Error responses are rendered by `pithy.web.errorrender`; `WebApp.error_renderer` selects one by media type.
+  Error responses are rendered by `pithy.web.errorrender`; `WebApp.error_response` selects the renderer.
   '''
 
   def __init__(self, status:HTTPStatus, reason:str='', *, headers:ResponseHeadersDict|None=None):

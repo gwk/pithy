@@ -81,18 +81,18 @@ def test_defaults() -> None:
 @utest_run
 def test_app_defaults() -> None:
   'A WebApp without customization renders plain text errors; a declared media type selects its renderer.'
-  response = WebApp().error_renderer()(_request(), NotFoundError())
+  response = WebApp().error_response(_request(), NotFoundError())
   utest_val(b'404: Not Found.\n', response.body)
 
   class JsonApp(WebApp):
     error_media_type = 'application/json'
-  utest_val('application/problem+json', JsonApp().error_renderer()(_request(), NotFoundError()).headers['content-type'])
+  utest_val('application/problem+json', JsonApp().error_response(_request(), NotFoundError()).headers['content-type'])
 
   def render_custom(request:Request, error:ResponseError) -> Response:
     return Response(error.status, body='custom', media_type='text/plain')
   class CustomApp(WebApp):
     error_renderers = {**default_error_renderers, 'text/plain': render_custom}
-  utest_val(b'custom', CustomApp().error_renderer()(_request(), NotFoundError()).body)
+  utest_val(b'custom', CustomApp().error_response(_request(), NotFoundError()).body)
 
   def define_unrenderable() -> None:
     class UnrenderableApp(WebApp):
