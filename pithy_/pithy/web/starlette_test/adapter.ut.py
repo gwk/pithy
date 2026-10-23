@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from io import BufferedReader
 from tempfile import TemporaryDirectory
 
+from pithy.web.auth import allow_public, requires_privileges
 from pithy.web.endpoint import Endpoint
 from pithy.web.request import Request as PithyRequest
 from pithy.web.response import Response as PithyResponse
@@ -14,12 +15,11 @@ from starlette.exceptions import HTTPException
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import Response as StarletteResponse, StreamingResponse
 from starlette.types import Message, Scope
-from utest import utest_run, utest_val
+from utest import utest_exc, utest_run, utest_val
 
 
 def _run(endpoint_cls:type[Endpoint], *, method:str='GET', path:str='/', query:str='', headers:Mapping[str,str]|None=None,
- body:bytes=b'', path_params:Mapping[str,object]|None=None, scope_extra:Mapping[str,object]|None=None,
- privileges:tuple[str,...]=()) -> StarletteResponse:
+ body:bytes=b'', path_params:Mapping[str,object]|None=None, scope_extra:Mapping[str,object]|None=None) -> StarletteResponse:
   'Drive the adapter with a hand-built ASGI request and return the resulting Starlette Response.'
   raw_headers = [(k.lower().encode(), v.encode()) for k, v in (headers or {}).items()]
   scope:dict[str,object] = {
@@ -41,7 +41,7 @@ def _run(endpoint_cls:type[Endpoint], *, method:str='GET', path:str='/', query:s
     return {'type': 'http.request', 'body': body, 'more_body': False}
 
   s_request = StarletteRequest(scope, receive)
-  adapted = endpoint_adapter(endpoint_cls, privileges=privileges)
+  adapted = endpoint_adapter(endpoint_cls)
 
   async def _call() -> StarletteResponse:
     return await adapted(s_request)
@@ -49,6 +49,7 @@ def _run(endpoint_cls:type[Endpoint], *, method:str='GET', path:str='/', query:s
   return asyncio.run(_call())
 
 
+@allow_public
 class HelloEndpoint(Endpoint):
   class Get:
     name:str
@@ -56,6 +57,7 @@ class HelloEndpoint(Endpoint):
     return PithyResponse(body=f'hello {fields.name}')
 
 
+@allow_public
 class ItemEndpoint(Endpoint):
   class Get:
     id:int
@@ -63,12 +65,14 @@ class ItemEndpoint(Endpoint):
     return PithyResponse(body=f'id={fields.id}')
 
 
+@allow_public
 class PathEndpoint(Endpoint):
   class Get: pass
   def get(self, request:PithyRequest, fields:Get) -> PithyResponse:
     return PithyResponse(body=f'{request.raw_path}|{request.path}')
 
 
+@allow_public
 class FormEndpoint(Endpoint):
   max_body_bytes = 1024
   class Post:
@@ -77,6 +81,7 @@ class FormEndpoint(Endpoint):
     return PithyResponse(body=fields.name)
 
 
+@allow_public
 class JsonEndpoint(Endpoint):
   max_body_bytes = 1024
   class Post:
@@ -85,11 +90,13 @@ class JsonEndpoint(Endpoint):
     return PithyResponse(body=fields.name)
 
 
+@allow_public
 class CtxEndpoint(Endpoint):
   def get(self, request:PithyRequest, fields:None) -> PithyResponse:
     return PithyResponse(body=f"{request.ctx.get('user')}|{request.ctx.get('session')}")
 
 
+@requires_privileges('Staff')
 class PrivilegedEndpoint(Endpoint):
   def get(self, request:PithyRequest, fields:None) -> PithyResponse:
     return PithyResponse(body='ok')
@@ -229,7 +236,7 @@ def _() -> None:
 @utest_run
 def _() -> None:
   'endpoint_route: methods come from the Endpoint and the route is named for the Endpoint class.'
-  route = endpoint_route('/x', FormEndpoint, privileges=())
+  route = endpoint_route('/x', FormEndpoint)
   utest_val(['POST'], sorted(route.methods or ()))
   utest_val('FormEndpoint', route.name)
 
@@ -237,20 +244,21 @@ def _() -> None:
 @utest_run
 def _() -> None:
   'endpoint_route: field converters are resolved when the route is built, not on the first request.'
+  @allow_public
   class RouteResolvedEndpoint(Endpoint):
     class Get:
       n:int
     def get(self, request:PithyRequest, fields:Get) -> PithyResponse:
       return PithyResponse(body=f'{fields.n}')
   utest_val(False, RouteResolvedEndpoint._converters_resolved)
-  endpoint_route('/n', RouteResolvedEndpoint, privileges=())
+  endpoint_route('/n', RouteResolvedEndpoint)
   utest_val(True, RouteResolvedEndpoint._converters_resolved)
 
 
 @utest_run
 def _() -> None:
   'Adapter: privileges held by the request scopes returns the endpoint response.'
-  resp = _run(PrivilegedEndpoint, privileges=('Staff',), scope_extra={'auth': AuthCredentials(['Staff'])})
+  resp = _run(PrivilegedEndpoint, scope_extra={'auth': AuthCredentials(['authenticated', 'Staff'])})
   utest_val(200, resp.status_code)
   utest_val(b'ok', resp.body)
 
@@ -259,7 +267,7 @@ def _() -> None:
 def _() -> None:
   'Adapter: a missing required privilege raises HTTPException(403) for the host app to convert (e.g. signin redirect).'
   try:
-    _run(PrivilegedEndpoint, privileges=('Staff',), scope_extra={'auth': AuthCredentials([])})
+    _run(PrivilegedEndpoint, scope_extra={'auth': AuthCredentials([])})
   except HTTPException as e:
     utest_val(403, e.status_code)
   else:
@@ -268,7 +276,60 @@ def _() -> None:
 
 @utest_run
 def _() -> None:
-  'Adapter: empty privileges declares a public endpoint, which needs no auth scope in the request.'
-  resp = _run(HelloEndpoint, query='name=eve', privileges=())
+  'Adapter: a public endpoint needs no auth scope in the request.'
+  resp = _run(HelloEndpoint, query='name=eve')
   utest_val(200, resp.status_code)
   utest_val(b'hello eve', resp.body)
+
+
+@utest_run
+def _() -> None:
+  'Adapter: declarations become Starlette scopes; only privileged adapters are wrapped by `requires`.'
+  class Methods(Endpoint):
+    max_body_bytes = 16
+    @requires_privileges('Staff', 'authenticated')
+    def get(self, request:PithyRequest, fields:None) -> PithyResponse: return PithyResponse(body='get')
+    @requires_privileges('authenticated', 'Staff')
+    def post(self, request:PithyRequest, fields:None) -> PithyResponse: return PithyResponse(body='post')
+
+  utest_val(True, hasattr(endpoint_adapter(Methods), '__wrapped__'))
+  utest_val(True, hasattr(endpoint_adapter(PrivilegedEndpoint), '__wrapped__'))
+  utest_val(False, hasattr(endpoint_adapter(HelloEndpoint), '__wrapped__'))
+  resp = _run(Methods, method='POST', scope_extra={'auth': AuthCredentials(['authenticated', 'Staff'])})
+  utest_val(b'post', resp.body)
+  try: _run(Methods, method='POST', scope_extra={'auth': AuthCredentials(['authenticated'])})
+  except HTTPException as e: utest_val(403, e.status_code)
+  else: raise AssertionError('expected HTTPException')
+
+
+@utest_run
+def _() -> None:
+  'Adapter: differing per-method requirements and missing declarations are rejected when the adapter is built.'
+  class Mixed(Endpoint):
+    max_body_bytes = 16
+    @allow_public
+    def get(self, request:PithyRequest, fields:None) -> PithyResponse: return PithyResponse(body='get')
+    @requires_privileges('Staff')
+    def post(self, request:PithyRequest, fields:None) -> PithyResponse: return PithyResponse(body='post')
+
+  class Undeclared(Endpoint):
+    def get(self, request:PithyRequest, fields:None) -> PithyResponse: return PithyResponse(body='get')
+
+  utest_exc(TypeError(f"{Mixed.__qualname__}: a Starlette route applies one access policy to all methods; "
+    "found [[], ['Staff']]."), endpoint_adapter, Mixed)
+  utest_exc(TypeError(f"{Undeclared.__qualname__} omits access declarations: ['GET']."), endpoint_route, '/u', Undeclared)
+
+
+@utest_run
+def _() -> None:
+  'Adapter: request.privileges holds the auth scopes; a nonempty set without authenticated is a programming error.'
+  @allow_public
+  class Privileges(Endpoint):
+    def get(self, request:PithyRequest, fields:None) -> PithyResponse:
+      return PithyResponse(body=','.join(sorted(request.privileges)))
+
+  utest_val(b'', _run(Privileges).body) # No AuthenticationMiddleware: anonymous.
+  utest_val(b'', _run(Privileges, scope_extra={'auth': AuthCredentials([])}).body)
+  utest_val(b'Staff,authenticated', _run(Privileges, scope_extra={'auth': AuthCredentials(['authenticated', 'Staff'])}).body)
+  utest_exc(ValueError('Nonempty effective privileges must contain authenticated.'),
+    _run, Privileges, scope_extra={'auth': AuthCredentials(['Staff'])})

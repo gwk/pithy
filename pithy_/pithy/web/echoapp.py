@@ -1,6 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from .app import WebApp
+from .auth import allow_public
 from .request import Request
 from .response import Response
 
@@ -16,6 +17,7 @@ def _fmt_param_val(v:object) -> str:
 
 class EchoApp(WebApp):
 
+  @allow_public
   def handle_request(self, request:Request) -> Response:
     query = f'?{request.query_str}' if request.query_str else ''
     lines = [f'{request.method}: {request.raw_path}{query}']

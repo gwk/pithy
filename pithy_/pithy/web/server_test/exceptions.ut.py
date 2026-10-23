@@ -8,6 +8,8 @@ from urllib.parse import urlsplit
 
 import requests
 from pithy.web.app import WebApp
+from pithy.web.auth import allow_public
+from pithy.web.destination import Destination
 from pithy.web.errors import BadRequestError, ResponseError
 from pithy.web.request import Request
 from pithy.web.response import Response
@@ -39,9 +41,9 @@ def file_response(cls:type[Response]) -> Response:
 
 class ServerExceptionTestApp(WebApp):
 
-  def resolve_handler(self, request:Request) -> ServerExceptionTestApp:
+  def resolve_destination(self, request:Request) -> Destination:
     if request.path == '/reject-at-resolve': raise BadRequestError('bad input')
-    return self
+    return super().resolve_destination(request)
 
 
   def prepare_for_request(self, request:Request) -> None:
@@ -70,6 +72,7 @@ class ServerExceptionTestApp(WebApp):
     return response
 
 
+  @allow_public
   def handle_request(self, request:Request) -> Response:
     match request.path:
       case '/ok': return Response(body='ok', media_type='text/plain')

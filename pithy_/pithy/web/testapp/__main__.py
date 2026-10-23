@@ -27,7 +27,7 @@ def run(config:ServerConfig) -> None:
 class TestApp(RouterApp):
 
   def __init__(self) -> None:
-    super().__init__(routes=routes)
+    super().__init__(routes=routes, default_public=True)
 
 
 routes:dict[str,RouteTarget] = {

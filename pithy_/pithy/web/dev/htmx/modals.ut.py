@@ -16,7 +16,7 @@ from pithy.web.router import Router
 from utest import utest_exc, utest_run, utest_val
 
 
-router = Router(routes)
+router = Router(routes, default_public=True)
 
 
 type FormData = dict[str,str|list[str]]
@@ -27,7 +27,7 @@ def request(path:str, data:FormData|None=None) -> Response:
   req = Request(method='POST' if data is not None else 'GET', scheme='http', host='localhost', port=80,
     raw_path=path, query_str='', headers={'content-type': 'application/x-www-form-urlencoded'} if data is not None else {},
     client_addr=('127.0.0.1', 0), content_length=len(body), conn=BytesConn(body))
-  handler = router.resolve_handler(req)
+  handler = router.resolve_route(req).get_handler(req)
   handler.prepare_for_request(req)
   return handler.handle_request(req)
 

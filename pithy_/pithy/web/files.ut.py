@@ -103,7 +103,7 @@ def _() -> None:
       ext_media_types = custom_media_types
 
     request = _request('/static/a.dat')
-    response = Router({'/static/{subpath:path}': CustomHandler}).resolve_handler(request).handle_request(request)
+    response = Router({'/static/{subpath:path}': CustomHandler}, default_public=True).resolve_route(request).get_handler(request).handle_request(request)
     close_response_body(response.body)
     utest_val('application/x-custom', response.headers.get('content-type'), desc='mounted handler uses the override')
 
@@ -118,11 +118,11 @@ def _() -> None:
     class Mounted(FilesHandler):
       local_dir = tmp
 
-    router = Router({'/static/{subpath:path}': Mounted})
+    router = Router({'/static/{subpath:path}': Mounted}, default_public=True)
 
     def content_type(path:str) -> str|None:
       request = _request(path)
-      response = router.resolve_handler(request).handle_request(request)
+      response = router.resolve_route(request).get_handler(request).handle_request(request)
       close_response_body(response.body)
       value = response.headers.get('content-type')
       return value if isinstance(value, str) else None
@@ -131,7 +131,7 @@ def _() -> None:
 
     def status_and_body(path:str) -> tuple[HTTPStatus,bytes]:
       request = _request(path)
-      try: response = router.resolve_handler(request).handle_request(request)
+      try: response = router.resolve_route(request).get_handler(request).handle_request(request)
       except ResponseError as exc: return (exc.status, b'')
       body = response.body
       assert isinstance(body, BufferedReader)
@@ -151,7 +151,7 @@ def _() -> None:
     # The response is built by the default error renderer, as the server does, so the lowercase-header rule is exercised.
     def redirect_location(path:str) -> object:
       request = _request(path)
-      handler = router.resolve_handler(request)
+      handler = router.resolve_route(request).get_handler(request)
       try: handler.handle_request(request)
       except ResponseError as exc:
         utest_val(HTTPStatus.MOVED_PERMANENTLY, exc.status, desc='directory redirect status')

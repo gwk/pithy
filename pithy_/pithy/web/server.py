@@ -23,6 +23,7 @@ from pithy.logs import logE, logI
 
 from ..http import http_method_bytes_to_strs, may_send_body
 from .app import WebApp
+from .auth import check_access, validate_privileges
 from .env import web_host, web_port
 from .errorrender import render_error_text
 from .errors import ResponseError
@@ -477,7 +478,12 @@ class WebServer:
     response:Response|None = None
     try: # Outer: 500 server error; unhandled application error, including a failing app hook.
       try: # Inner: ResponseError, BodyTooLargeError, NotImplementedError.
-        handler = app.resolve_handler(request)
+        app.check_request(request)
+        request.privileges = app.authenticate(request)
+        validate_privileges(request.privileges)
+        destination = app.resolve_destination(request)
+        check_access(request.privileges, destination.required_privileges)
+        handler = destination.get_handler(request)
 
         if conn.h11_conn.client_is_waiting_for_100_continue:
           expect_response = handler.handle_expect_100_continue(request)

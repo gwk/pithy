@@ -16,6 +16,7 @@ class UserEndpoint(Endpoint):
     uid:int
     tab:str
 
+  @allow_public
   def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.uid}: {fields.tab}')
 
@@ -24,15 +25,20 @@ class UserEndpoint(Endpoint):
     name:str
     email:str
 
+  @requires_privileges('users:write')
   def post(self, request:Request, fields:Post) -> Response:
     return Response(body=f'{fields.uid}: {fields.name} <{fields.email}>')
 
 router = Router({'/users/{uid:int}': UserEndpoint})
 ```
 
-For simple GET routes, register a function directly. This is equivalent to the GET handler above:
+Import the `allow_public` and `requires_privileges` decorators from `pithy.web.auth`. POST requires the `users:write` privilege.
+The handler must separately check whether the caller may modify the particular `uid`.
+
+For simple GET routes, decorate and register a function directly:
 
 ```python
+@allow_public
 def user(request:Request, uid:int, tab:str) -> Response:
   return Response(body=f'{uid}: {tab}')
 
@@ -47,6 +53,28 @@ Goals:
 * reject weird requests with missing or extra parameters;
 * reduce boilerplate;
 * generally make development easier while remaining simple.
+
+## Request Lifecycle and Access Control
+
+After constructing a Request, the server drives a fixed lifecycle; the `WebApp` docstring in `app.py` lists the steps and exceptions.
+An application overrides only the hooks it needs:
+* `check_request` checks deployment-wide constraints before authentication. `pithy.web.auth.SameOriginCheck`, constructed once from the deployment's public origin, refuses cross-site requests except top-level GET navigations, so inbound links and sign-in redirects work; exempt any path that must accept cross-site posts before calling it.
+* `authenticate` returns a `frozenset[str]` of effective privileges, stored on `request.privileges`. Empty means anonymous; every nonempty set must contain the reserved `authenticated` privilege. Invalid credentials raise `UnauthorizedError`; malformed authentication results are programming errors. Store application user data in `request.ctx`.
+* `error_response` shapes application error bodies; `finish_response` applies policy headers to normal responses and those errors. Protocol rejections before Request construction and bare 500 responses bypass both hooks.
+
+Declare every Endpoint method or GET function with `@allow_public` or `@requires_privileges('privilege', ...)`.
+To give every method of a route handler class the same policy, decorate the class instead; low-level handlers such as FilesHandler declare only this way.
+Use `@requires_privileges('authenticated')` for any authenticated caller. Privilege names match exactly; punctuation has no special meaning.
+The Router validates and snapshots declarations at registration with `pithy.web.auth.freeze_required_privileges`, which defines the rules.
+Its `resolve_route` method returns a `ResolvedRoute` without constructing a handler.
+The server checks the resolved destination's required privileges before calling its `get_handler` method or reading a body.
+Decorators only attach metadata; direct function calls do not enforce access. See `pithy.web.auth` for the contract and explicit checks.
+The Starlette adapter in `pithy.web.starlette` translates the same declarations into Starlette `requires` scopes.
+
+`Router` and `RouterApp` accept `default_public=True` for applications that permit undeclared routes; explicit restrictions still apply.
+For a simple WebApp, decorate `handle_request`; its declaration is validated and snapshotted when the subclass is defined.
+The default `resolve_destination` returns an `AppDestination` for the app itself. RouterApp overrides that hook to return a resolved route.
+Both participate in the same server authorization step. A custom resolver must return a `Destination` with explicit requirements and defer handler construction to `get_handler`.
 
 ## Browser Regression Tests
 

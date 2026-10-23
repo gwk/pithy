@@ -11,6 +11,7 @@ from typing import Any, ClassVar, Concatenate, get_args, get_origin, Literal, Ty
 from ..default import Default
 from ..transtruct import _limited_repr, dbg_transtruct, PrefigureFn, SelectorFn, TranstructFn, Transtructor, TranstructorError
 from ..type_utils import NoneType, nonopt_type, normalize_type_form, req_type
+from .auth import declare_access, declared_access
 from .errors import BadRequestError, MethodNotAllowedError
 from .handler import RoutableHandler
 from .request import Request, UploadedFile
@@ -76,6 +77,9 @@ class Endpoint(RoutableHandler):
   Each handler has the signature `(self, request:Request, fields:Get) -> Response`,
   where the `fields` annotation is the exact inner fields class for that method (see below), or `None` if none.
   A handler with no fields class receives `None` as its fields argument.
+
+  Declare access by decorating each handler method with `requires_privileges` or `allow_public`,
+  or decorate the class once to give every method the same policy; see `pithy.web.auth.freeze_required_privileges`.
 
   # Fields
 
@@ -183,7 +187,7 @@ class Endpoint(RoutableHandler):
 
   All Endpoint classes take the following constructor parameters:
   * `request:Request`
-  * `path_params:dict[str,object]`
+  * `path_params:Mapping[str,object]`
 
   Request handling flow:
   * The server constructs the endpoint, which selects the handler and fields schema for the request method,
@@ -316,6 +320,11 @@ class Endpoint(RoutableHandler):
     this is required for a field whose type is a union with more than one non-primitive member.
     '''
     return cls._customizable_transtructor().selector(datatype)
+
+
+  @classmethod
+  def _access_targets(cls) -> Mapping[str,object]:
+    return {method: getattr(cls, spec.handler_name) for method, spec in cls._specs.items()}
 
 
   @classmethod
@@ -489,6 +498,7 @@ def get_endpoint(fn:GetHandler) -> type[Endpoint]:
   Adapt a typed function to a GET/HEAD route without declaring an Endpoint subclass or a Get fields class.
 
   Example:
+    @requires_privileges('authenticated')
     def item(request:Request, item_id:int, *, detail:bool|None) -> Response: ...
     router = Router({'/item': item})
 
@@ -500,6 +510,7 @@ def get_endpoint(fn:GetHandler) -> type[Endpoint]:
 
   Router calls this adapter automatically for function targets. It may also be called explicitly.
   The returned class uses the normal Endpoint lifecycle and can be registered with Router.
+  Access decorator metadata is copied to the generated GET handler; HEAD uses the same policy.
   The original function is unchanged and remains directly callable with its declared signature.
   '''
   _check_sync_function(fn)
@@ -524,6 +535,9 @@ def get_endpoint(fn:GetHandler) -> type[Endpoint]:
 
   def get(self:Endpoint, request:Request, fields:Any) -> Response:
     return fn(request, **{name: getattr(fields, name) for name in hints})
+
+  if (required := declared_access(fn)) is not None:
+    declare_access(get, required)
 
   # The generated method satisfies Endpoint's exact fields-class annotation contract.
   get.__annotations__['fields'] = fields_class

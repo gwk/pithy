@@ -40,11 +40,22 @@ class RoutableHandler(RequestHandler):
   '''
   A RequestHandler that the Router constructs per matched route.
   Route-target classes (Endpoint, FilesHandler) derive from this, distinguishing them from WebApp dispatchers.
-  It declares the two things the Router relies on: construction from (request, path_params),
-  and `_methods`, the set of accepted HTTP methods checked before dispatch.
+  It declares what the Router relies on: construction from (request, path_params),
+  `_methods`, the set of accepted HTTP methods checked before dispatch, and `_access_targets`.
+  Declare access by decorating the class, or the handler methods of an Endpoint;
+  see `pithy.web.auth.freeze_required_privileges`.
   '''
 
   _methods:ClassVar[frozenset[str]] = frozenset({'GET'})
 
   def __init__(self, request:Request, path_params:Mapping[str,object]) -> None:
     'Construct the handler for a single request. Subclasses override to consume path_params.'
+
+
+  @classmethod
+  def _access_targets(cls) -> Mapping[str,object]:
+    '''
+    Map accepted methods to the functions whose access decorators declare their required privileges; HEAD is never a key.
+    The default is empty because these handlers can only be decorated as a whole. Endpoint returns its handler methods.
+    '''
+    return {}

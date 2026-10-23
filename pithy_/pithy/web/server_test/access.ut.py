@@ -10,6 +10,8 @@ from unittest.mock import patch
 
 from pithy.logs import render_log_json
 from pithy.web.app import WebApp
+from pithy.web.auth import allow_public
+from pithy.web.destination import Destination
 from pithy.web.errors import BadRequestError
 from pithy.web.request import Request
 from pithy.web.response import Response
@@ -19,11 +21,12 @@ from utest import utest_run, utest_val
 
 class TestApp(WebApp):
 
-  def resolve_handler(self, request:Request) -> TestApp:
+  def resolve_destination(self, request:Request) -> Destination:
     if request.path == '/reject': raise BadRequestError('Rejected during routing.')
-    return self
+    return super().resolve_destination(request)
 
 
+  @allow_public
   def handle_request(self, request:Request) -> Response:
     request.read_body(1024)
     if request.path == '/raise': raise RuntimeError('Handler failed.')

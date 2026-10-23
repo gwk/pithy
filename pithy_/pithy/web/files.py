@@ -15,6 +15,7 @@ from ..http import format_header_date
 from ..logs import logE
 from ..path import Path, path_ext
 from .app import WebApp
+from .auth import allow_public
 from .errors import ResponseError
 from .handler import RoutableHandler
 from .request import Request
@@ -209,6 +210,7 @@ class FilesApp(_FilesServing, WebApp):
     self.map_bare_names_to_html = map_bare_names_to_html
 
 
+  @allow_public
   def handle_request(self, request:Request) -> Response:
     request.allow_methods('GET', 'HEAD')
     return self.handle_file_request(request, Path('/' + '/'.join(request.path_segments)), as_dir=request.path.endswith('/'))
@@ -219,7 +221,9 @@ class FilesHandler(_FilesServing, RoutableHandler):
   '''
   Serve a local directory mounted under a router prefix.
   Mount with a `{subpath:path}` tail route whose handler subclass sets `local_dir`, e.g.:
-    class MyStatic(FilesHandler): local_dir = '/path/to/assets'
+    @allow_public
+    class MyStatic(FilesHandler):
+      local_dir = '/path/to/assets'
     routes = { '/static/{subpath:path}': MyStatic }
   The captured `subpath` arrives decoded from the router and is mapped into `local_dir`;
   the full request path is used for directory redirects.

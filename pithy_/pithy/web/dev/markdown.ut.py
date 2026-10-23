@@ -15,7 +15,7 @@ from pithy.web.router import Router
 from utest import utest_exc, utest_run, utest_val
 
 
-router = Router(routes)
+router = Router(routes, default_public=True)
 
 
 def post(path:str, fields:dict[str,str]) -> Response:
@@ -31,7 +31,7 @@ def post_multipart(path:str, *parts:tuple[bytes,bytes]) -> Response:
 def post_body(path:str, content_type:str, body:bytes) -> Response:
   req = Request(method='POST', scheme='http', host='localhost', port=80, raw_path=path, query_str='',
     headers={'content-type': content_type}, client_addr=('127.0.0.1', 0), content_length=len(body), conn=BytesConn(body))
-  handler = router.resolve_handler(req)
+  handler = router.resolve_route(req).get_handler(req)
   handler.prepare_for_request(req)
   return handler.handle_request(req)
 
@@ -41,7 +41,7 @@ def _() -> None:
   'The page renders the editor around a textarea; settings responses carry attributes only.'
   req = Request(method='GET', scheme='http', host='localhost', port=80, raw_path='/markdown', query_str='',
     headers={}, client_addr=('127.0.0.1', 0), content_length=None)
-  page = router.resolve_handler(req).handle_request(req).body
+  page = router.resolve_route(req).get_handler(req).handle_request(req).body
   assert isinstance(page, bytes)
   document = JustHTML(page, sanitize=False)
   utest_val(1, len(document.query('form#markdown-settings')))

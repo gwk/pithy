@@ -1,14 +1,23 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from collections.abc import Mapping
+from operator import setitem
 
+from pithy.web.auth import _access_attr, allow_public, check_access, Privileges, requires_privileges
 from pithy.web.endpoint import Endpoint, GetHandler
-from pithy.web.errors import BadRequestError, MethodNotAllowedError
-from pithy.web.handler import RoutableHandler
+from pithy.web.errors import BadRequestError, ForbiddenError, MethodNotAllowedError, ResponseError, UnauthorizedError
+from pithy.web.handler import RequestHandler, RoutableHandler
 from pithy.web.request import Request
 from pithy.web.response import Response
-from pithy.web.router import Router, RouterApp, RouteTarget
+from pithy.web.router import ResolvedRoute, Router, RouterApp, RouteTarget
 from utest import utest, utest_exc, utest_run, utest_val
+
+
+def _authorized_handler(dispatcher:Router|RouterApp, request:Request) -> RequestHandler:
+  'Exercise the authorization and acquisition steps that the server performs after resolution.'
+  destination = dispatcher.resolve_route(request) if isinstance(dispatcher, Router) else dispatcher.resolve_destination(request)
+  check_access(request.privileges, destination.required_privileges)
+  return destination.get_handler(request)
 
 
 # Test endpoints.
@@ -57,7 +66,7 @@ def _() -> None:
     '/about': EpAbout,
     '/users/{id:int}': EpUser,
     '/static/{p:path}': EpStatic,
-  })
+  }, default_public=True)
 
   utest((EpHome, {}), router.endpoint_for_path, '/')
   utest((EpAbout, {}), router.endpoint_for_path, '/about')
@@ -73,7 +82,7 @@ def _() -> None:
     '/about': EpAbout,
     '/users/{name}': EpName,
     '/static/{p:path}': EpStatic,
-  })
+  }, default_public=True)
   utest((EpAbout, {}), router.endpoint_for_path, '/ab%6Fut') # An encoded unreserved character is equivalent.
   utest((EpName, {'name': 'al ice'}), router.endpoint_for_path, '/users/al%20ice')
   utest(None, router.endpoint_for_path, '/users/a/b')
@@ -86,7 +95,7 @@ def _() -> None:
   def dispatch_body(path:str) -> str|None:
     request = Request(method='GET', scheme='http', host='localhost', port=80,
       raw_path=path, query_str='', headers={}, client_addr=('127.0.0.1', 0), content_length=None)
-    handler = router.resolve_handler(request)
+    handler = _authorized_handler(router, request)
     response = handler.handle_request(request)
     return response.body.decode() if isinstance(response.body, (bytes, bytearray)) else None
 
@@ -97,17 +106,17 @@ def _() -> None:
 
 @utest_run
 def _() -> None:
-  'Router: resolve_handler dispatches and handles requests.'
+  'Router: resolved routes dispatch and handle requests.'
   router = Router({
     '/': EpHome,
     '/users/{id:int}': EpUser,
-  })
+  }, default_public=True)
 
   def dispatch_body(path:str) -> str|None:
     request = Request(method='GET', scheme='http', host='localhost', port=80,
       raw_path=path, query_str='', headers={}, client_addr=('127.0.0.1', 0), content_length=None)
     try:
-      handler = router.resolve_handler(request)
+      handler = _authorized_handler(router, request)
     except Exception:
       return None
     response = handler.handle_request(request)
@@ -124,13 +133,13 @@ def _() -> None:
   router = Router({
     '/': EpHome,
     '/static/{subpath:path}': HandlerFiles,
-  })
+  }, default_public=True)
 
   def dispatch(method:str, path:str) -> str|None:
     request = Request(method=method, scheme='http', host='localhost', port=80,
       raw_path=path, query_str='', headers={}, client_addr=('127.0.0.1', 0), content_length=None)
     try:
-      handler = router.resolve_handler(request)
+      handler = _authorized_handler(router, request)
     except MethodNotAllowedError:
       return 'method-not-allowed'
     except Exception:
@@ -145,8 +154,83 @@ def _() -> None:
 
 @utest_run
 def _() -> None:
+  'Route policies authorize before handler construction; declarations are validated at registration.'
+
+  class Open(Endpoint):
+    @allow_public
+    def get(self, request:Request, fields:None) -> Response: return Response(body='open')
+
+  class Private(Endpoint):
+    max_body_bytes = 16
+    class Post:
+      name:str
+    @requires_privileges('read')
+    def get(self, request:Request, fields:None) -> Response: return Response(body='private')
+    @requires_privileges('write')
+    def post(self, request:Request, fields:Post) -> Response: return Response(body='posted')
+
+  @requires_privileges('read', 'write')
+  class HeadOnly(RoutableHandler):
+    _methods = frozenset({'HEAD'})
+
+  class UndeclaredHead(RoutableHandler):
+    _methods = frozenset({'HEAD'})
+
+  utest_exc(TypeError, Router, {'/': UndeclaredHead})
+  router = Router({'/open': Open, '/private': Private, '/head': HeadOnly})
+  reader = frozenset({'authenticated', 'read'})
+  writer = frozenset({'authenticated', 'read', 'write'})
+
+  def status(method:str, path:str, privileges:Privileges) -> int:
+    request = Request(method=method, scheme='http', host='localhost', port=80, raw_path=path, query_str='', headers={},
+      client_addr=('127.0.0.1', 0), content_length=None, privileges=privileges)
+    try: _authorized_handler(router, request)
+    except ResponseError as exc: return exc.status.value
+    return 200
+
+  utest(200, status, 'GET', '/open', frozenset())
+  utest(401, status, 'GET', '/private', frozenset()) # Anonymous: credentials would help.
+  utest(403, status, 'GET', '/private', frozenset({'authenticated'})) # Authenticated without the privilege: they would not.
+  utest(200, status, 'GET', '/private', reader)
+  utest(200, status, 'HEAD', '/private', reader) # HEAD shares the GET entry.
+  utest(401, status, 'HEAD', '/head', frozenset())
+  utest(403, status, 'HEAD', '/head', reader) # All declared privileges are required.
+  utest(200, status, 'HEAD', '/head', writer)
+  utest(405, status, 'GET', '/head', writer) # Decorating the class does not add a GET handler.
+  utest(403, status, 'POST', '/private', reader)
+  utest(200, status, 'POST', '/private', writer)
+  utest(405, status, 'PUT', '/private', frozenset()) # Method negotiation precedes authorization.
+  utest(404, status, 'GET', '/missing', frozenset())
+
+  class Undeclared(Endpoint):
+    def get(self, request:Request, fields:None) -> Response: return Response(body='')
+
+  class Partial(Endpoint):
+    max_body_bytes = 16
+    @allow_public
+    def get(self, request:Request, fields:None) -> Response: return Response(body='')
+    def post(self, request:Request, fields:None) -> Response: return Response(body='')
+
+  @allow_public
+  class Both(Endpoint):
+    @requires_privileges('read')
+    def get(self, request:Request, fields:None) -> Response: return Response(body='')
+
+  def fn(request:Request) -> Response: return Response(body='')
+
+  utest_exc(TypeError, Router, {'/': Undeclared})
+  utest_exc(TypeError, Router, {'/': Partial})
+  utest_exc(TypeError("Route '/': " f'{Both.__qualname__} declares access on both the class and handler methods: '
+    "['GET']."), Router, {'/': Both})
+  utest_exc(TypeError, Router, {'/': Both}, default_public=True)
+  utest_exc(TypeError, Router, {'/': fn}) # A function target must declare access.
+  Router({'/': Undeclared, '/fn': fn}, default_public=True) # Opting out admits both.
+
+
+@utest_run
+def _() -> None:
   'Router: overlapping route patterns are rejected at construction (mounts get shadow-checking for free).'
-  utest_exc(ValueError, Router, {'/x/{a:path}': EpHome, '/x/{b:path}': EpAbout})
+  utest_exc(ValueError, Router, {'/x/{a:path}': EpHome, '/x/{b:path}': EpAbout}, default_public=True)
 
 
 @utest_run
@@ -158,7 +242,7 @@ def _() -> None:
   # The same function may be registered for several routes.
   routes:Mapping[str,RouteTarget] = {
     '/': EpHome, '/users/{id:int}': user, '/members/{id:int}': user, '/static/{subpath:path}': HandlerFiles}
-  app = RouterApp(routes)
+  app = RouterApp(routes, default_public=True)
   match = app.router.endpoint_for_path('/users/7')
   assert match is not None
   handler_cls, params = match
@@ -168,7 +252,7 @@ def _() -> None:
   def dispatch(method:str, path:str, query_str:str='') -> bytes|bytearray|None:
     request = Request(method=method, scheme='http', host='localhost', port=80,
       raw_path=path, query_str=query_str, headers={}, client_addr=('127.0.0.1', 0), content_length=None)
-    handler = app.resolve_handler(request)
+    handler = _authorized_handler(app, request)
     handler.prepare_for_request(request)
     body = handler.handle_request(request).body
     assert body is None or isinstance(body, (bytes, bytearray))
@@ -182,8 +266,8 @@ def _() -> None:
   # Mapping covariance: class-only and function-only dictionaries typecheck as routes.
   class_routes:dict[str,type[RoutableHandler]] = {'/': EpHome}
   function_routes:dict[str,GetHandler] = {'/users/{id:int}': user}
-  Router(class_routes)
-  RouterApp(function_routes)
+  Router(class_routes, default_public=True)
+  RouterApp(function_routes, default_public=True)
 
 
 @utest_run
@@ -196,8 +280,108 @@ def _() -> None:
   def unsupported(request:Request, value:Left|Right) -> Response:
     return Response()
   utest_exc(TypeError(f"Route '/d': {default.__qualname__} parameters must not have defaults; "
-    'use optional field types for missing values.'), Router, {'/d': default})
+    'use optional field types for missing values.'), Router, {'/d': default}, default_public=True)
   # The converters of adapted functions are resolved at registration.
   utest_exc(TypeError(f'{unsupported.__qualname__}.Get.value: no converter is available for field type {Left|Right!r}.'),
-    Router, {'/': unsupported})
-  utest_exc(TypeError("Route '/': handler class must derive from RoutableHandler."), Router, {'/': object})
+    Router, {'/': unsupported}, default_public=True)
+  utest_exc(TypeError("Route '/': handler class must derive from RoutableHandler."), Router, {'/': object}, default_public=True)
+
+
+@utest_run
+def _() -> None:
+  'Function routes retain their declarations, enforce before field parsing, and share GET policy with HEAD.'
+  @requires_privileges('authenticated')
+  def account(request:Request, uid:int) -> Response:
+    return Response(body=str(uid))
+
+  @allow_public
+  def home(request:Request) -> Response: return Response(body='home')
+
+  def undeclared(request:Request) -> Response: return Response(body='default')
+
+  router = Router({'/account/{uid}': account, '/home': home})
+  public_req = Request(method='GET', scheme='http', host='localhost', port=80, raw_path='/home', query_str='',
+    headers={}, client_addr=('127.0.0.1', 0), content_length=None)
+  utest_val(b'home', _authorized_handler(router, public_req).handle_request(public_req).body)
+  req = Request(method='GET', scheme='http', host='localhost', port=80, raw_path='/account/not-an-int', query_str='',
+    headers={}, client_addr=('127.0.0.1', 0), content_length=None)
+  destination = router.resolve_route(req) # Resolution neither authorizes nor converts the invalid uid.
+  utest_val(frozenset({'authenticated'}), destination.required_privileges)
+  utest_val({'uid': 'not-an-int'}, destination.path_params)
+  utest_exc(UnauthorizedError, _authorized_handler, router, req) # Before the invalid uid is converted.
+  req.privileges = frozenset({'authenticated'})
+  utest_exc(BadRequestError, _authorized_handler, router, req)
+  req = Request(method='HEAD', scheme='http', host='localhost', port=80, raw_path='/account/7', query_str='',
+    headers={}, client_addr=('127.0.0.1', 0), content_length=None, privileges=frozenset({'authenticated'}))
+  utest_val(b'7', _authorized_handler(router, req).handle_request(req).body)
+  req.privileges = frozenset()
+  utest_exc(UnauthorizedError, _authorized_handler, router, req)
+  utest_exc(TypeError, Router, {'/': undeclared})
+
+  default_router = Router({'/account/{uid}': account, '/': undeclared}, default_public=True)
+  utest_exc(UnauthorizedError, _authorized_handler, default_router, req)
+  req = Request(method='GET', scheme='http', host='localhost', port=80, raw_path='/', query_str='',
+    headers={}, client_addr=('127.0.0.1', 0), content_length=None)
+  utest_val(b'default', _authorized_handler(default_router, req).handle_request(req).body)
+  utest_val(router, RouterApp(router).router)
+  for default in (False, True):
+    utest_exc(TypeError, RouterApp, router, default_public=default)
+
+  # Replacing function metadata cannot change an already registered route.
+  setattr(account, _access_attr, frozenset())
+  req = Request(method='GET', scheme='http', host='localhost', port=80, raw_path='/account/7', query_str='',
+    headers={}, client_addr=('127.0.0.1', 0), content_length=None)
+  utest_exc(UnauthorizedError, _authorized_handler, router, req)
+
+
+@utest_run
+def _() -> None:
+  'Access declared by a class decorator covers every accepted method, is inherited, and is snapshotted at registration.'
+
+  @requires_privileges('authenticated')
+  class Account(Endpoint):
+    max_body_bytes = 16
+    def get(self, request:Request, fields:None) -> Response: return Response(body='account')
+    def post(self, request:Request, fields:None) -> Response: return Response(body='posted')
+
+  @requires_privileges('read')
+  class Restricted(RoutableHandler):
+    _methods = frozenset({'GET', 'HEAD', 'POST'})
+    def __init__(self, request:Request, path_params:Mapping[str,object]) -> None:
+      raise AssertionError('Denied requests must not construct handlers.')
+
+  class Inherited(Restricted): pass
+
+  @allow_public
+  class Redeclared(Restricted): pass
+
+  router = Router({'/account': Account, '/restricted': Restricted, '/inherited': Inherited, '/redeclared': Redeclared})
+
+  def required(method:str, path:str) -> Privileges:
+    request = Request(method=method, scheme='http', host='localhost', port=80, raw_path=path, query_str='', headers={},
+      client_addr=('127.0.0.1', 0), content_length=None)
+    return router.resolve_route(request).required_privileges
+
+  for method in ('GET', 'HEAD', 'POST'):
+    utest(frozenset({'authenticated'}), required, method, '/account')
+    utest(frozenset({'read'}), required, method, '/restricted')
+    utest(frozenset({'read'}), required, method, '/inherited')
+    utest(frozenset(), required, method, '/redeclared')
+
+  # Replacing class metadata cannot open an already registered route.
+  setattr(Restricted, _access_attr, frozenset())
+  req = Request(method='POST', scheme='http', host='localhost', port=80, raw_path='/inherited', query_str='',
+    headers={}, client_addr=('127.0.0.1', 0), content_length=None)
+  utest_exc(UnauthorizedError, _authorized_handler, router, req)
+  req.privileges = frozenset({'authenticated'})
+  utest_exc(ForbiddenError, _authorized_handler, router, req)
+
+
+@utest_run
+def _() -> None:
+  'A resolved route owns a read-only snapshot of its captured parameters.'
+  params:dict[str,object] = {'id': 7}
+  destination = ResolvedRoute(required_privileges=frozenset(), handler_cls=EpUser, path_params=params)
+  params['id'] = 8
+  utest_val({'id': 7}, destination.path_params)
+  utest_exc(TypeError, setitem, destination.path_params, 'id', 9)

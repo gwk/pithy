@@ -1465,7 +1465,7 @@ def _() -> None:
     def get(self, request:Request, fields:Get) -> Response:
       return Response(body=f'{fields.n}')
   utest_val(False, RouterResolvedEndpoint._converters_resolved)
-  Router({'/n': RouterResolvedEndpoint})
+  Router({'/n': RouterResolvedEndpoint}, default_public=True)
   utest_val(True, RouterResolvedEndpoint._converters_resolved)
 
 
@@ -1594,7 +1594,7 @@ def _() -> None:
 
 # Router raises MethodNotAllowedError when the request method is not in the endpoint's _methods.
 
-utest_exc(MethodNotAllowedError, Router({'/' : PostEndpoint}).resolve_handler, _make_request()) # GET vs POST-only.
+utest_exc(MethodNotAllowedError, Router({'/' : PostEndpoint}, default_public=True).resolve_route, _make_request()) # GET vs POST-only.
 
 
 @utest_run
@@ -1602,7 +1602,7 @@ def _() -> None:
   'Router: MethodNotAllowedError includes Allow header, listing HEAD alongside GET.'
   for cls, method, allow in ((PostEndpoint, 'GET', 'POST'), (DateEndpoint, 'POST', 'GET, HEAD')):
     try:
-      Router({'/' : cls}).resolve_handler(_method_request(method))
+      Router({'/' : cls}, default_public=True).resolve_route(_method_request(method))
     except MethodNotAllowedError as exc:
       assert exc.headers is not None
       utest_val(allow, exc.headers.get('allow'))
@@ -1614,7 +1614,7 @@ def _() -> None:
 def _() -> None:
   'Router: a HEAD request resolves to an endpoint that defines get.'
   req = _method_request('HEAD', dict(id='7'))
-  handler = Router({'/' : IntEndpoint}).resolve_handler(req)
+  handler = Router({'/' : IntEndpoint}, default_public=True).resolve_route(req).get_handler(req)
   utest_val(b'7', handler.handle_request(req).body)
 
 
@@ -1721,11 +1721,11 @@ def _() -> None:
   def item(request:Request, item_id:int, *, tags:list[int], note:str|None) -> Response:
     return Response(body=f'{request.method}:{item_id}:{tags}:{note!r}')
 
-  router = Router({'/items/{item_id:int}': get_endpoint(item)})
+  router = Router({'/items/{item_id:int}': get_endpoint(item)}, default_public=True)
 
   def respond(query:dict[str,str|int|list[str]], method:str='GET') -> bytes:
     req = replace(_method_request(method, query), raw_path='/items/7')
-    handler = router.resolve_handler(req)
+    handler = router.resolve_route(req).get_handler(req)
     handler.prepare_for_request(req)
     body = handler.handle_request(req).body
     assert isinstance(body, bytes)
@@ -1752,9 +1752,9 @@ def _() -> None:
   cases:list[tuple[Callable[...,Response],dict[str,str|int|list[str]],bytes]] = [
     (home, {}, b'home'), (named, dict(fields=3, self='s', _value='b'), b'3:s:b')]
   for fn, query, expected in cases:
-    router = Router({'/': get_endpoint(fn)})
+    router = Router({'/': get_endpoint(fn)}, default_public=True)
     req = _make_request(query)
-    handler = router.resolve_handler(req)
+    handler = router.resolve_route(req).get_handler(req)
     handler.prepare_for_request(req)
     utest_val(expected, handler.handle_request(req).body)
 
@@ -1775,7 +1775,7 @@ def _() -> None:
     return Response(body=f'{count}')
 
   req = _make_request(dict(count=3))
-  handler = Router({'/': get_endpoint(item)}).resolve_handler(req)
+  handler = Router({'/': get_endpoint(item)}, default_public=True).resolve_route(req).get_handler(req)
   handler.prepare_for_request(req)
   response = handler.handle_request(req)
   utest_val(b'3', response.body)

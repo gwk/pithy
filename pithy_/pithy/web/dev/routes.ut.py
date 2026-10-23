@@ -14,7 +14,7 @@ def _request(path:str) -> Request:
 
 def _content_type(router:Router, path:str) -> object:
   request = _request(path)
-  response = router.resolve_handler(request).handle_request(request)
+  response = router.resolve_route(request).get_handler(request).handle_request(request)
   close_response_body(response.body)
   return response.headers.get('content-type')
 
@@ -22,7 +22,7 @@ def _content_type(router:Router, path:str) -> object:
 @utest_run
 def _() -> None:
   'pithy.web.dev: bundled and dev static assets are served through FilesHandler mounts.'
-  router = Router(routes)
+  router = Router(routes, default_public=True)
 
   utest_val('text/css;charset=utf-8', _content_type(router, '/static/pithy/pithy.css'), desc='pithy.css served as css')
   utest_val('text/css;charset=utf-8', _content_type(router, '/static/dev/dev.css'), desc='dev.css served as css')

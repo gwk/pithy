@@ -5,8 +5,8 @@ from http import HTTPStatus
 from .headers import ResponseHeadersDict
 
 
-_context_keywords_ = ['bad request', 'exceptions', 'http.HTTPStatus', 'method not allowed', 'not found', 'response status',
-  'utf8 decoding']
+_context_keywords_ = ['bad request', 'exceptions', 'forbidden', 'http.HTTPStatus', 'method not allowed', 'not found',
+  'response status', 'unauthorized', 'utf8 decoding']
 
 
 class ResponseError(Exception):
@@ -30,6 +30,18 @@ class BadRequestError(ResponseError):
   'A ResponseError with status 400 Bad Request.'
   def __init__(self, reason:str='', *, headers:ResponseHeadersDict|None=None):
     super().__init__(HTTPStatus.BAD_REQUEST, reason=reason, headers=headers)
+
+
+class UnauthorizedError(ResponseError):
+  'A ResponseError with status 401 Unauthorized: the request needs credentials it did not present, or presented invalid ones.'
+  def __init__(self, reason:str='', *, headers:ResponseHeadersDict|None=None):
+    super().__init__(HTTPStatus.UNAUTHORIZED, reason=reason, headers=headers)
+
+
+class ForbiddenError(ResponseError):
+  'A ResponseError with status 403 Forbidden: the request is understood and refused, regardless of credentials.'
+  def __init__(self, reason:str='', *, headers:ResponseHeadersDict|None=None):
+    super().__init__(HTTPStatus.FORBIDDEN, reason=reason, headers=headers)
 
 
 class NotFoundError(ResponseError):

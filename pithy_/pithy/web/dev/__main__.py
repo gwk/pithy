@@ -32,7 +32,7 @@ def run(config:ServerConfig) -> None:
 class DevApp(RouterApp):
 
   def __init__(self) -> None:
-    super().__init__(routes=routes)
+    super().__init__(routes=routes, default_public=True)
 
 
 

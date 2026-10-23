@@ -2,6 +2,7 @@
 
 from ...html import Css, Html
 from ...web.app import WebApp
+from ...web.auth import allow_public
 from ...web.request import Request
 from ...web.response import HtmlResponse
 from ...web.static import pithy_web_static_dir_path
@@ -10,6 +11,7 @@ from ..charts import BarSeries, chart_figure, LinearAxis
 
 class ChartTestApp(WebApp):
 
+  @allow_public
   def handle_request(self, request:Request) -> HtmlResponse:
     request.allow_methods('GET', 'HEAD')
     return home_page()
