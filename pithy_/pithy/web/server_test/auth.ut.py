@@ -2,7 +2,7 @@
 
 '''
 Lifecycle order over a real connection: check_request precedes authenticate, which precedes routing and authorization,
-and an unauthorized request is refused before its body is read.
+and an unauthorized request is refused before its body is read. 401 responses carry the app's WWW-Authenticate challenge.
 '''
 
 from socket import create_connection
@@ -40,6 +40,7 @@ class PrivateEndpoint(Endpoint):
 class LifecycleApp(RouterApp):
 
   same_origin:SameOriginCheck # Set once the server has bound its port.
+  www_authenticate = 'Bearer realm="test"'
 
   def __init__(self) -> None:
     super().__init__({'/open': OpenEndpoint, '/private': PrivateEndpoint})
@@ -53,7 +54,7 @@ class LifecycleApp(RouterApp):
     if credential == 'Bearer broken': return frozenset({'read'})
     if credential == 'Bearer reader': return frozenset({'authenticated', 'read'})
     if credential == 'Bearer writer': return frozenset({'authenticated', 'read', 'write'})
-    raise UnauthorizedError('Invalid token.')
+    raise UnauthorizedError('Invalid token.', headers={'www-authenticate': 'Bearer error="invalid_token"'})
 
 
   def finish_response(self, request:Request, response:Response) -> Response:
@@ -115,6 +116,7 @@ def test_simple_app() -> None:
       events.append('finish_response')
       utest(','.join(events), lambda: response.headers['x-events'])
       if status != 200: utest('close', lambda: response.headers.get('connection'))
+      if status == 401: utest(None, lambda: response.headers.get('www-authenticate')) # SimpleApp has no challenge.
 
     # Authorization also precedes 100 Continue for a simple app.
     port = int(base_url.rsplit(':', 1)[1])
@@ -172,6 +174,15 @@ def test_lifecycle() -> None:
 
     for credential, expected in (('', 401), ('Bearer reader', 200)):
       utest((expected, 'yes'), status_and_finish_header, credential)
+
+    def status_and_challenge(method:str, path:str, **headers:str) -> tuple[int,str|None]:
+      response = requests.request(method, f'{base_url}{path}', headers=headers, timeout=2)
+      return response.status_code, response.headers.get('www-authenticate')
+
+    # The server adds the app's challenge to a 401 that lacks one, and keeps a challenge set by the app.
+    utest((401, 'Bearer realm="test"'), status_and_challenge, 'GET', '/private')
+    utest((401, 'Bearer error="invalid_token"'), status_and_challenge, 'GET', '/open', authorization='Bearer bogus')
+    utest((403, None), status_and_challenge, 'POST', '/private', authorization='Bearer reader') # Not a 401.
     # Authorization precedes the body: a refused POST is answered before the body is read, so the connection closes.
     status, body, connection = post('/private', b'name=x')
     utest(401, int, status)

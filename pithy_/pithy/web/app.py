@@ -35,6 +35,7 @@ class WebApp(RequestHandler):
   A ResponseError raised during these steps is turned into a response by `error_response`,
   or by the built-in plain text renderer if that returns None or raises; a raise is logged.
   The default selects a renderer from `error_renderers` by the request path extension; see `error_media_type_for`.
+  A 401 response without a WWW-Authenticate header receives the challenge from `www_authenticate_for`, if any.
 
   Normal responses, rejections from step 6 and responses produced by `error_response` pass through `finish_response`.
   Protocol rejections before Request construction bypass the application entirely.
@@ -59,6 +60,13 @@ class WebApp(RequestHandler):
   Override with a mapping that extends `default_error_renderers`, e.g. to render a styled HTML page.
   Every media type that `error_media_type` and `error_extension_media_types` name, and `text/plain`, must have an entry;
   this is checked when the subclass is defined.
+  '''
+
+  www_authenticate:ClassVar[str|None] = None
+  '''
+  The challenge for the WWW-Authenticate header of 401 responses, e.g. `Bearer realm="api"`; see `www_authenticate_for`.
+  RFC 9110 requires a challenge on 401 responses, but cookie sessions have no standard scheme,
+  and a `Basic` challenge makes browsers show their login dialog. The default None therefore omits the header.
   '''
 
 
@@ -86,10 +94,24 @@ class WebApp(RequestHandler):
   def authenticate(self, request:Request) -> Privileges:
     '''
     Return effective privileges without reading the body: empty for anonymous, otherwise including `authenticated`.
-    Raise UnauthorizedError for invalid credentials. Nonempty results without `authenticated` are programming errors.
+    Nonempty results without `authenticated` are programming errors.
     Application user data can be stored in `request.ctx`; the server enforces destination requirements separately.
+
+    Raise UnauthorizedError for invalid credentials that the client explicitly presented, such as a bad bearer token.
+    This refuses every path, including public ones. Treat a stale or invalid session cookie as anonymous instead,
+    so that public pages still work and restricted routes respond with 401.
     '''
     return frozenset()
+
+
+  def www_authenticate_for(self, request:Request) -> str|None:
+    '''
+    Select the WWW-Authenticate challenge for a 401 response to a request; the default returns `www_authenticate`.
+    The server adds it to any 401 response that lacks the header, including access denials and errors raised by
+    `authenticate`, before `finish_response`. A challenge that the application sets itself is kept.
+    Override to vary it by request, e.g. a Bearer challenge for API paths and none for pages.
+    '''
+    return self.www_authenticate
 
 
   def resolve_destination(self, request:Request) -> Destination:

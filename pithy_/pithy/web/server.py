@@ -505,6 +505,8 @@ class WebServer:
         logE('Not implemented.', exc=exc, client_addr=conn.client_addr, method=method, path=request.raw_path)
         response = self._error_response(conn, request, ResponseError(HTTPStatus.NOT_IMPLEMENTED, 'Not Implemented'))
         #^ The fixed reason does not leak the exception message.
+      if response.status == HTTPStatus.UNAUTHORIZED and 'www-authenticate' not in response.headers:
+        if challenge := app.www_authenticate_for(request): response.headers['www-authenticate'] = challenge
       original_body = response.body
       try:
         response = app.finish_response(request, response)
