@@ -55,14 +55,21 @@ Load this alongside pithy.css in applications that use htmx; it depends on pithy
   background-size: 1rem 1rem;
 }
 
+/* The stripes appear only once a request has lasted 150ms, so that a quick request does not flash them for a frame.
+The delay is a discrete keyframe step on background-image rather than a transition, which cannot animate an image. */
 .stripe-indicator.htmx-request {
-  background-image: repeating-linear-gradient(135deg,
-    transparent 0rem,
-    transparent 0.3535rem,
-    var(--tint-subtle) 0.3535rem,
-    var(--tint-subtle) 0.7071rem
-  );
-  animation: stripe-indicator 1s infinite linear;
+  animation: stripe-indicator-appear 150ms step-end forwards, stripe-indicator 1s 150ms infinite linear;
+}
+
+@keyframes stripe-indicator-appear {
+  to {
+    background-image: repeating-linear-gradient(135deg,
+      transparent 0rem,
+      transparent 0.3535rem,
+      var(--tint-subtle) 0.3535rem,
+      var(--tint-subtle) 0.7071rem
+    );
+  }
 }
 
 @keyframes stripe-indicator {
