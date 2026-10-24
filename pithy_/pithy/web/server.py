@@ -11,14 +11,15 @@ from selectors import DefaultSelector, EVENT_READ
 from socket import AF_INET, SHUT_WR, SO_REUSEADDR, SOCK_STREAM, socket as Socket, socketpair, SOL_SOCKET
 from threading import Event, Lock, Thread
 from time import monotonic
+from traceback import clear_frames
 from typing import cast
 from urllib.parse import urlsplit as url_split
 
 from h11 import (Connection as h11_Connection, ConnectionClosed as h11_ConnectionClosed, Data as h11_Data, DONE as h11_DONE,
-  EndOfMessage as h11_EndOfMessage, IDLE as h11_IDLE, InformationalResponse as h11_InformationalResponse,
-  NEED_DATA as h11_NEED_DATA, ProtocolError as h11_ProtocolError, RemoteProtocolError as h11_RemoteProtocolError,
-  Request as h11_Request, Response as h11_Response, SEND_BODY as h11_SEND_BODY, SEND_RESPONSE as h11_SEND_RESPONSE,
-  SERVER as h11_SERVER)
+  EndOfMessage as h11_EndOfMessage, Event as h11_Event, IDLE as h11_IDLE, InformationalResponse as h11_InformationalResponse,
+  NEED_DATA as h11_NEED_DATA, PAUSED as h11_PAUSED, ProtocolError as h11_ProtocolError,
+  RemoteProtocolError as h11_RemoteProtocolError, Request as h11_Request, Response as h11_Response, SEND_BODY as h11_SEND_BODY,
+  SEND_RESPONSE as h11_SEND_RESPONSE, SERVER as h11_SERVER)
 from pithy.logs import logE, logI
 
 from ..http import http_method_bytes_to_strs, may_send_body
@@ -49,13 +50,13 @@ class _Conn():
   _Conn represents the internal state of a client connection through one or more connection keep-alive cycles.
   It exists to encapsulate the underlying H11 calls by narrowing the return type from next_event() for each stage,
   and to provide a handle through which the WebServerRequestConn can read the request body.
+  Requests refer to this connection; it must not retain requests, which would create an ownership cycle.
   '''
   client_addr:AddrPair
   socket:Socket
   h11_conn:h11_Connection
   recv_size:int
   error:h11_ProtocolError|TimeoutError|None = None # Set when an error occurs.
-  request:Request|None = None # Current request, if construction succeeded.
   response_status:int = 500 # Updated once response headers have been sent.
 
 
@@ -74,6 +75,20 @@ class _Conn():
       return False
 
 
+  def next_event(self) -> h11_Event|type[h11_NEED_DATA]|type[h11_PAUSED]:
+    '''
+    Returns the next h11 event, clearing the traceback frames of a protocol error before it propagates.
+
+    h11 converts a parsing error to RemoteProtocolError by re-raising it from a frame that refers to the exception.
+    That reference cycle keeps every frame of the eventual traceback alive until garbage collection,
+    including the application and connection cycle frames that hold the request.
+    '''
+    try: return self.h11_conn.next_event()
+    except h11_RemoteProtocolError as exc:
+      clear_frames(exc.__traceback__) # Clear frames to break the cycle; the executing frame is skipped and line info remains.
+      raise
+
+
   def next_request(self) -> h11_Request|None:
     '''
     Returns the next Request.
@@ -81,7 +96,7 @@ class _Conn():
     '''
     assert self.h11_conn.our_state is h11_IDLE
     while True:
-      event = self.h11_conn.next_event()
+      event = self.next_event()
       if event is h11_NEED_DATA:
         if self.handle_need_data(): continue
         return None # Error set.
@@ -97,7 +112,7 @@ class _Conn():
     '''
     assert self.h11_conn.their_state is h11_SEND_BODY
     while True:
-      event = self.h11_conn.next_event()
+      event = self.next_event()
       if event is h11_NEED_DATA:
         if self.handle_need_data(): continue
         return None # Error set.
@@ -115,7 +130,7 @@ class _Conn():
     '''
     assert self.h11_conn.our_state in (h11_SEND_RESPONSE, h11_SEND_BODY)
     while True:
-      event = self.h11_conn.next_event()
+      event = self.next_event()
       if event is h11_NEED_DATA:
         if self.handle_need_data(): continue
         return None # Error set.
@@ -365,20 +380,9 @@ class WebServer:
 
     try:
       while event := conn.next_request():
-        start_time = monotonic()
         conn.response_status = 500
         method = http_method_bytes_to_strs.get(event.method, '')
-        try:
-          response = self._handle_connection_cycle(conn, event, method)
-          body = response.body
-          try:
-            if self.config.prevent_client_caching: response.set_no_cache_headers()
-            self._send_response(conn, response=response, method=method)
-          finally:
-            close_response_body(body)
-        finally:
-          if self.config.log_access: self._log_access(conn, event, start_time)
-          conn.request = None # The request is complete; do not let it linger on the connection.
+        self._handle_connection_cycle(conn, event, method)
         if not conn.recycle(): break
     except Exception as exc:
       logE('Connection handling error.', exc=exc, client_addr=client_addr)
@@ -386,10 +390,30 @@ class WebServer:
       self._close_connection(conn)
 
 
-  def _log_access(self, conn:_Conn, event:h11_Request, start_time:float) -> None:
+  def _handle_connection_cycle(self, conn:_Conn, event:h11_Request, method:str) -> None:
+    'Own the request through dispatch, response sending and access logging, releasing it before waiting for another request.'
+    start_time = monotonic()
+    request:Request|None = None
+    try:
+      result = self._make_request(conn, event, method)
+      if isinstance(result, Request):
+        request = result
+        response = self._handle_request(conn, request)
+      else:
+        response = result
+      body = response.body
+      try:
+        if self.config.prevent_client_caching: response.set_no_cache_headers()
+        self._send_response(conn, response=response, method=method)
+      finally:
+        close_response_body(body)
+    finally:
+      if self.config.log_access: self._log_access(conn, event, start_time, request)
+
+
+  def _log_access(self, conn:_Conn, event:h11_Request, start_time:float, request:Request|None) -> None:
     'Log at the server boundary so that application dispatch and early rejections are always covered.'
     dur = round(monotonic() - start_time, 3)
-    request = conn.request
     if request is None:
       try: path, query = _split_target(event.target)
       except (UnicodeDecodeError, ValueError): # Log the rejected target faithfully; backslashreplace emits only ASCII.
@@ -435,11 +459,8 @@ class WebServer:
       except OSError: pass
 
 
-  def _handle_connection_cycle(self, conn:_Conn, event:h11_Request, method:str) -> Response:
-    '''
-    Handles a single request/response cycle on the connection.
-    Returns a Response object.
-    '''
+  def _make_request(self, conn:_Conn, event:h11_Request, method:str) -> Request|Response:
+    'Construct a request, or return a protocol rejection response before application dispatch.'
 
     if event.http_version != b'1.1':
       http_version_str = event.http_version.decode('ascii', errors='replace')
@@ -461,7 +482,7 @@ class WebServer:
     if cl_str := headers.get('content-length'):
       content_length = int(cl_str) # Assume that h11 has already validated the content-length value.
 
-    request = conn.request = Request(
+    return Request(
       client_addr=conn.client_addr,
       method=method,
       scheme='http',
@@ -474,6 +495,12 @@ class WebServer:
       prevent_client_caching=self.config.prevent_client_caching,
       conn=WebServerRequestConn(content_length=content_length, _conn=conn))
 
+
+  def _handle_request(self, conn:_Conn, request:Request) -> Response:
+    'Dispatch a constructed request through application hooks and complete its framing.'
+    method = request.method
+    headers = request.headers
+    content_length = request.content_length
     app = self.app
     response:Response|None = None
     try: # Outer: 500 server error; unhandled application error, including a failing app hook.
@@ -522,7 +549,7 @@ class WebServer:
     # Consume it after dispatch rather than before: next_data asserts SEND_BODY, so consuming earlier would break
     # a handler that explicitly reads the empty body.
     if conn.h11_conn.their_state is h11_SEND_BODY and 'transfer-encoding' not in headers and content_length in (None, 0):
-      completion = conn.h11_conn.next_event() # Empty framing guarantees completion without a socket read.
+      completion = conn.next_event() # Empty framing guarantees completion without a socket read.
       if not isinstance(completion, h11_EndOfMessage):
         raise HttpStateError(f'Expected EndOfMessage for empty request; received: {completion!r}.')
 

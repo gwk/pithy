@@ -4,8 +4,7 @@ from contextlib import redirect_stdout
 from http import HTTPStatus
 from io import StringIO
 from json import loads
-from socket import socket as Socket
-from typing import Any, cast
+from typing import Any
 from unittest.mock import patch
 
 from pithy.logs import render_log_json
@@ -15,7 +14,7 @@ from pithy.web.destination import Destination
 from pithy.web.errors import BadRequestError
 from pithy.web.request import Request
 from pithy.web.response import Response
-from pithy.web.server import ServerConfig, WebServer
+from pithy.web.server_test.testsocket import handle_connection, TestSocket
 from utest import utest_run, utest_val
 
 
@@ -37,36 +36,11 @@ class TestApp(WebApp):
 
 
 
-class TestSocket:
-  'Feed raw HTTP through h11 without opening a network socket.'
-
-  def __init__(self, data:bytes, fail_send:int=0) -> None:
-    self.data = data
-    self.fail_send = fail_send
-    self.sends = 0
-
-  def settimeout(self, timeout:float) -> None: pass
-  def shutdown(self, how:int) -> None: pass
-  def close(self) -> None: pass
-
-  def recv(self, size:int) -> bytes:
-    data, self.data = self.data[:size], self.data[size:]
-    return data
-
-  def sendall(self, data:bytes) -> None:
-    self.sends += 1
-    if self.sends == self.fail_send: raise BrokenPipeError('Client disconnected.')
-
-
-
 def access_logs(data:bytes, *, enabled:bool=True, fail_send:int=0) -> list[dict[str,Any]]:
-  server = WebServer.__new__(WebServer)
-  server.app = TestApp()
-  server.config = ServerConfig(log_access=enabled)
   output = StringIO()
   with redirect_stdout(output), patch('pithy.logs.render_log_fn', render_log_json), \
    patch('pithy.web.server.monotonic', side_effect=[10.0, 10.125, 20.0, 20.25]):
-    server._handle_connection(cast(Socket, TestSocket(data, fail_send)), ('127.0.0.1', 4321))
+    handle_connection(TestApp(), TestSocket(data, fail_send=fail_send), log_access=enabled)
   return [record for line in output.getvalue().splitlines() if (record := loads(line)).get('_') == 'access']
 
 
