@@ -12,7 +12,7 @@ description = "Pithy is a collection of utility libraries for Python 3."
 requires-python = ">=3.15"
 dependencies = [
   "blake3 >= 1.0.9",
-  "brotli >= 1.2.0",
+  "brotli >= 1.2.1",
   "cryptography>=50.0.0",
   "docutils >= 0.23",
   "h11 >= 0.16",
