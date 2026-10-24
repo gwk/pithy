@@ -2,10 +2,10 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 from .app import WebApp
-from .auth import freeze_required_privileges, Privileges
+from .auth import authentication_required_error, freeze_required_privileges, Privileges
 from .destination import Destination
 from .endpoint import Endpoint, get_endpoint, GetHandler
 from .errors import MethodNotAllowedError, NotFoundError
@@ -20,6 +20,9 @@ _context_keywords_ = ['dispatch', 'get functions', 'http', 'method validation', 
 
 
 type RouteTarget = type[RoutableHandler]|GetHandler
+
+type ConcealFrom = Literal['none', 'anonymous', 'unprivileged']
+'The callers from whom a Router hides the routes and methods that they may not use; see `Router`.'
 
 
 _setattr = object.__setattr__
@@ -45,12 +48,29 @@ class Router:
   Missing declarations fail at registration unless `default_public=True`; explicit restrictions still apply in that mode.
   Policies are validated and frozen at registration by `freeze_required_privileges`,
   then checked by the server before construction.
-  Authorization failures produce 401 for anonymous callers and 403 for authenticated callers.
+  Authorization failures produce 401 for anonymous callers and 403 for authenticated callers,
+  except where `conceal_from` hides the route or method.
+
+  `conceal_from` selects the callers who see only the routes and methods that they may use:
+  * 'anonymous' (the default): a path that matches no route, or a request for an unaccepted method of a route with any
+    restricted method, raises the same 401 as a restricted route or method,
+    so that restricted routes and methods cannot be told apart from missing ones.
+    Authenticated callers receive 403, 404 and 405 as usual; the Allow header of a 405 lists every accepted method.
+  * 'unprivileged': anonymous callers are treated as above.
+    An authenticated caller receives 404 for a route with no method that its privileges permit,
+    and otherwise 405 for any method that it may not use, with an Allow header that lists only the permitted methods.
+    Routing then never raises 403. Choose this when anyone can create an account.
+  * 'none': callers receive 404 and 405 for missing routes and methods, and 401 or 403 for restricted ones.
+  A Router whose routes are all public has nothing to hide, and behaves as 'none'.
+  The Router only conceals route-level requirements. A handler that checks access to a particular record
+  must itself answer forbidden and missing records alike, e.g. with 404, to conceal which records exist.
 
   Field converters are resolved on initialization so programming errors with unconstructible field types raise early.
   '''
 
-  def __init__(self, routes:Mapping[str,RouteTarget], *, default_public:bool=False) -> None:
+  def __init__(self, routes:Mapping[str,RouteTarget], *, default_public:bool=False,
+   conceal_from:ConcealFrom='anonymous') -> None:
+    if conceal_from not in ('none', 'anonymous', 'unprivileged'): raise ValueError(f'Invalid conceal_from: {conceal_from!r}.')
     policies:dict[type[RoutableHandler],frozendict[str,Privileges]] = {}
     handler_routes:dict[str,type[RoutableHandler]] = {}
     for path, target in routes.items():
@@ -67,6 +87,9 @@ class Router:
         handler_cls._resolve_converters()
       handler_routes[path] = handler_cls
     self._policies = frozendict(policies)
+    has_restrictions = any(required for policy in policies.values() for required in policy.values())
+    self._conceal_from:ConcealFrom = conceal_from if has_restrictions else 'none'
+    #^ With only public routes there is nothing to conceal.
     fixed_routes, pattern_tree = build_route_tree(handler_routes)
     self.fixed_routes:dict[FixedRouteKey,type[RoutableHandler]] = fixed_routes
     self.pattern_tree:RouteTree[type[RoutableHandler]] = pattern_tree
@@ -74,16 +97,32 @@ class Router:
 
   def resolve_route(self, request:Request) -> ResolvedRoute:
     '''
-    Match the request path and method without checking access or constructing a handler.
-    Raises NotFoundError or MethodNotAllowedError. The server authorizes the returned destination before acquisition.
+    Match the request path and method without constructing a handler; the server checks access to the result.
+    Raises NotFoundError or MethodNotAllowedError, or UnauthorizedError where those would reveal a hidden route.
+    With `conceal_from='unprivileged'`, it also refuses an authenticated caller the methods that its privileges do not permit,
+    with 404 or 405 rather than the 403 of the server's access check.
     '''
+    privileges = request.privileges
+    anonymous = 'authenticated' not in privileges
+    conceal = self._conceal_from == 'unprivileged' or (self._conceal_from == 'anonymous' and anonymous)
     result = self.endpoint_for_segments(request.path_segments)
-    if result is None: raise NotFoundError
+    if result is None:
+      if conceal and anonymous: raise authentication_required_error()
+      raise NotFoundError
     handler_cls, path_params = result
-    if request.method not in handler_cls._methods:
+    policy = self._policies[handler_cls]
+    required = policy.get(request.method) # None if the method is not accepted.
+    if conceal and not anonymous and (required is None or not required <= privileges):
+      # Show an authenticated caller only the methods that its privileges permit, so that routing never raises 403.
+      permitted = frozenset(method for method, req in policy.items() if req <= privileges)
+      if not permitted: raise NotFoundError
+      raise MethodNotAllowedError(permitted)
+    if required is None:
+      if conceal and any(policy.values()): raise authentication_required_error()
+      #^ The caller is anonymous here. A 405 would distinguish an unaccepted method from a restricted one,
+      #  and its Allow header would list restricted methods.
       raise MethodNotAllowedError(handler_cls._methods)
-    return ResolvedRoute(required_privileges=self._policies[handler_cls][request.method],
-      handler_cls=handler_cls, path_params=path_params)
+    return ResolvedRoute(required_privileges=required, handler_cls=handler_cls, path_params=path_params)
 
 
   def endpoint_for_path(self, path:str) -> tuple[type[RoutableHandler],dict[str,Any]]|None:
@@ -102,20 +141,23 @@ class RouterApp(WebApp):
   '''
   A WebApp that uses a Router to dispatch requests to Endpoints.
 
-  If `routes` is an existing Router, its access policies apply and `default_public` must be None.
-  Otherwise, `routes` is a route mapping used to construct a new Router with `default_public`; None means False.
+  If `routes` is an existing Router, its access policies apply and the Router options must be None.
+  Otherwise, `routes` is a route mapping used to construct a new Router with `default_public` and
+  `conceal_from`; None selects the Router defaults.
   '''
 
   router:Router
 
 
-  def __init__(self, routes:Mapping[str,RouteTarget]|Router, *, default_public:bool|None=None) -> None:
+  def __init__(self, routes:Mapping[str,RouteTarget]|Router, *, default_public:bool|None=None,
+   conceal_from:ConcealFrom|None=None) -> None:
     if isinstance(routes, Router):
-      if default_public is not None:
-        raise TypeError('default_public cannot be combined with a prebuilt Router; it already carries the setting.')
+      if default_public is not None or conceal_from is not None:
+        raise TypeError('Router options cannot be combined with a prebuilt Router; it already carries its settings.')
       router = routes
     else:
-      router = Router(routes, default_public=False if default_public is None else default_public)
+      router = Router(routes, default_public=False if default_public is None else default_public,
+        conceal_from='anonymous' if conceal_from is None else conceal_from)
     self.router = router
 
 

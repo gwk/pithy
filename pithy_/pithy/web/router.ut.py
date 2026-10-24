@@ -199,8 +199,8 @@ def _() -> None:
   utest(405, status, 'GET', '/head', writer) # Decorating the class does not add a GET handler.
   utest(403, status, 'POST', '/private', reader)
   utest(200, status, 'POST', '/private', writer)
-  utest(405, status, 'PUT', '/private', frozenset()) # Method negotiation precedes authorization.
-  utest(404, status, 'GET', '/missing', frozenset())
+  utest(405, status, 'PUT', '/private', reader) # Method negotiation precedes authorization.
+  utest(404, status, 'GET', '/missing', reader) # Anonymous callers instead get 401; see the concealment test.
 
   class Undeclared(Endpoint):
     def get(self, request:Request, fields:None) -> Response: return Response(body='')
@@ -375,6 +375,100 @@ def _() -> None:
   utest_exc(UnauthorizedError, _authorized_handler, router, req)
   req.privileges = frozenset({'authenticated'})
   utest_exc(ForbiddenError, _authorized_handler, router, req)
+
+
+@utest_run
+def _() -> None:
+  'Anonymous callers see only the public surface; hidden routes raise the same 401 as restricted routes.'
+
+  class Mixed(Endpoint):
+    max_body_bytes = 16
+    @allow_public
+    def get(self, request:Request, fields:None) -> Response: return Response(body='mixed')
+    @requires_privileges('write')
+    def post(self, request:Request, fields:None) -> Response: return Response(body='posted')
+
+  @requires_privileges('read')
+  class Private(Endpoint):
+    def get(self, request:Request, fields:None) -> Response: return Response(body='private')
+
+  @allow_public
+  class Open(Endpoint):
+    def get(self, request:Request, fields:None) -> Response: return Response(body='open')
+
+  @requires_privileges('read')
+  class Daily(RoutableHandler): pass
+
+  routes:dict[str,RouteTarget] = {'/mixed': Mixed, '/private': Private, '/daily/{day:date}': Daily}
+  reader = frozenset({'authenticated', 'read'})
+
+  def outcome(dispatcher:Router|RouterApp, method:str, path:str, privileges:Privileges=frozenset()) -> tuple[int,str]:
+    request = Request(method=method, scheme='http', host='localhost', port=80, raw_path=path, query_str='', headers={},
+      client_addr=('127.0.0.1', 0), content_length=None, privileges=privileges)
+    try: _authorized_handler(dispatcher, request)
+    except ResponseError as exc: return (exc.status.value, exc.reason)
+    return (200, '')
+
+  hidden = (401, 'Authentication required.')
+  router = Router(routes)
+  utest(hidden, outcome, router, 'GET', '/private') # Restricted route.
+  utest(hidden, outcome, router, 'GET', '/missing') # Indistinguishable from the restricted route.
+  utest(hidden, outcome, router, 'PUT', '/private') # A route without public methods hides its methods too.
+  utest(hidden, outcome, router, 'POST', '/mixed') # Restricted method of a route with a public method.
+  utest(hidden, outcome, router, 'PUT', '/mixed') # Indistinguishable from the restricted method.
+  utest((200, ''), outcome, router, 'GET', '/mixed')
+  utest(405, lambda: outcome(router, 'PUT', '/mixed', reader)[0])
+  utest(404, lambda: outcome(router, 'GET', '/missing', reader)[0])
+  utest(405, lambda: outcome(router, 'PUT', '/private', reader)[0])
+  # A well formed segment with an impossible value is a nonmatch; a conversion error would answer 500 and reveal the pattern.
+  utest(hidden, outcome, router, 'GET', '/daily/2026-02-28')
+  utest(hidden, outcome, router, 'GET', '/daily/2026-02-30')
+  utest(404, lambda: outcome(router, 'GET', '/daily/2026-02-30', reader)[0])
+
+  revealing = Router(routes, conceal_from='none')
+  utest(404, lambda: outcome(revealing, 'GET', '/missing')[0])
+  utest(404, lambda: outcome(revealing, 'GET', '/daily/2026-02-30')[0])
+  utest(405, lambda: outcome(revealing, 'PUT', '/private')[0])
+  utest(405, lambda: outcome(revealing, 'PUT', '/mixed')[0])
+  utest(404, lambda: outcome(Router({'/open': Open}), 'GET', '/missing')[0]) # Nothing to conceal.
+
+  utest(hidden, outcome, RouterApp(routes), 'GET', '/missing')
+  utest(404, lambda: outcome(RouterApp(routes, conceal_from='none'), 'GET', '/missing')[0])
+  utest_exc(TypeError, RouterApp, router, conceal_from='anonymous')
+  utest_exc(ValueError, Router, routes, conceal_from='everyone')
+
+  def allowed(dispatcher:Router, method:str, path:str, privileges:Privileges) -> tuple[int,str|None]:
+    request = Request(method=method, scheme='http', host='localhost', port=80, raw_path=path, query_str='', headers={},
+      client_addr=('127.0.0.1', 0), content_length=None, privileges=privileges)
+    try: _authorized_handler(dispatcher, request)
+    except ResponseError as exc:
+      allow = (exc.headers or {}).get('allow')
+      return (exc.status.value, None if allow is None else str(allow))
+    return (200, None)
+
+  # Concealing from unprivileged callers shows each authenticated caller only the methods that it may use.
+  member = frozenset({'authenticated'})
+  writer = reader | {'write'}
+  strict = Router(routes, conceal_from='unprivileged')
+  utest(hidden, outcome, strict, 'GET', '/missing') # Anonymous callers are treated as with the default.
+  utest(hidden, outcome, strict, 'GET', '/private')
+  utest(hidden, outcome, strict, 'PUT', '/mixed')
+  utest((200, ''), outcome, strict, 'GET', '/mixed')
+  utest((404, None), allowed, strict, 'GET', '/missing', member)
+  utest((404, None), allowed, strict, 'GET', '/private', member) # Indistinguishable from the missing route.
+  utest((404, None), allowed, strict, 'PUT', '/private', member)
+  utest((404, None), allowed, strict, 'GET', '/daily/2026-02-28', member)
+  utest((405, 'GET, HEAD'), allowed, strict, 'POST', '/mixed', member) # The Allow header omits the restricted POST.
+  utest((405, 'GET, HEAD'), allowed, strict, 'PUT', '/mixed', member) # Indistinguishable from the restricted method.
+  utest((200, None), allowed, strict, 'GET', '/private', reader)
+  utest((405, 'GET, HEAD'), allowed, strict, 'PUT', '/private', reader)
+  utest((405, 'GET, HEAD'), allowed, strict, 'POST', '/mixed', reader)
+  utest((200, None), allowed, strict, 'POST', '/mixed', writer)
+  utest((405, 'GET, HEAD, POST'), allowed, strict, 'PUT', '/mixed', writer)
+  utest((404, None), allowed, Router({'/open': Open}, conceal_from='unprivileged'), 'GET', '/missing', frozenset())
+  #^ Nothing to conceal.
+  utest((405, 'GET, HEAD, POST'), allowed, Router(routes), 'PUT', '/mixed', member) # The default reveals POST.
+  utest((403, None), allowed, Router(routes), 'GET', '/private', member)
 
 
 @utest_run

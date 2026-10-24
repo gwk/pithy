@@ -73,6 +73,9 @@ Decorators only attach metadata; direct function calls do not enforce access. Se
 The Starlette adapter in `pithy.web.starlette` translates the same declarations into Starlette `requires` scopes.
 
 `Router` and `RouterApp` accept `default_public=True` for applications that permit undeclared routes; explicit restrictions still apply.
+By default the Router conceals restricted routes from anonymous callers: unknown paths and unaccepted methods of routes with any restricted method get the same 401 as restricted routes and methods.
+Pass `conceal_from='unprivileged'` to also hide from authenticated callers the routes and methods that their privileges do not permit; choose this when anyone can create an account. Pass `conceal_from='none'` to report 404 and 405 to everyone.
+Route concealment does not cover record-level checks: a handler that refuses access to a particular record should answer as it would for a missing one, e.g. with 404.
 For a simple WebApp, decorate `handle_request`; its declaration is validated and snapshotted when the subclass is defined.
 The default `resolve_destination` returns an `AppDestination` for the app itself. RouterApp overrides that hook to return a resolved route.
 Both participate in the same server authorization step. A custom resolver must return a `Destination` with explicit requirements and defer handler construction to `get_handler`.

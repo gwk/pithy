@@ -78,6 +78,7 @@ def _() -> None:
   utest(42, match_comp, '{id:int}', '42')
   utest(-1, match_comp, '{id:int}', '-1')
   utest(None, match_comp, '{id:int}', 'abc')
+  utest(None, match_comp, '{id:int}', '9' * 5000) # Beyond the integer string conversion limit; a nonmatch, not an error.
 
   # hex.
   utest('0123456789ABCDEFabcdef', match_comp, '{h:hex}', '0123456789ABCDEFabcdef')
@@ -86,6 +87,7 @@ def _() -> None:
   # date.
   utest(date(2024, 1, 15), match_comp, '{d:date}', '2024-01-15')
   utest(None, match_comp, '{d:date}', 'not-a-date')
+  utest(None, match_comp, '{d:date}', '2024-02-30') # Well formed but not a date; a nonmatch, not an error.
 
   # str.
   utest('hello', match_comp, '{s}', 'hello')
@@ -185,6 +187,7 @@ def _() -> None:
 
   utest(('event', {'d': date(2025, 3, 14)}), get, tree, '/events/2025-03-14')
   utest(None, get, tree, '/events/not-a-date')
+  utest(None, get, tree, '/events/2025-02-30')
 
 
 @utest_run

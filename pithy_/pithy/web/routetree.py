@@ -85,7 +85,8 @@ class RouteComponentPattern:
     '''
     Attempt to match this pattern against the given path component string.
     If the match is successful, return the value of the path component converted to the appropriate type.
-    If the match fails, return None.
+    If the match fails, return None. A component that has the right shape but no valid value, e.g. an impossible date,
+    is also a nonmatch, so that it is indistinguishable from an unknown path.
     '''
 
     if self.kind == 'path': # 'path' matches the remainder of the path.
@@ -101,7 +102,10 @@ class RouteComponentPattern:
       text = text.removesuffix(self.suffix)
 
     if self.pattern.fullmatch(text):
-      return self.ctor(text)
+      try: return self.ctor(text)
+      except ValueError: return None
+      #^ The converters raise ValueError only for unacceptable input, e.g. a date with day 30 in February
+      #  or an integer beyond the digit limit. Letting it escape would answer 500 and reveal the route pattern.
 
     return None
 

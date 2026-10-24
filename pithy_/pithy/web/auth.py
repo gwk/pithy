@@ -82,8 +82,16 @@ def check_access(privileges:Privileges, required:Privileges) -> None:
   The effective privileges must already be validated; the server does so with `validate_privileges` after authentication.
   '''
   if required <= privileges: return
-  if 'authenticated' not in privileges: raise UnauthorizedError('Authentication required.')
+  if 'authenticated' not in privileges: raise authentication_required_error()
   raise ForbiddenError('Insufficient privileges.')
+
+
+def authentication_required_error() -> UnauthorizedError:
+  '''
+  Return the 401 error for an anonymous caller that may not see a route.
+  The Router raises the same error for routes that it hides from anonymous callers, so the two must stay identical.
+  '''
+  return UnauthorizedError('Authentication required.')
 
 
 def validate_privileges(privileges:Privileges) -> None:

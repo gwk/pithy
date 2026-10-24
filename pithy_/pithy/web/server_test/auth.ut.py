@@ -160,7 +160,8 @@ def test_lifecycle() -> None:
     utest(401, lambda: get('/open', authorization='Bearer bogus')[0])
     for path in ('/open', '/private', '/missing'):
       utest(500, lambda: get(path, authorization='Bearer broken')[0])
-    utest(404, lambda: get('/missing')[0])
+    utest(401, lambda: get('/missing')[0]) # Anonymous callers cannot tell missing routes from restricted ones.
+    utest(404, lambda: get('/missing', authorization='Bearer reader')[0])
     # check_request precedes authenticate: a valid credential does not rescue a cross-origin request, even to a public route.
     utest(421, lambda: get('/open', authorization='Bearer reader', host='evil.example')[0])
     utest(403, lambda: get('/open', origin='https://evil.example')[0])
@@ -181,6 +182,7 @@ def test_lifecycle() -> None:
 
     # The server adds the app's challenge to a 401 that lacks one, and keeps a challenge set by the app.
     utest((401, 'Bearer realm="test"'), status_and_challenge, 'GET', '/private')
+    utest((401, 'Bearer realm="test"'), status_and_challenge, 'GET', '/missing') # Concealed: identical to /private.
     utest((401, 'Bearer error="invalid_token"'), status_and_challenge, 'GET', '/open', authorization='Bearer bogus')
     utest((403, None), status_and_challenge, 'POST', '/private', authorization='Bearer reader') # Not a 401.
     # Authorization precedes the body: a refused POST is answered before the body is read, so the connection closes.
