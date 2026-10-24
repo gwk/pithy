@@ -40,6 +40,7 @@ class WebApp(RequestHandler):
   Normal responses, rejections from step 6 and responses produced by `error_response` pass through `finish_response`.
   Protocol rejections before Request construction bypass the application entirely.
   An unhandled exception elsewhere, including from `finish_response`, produces a bare 500 without consulting the app again.
+  Likewise, a body read that raises ClientProtocolError produces a bare response with its status, such as 400 or 408.
   '''
 
   # Snapshotted from handle_request when the subclass is defined.

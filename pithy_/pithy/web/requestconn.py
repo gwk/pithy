@@ -1,5 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from http import HTTPStatus
 from typing import Iterator
 
 
@@ -20,6 +21,20 @@ class BodyTooLargeError(Exception):
     super().__init__(f'{length=}; {max_bytes=}.')
     self.length = length
     self.max_bytes = max_bytes
+
+
+class ClientProtocolError(Exception):
+  '''
+  Raised by body reads when the client fails to deliver a well-formed request: malformed framing, a premature close,
+  or a read timeout. The server logs the failure when it is detected, and closes the connection after the response.
+
+  The message is fixed and never contains received bytes, so the exception is safe to log or render.
+  `status` is the response status that the server sends if it still can, such as 400, 408 or 431.
+  '''
+
+  def __init__(self, status:HTTPStatus) -> None:
+    super().__init__(f'{status.value} {status.phrase}.')
+    self.status = status
 
 
 
@@ -43,6 +58,7 @@ class RequestConn:
     '''
     Read the request body.
     If the body is more than `max_bytes`, the server should close the connection and return an error response.
+    Raises ClientProtocolError if the client fails to deliver the body; handlers rarely need to catch it.
     '''
     raise NotImplementedError
 

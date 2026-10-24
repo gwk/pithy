@@ -16,13 +16,17 @@ class TestSocket:
   Feed raw HTTP through h11 without opening a network socket.
 
   Successive `recv` calls return the chunks in order, splitting any chunk larger than the requested size.
-  Empty chunks are ignored. Once the chunks are exhausted, `recv` returns EOF.
-  Send number `fail_send` (counting from 1) raises BrokenPipeError.
+  Empty chunks are ignored. Once the chunks are exhausted, `recv` returns EOF,
+  or raises TimeoutError if `timeout` is set, or ConnectionResetError if `reset` is set.
+  Sent bytes accumulate in `sent`; send number `fail_send` (counting from 1) raises BrokenPipeError instead.
   '''
 
-  def __init__(self, *chunks:bytes, fail_send:int=0) -> None:
+  def __init__(self, *chunks:bytes, fail_send:int=0, timeout:bool=False, reset:bool=False) -> None:
     self.chunks = [chunk for chunk in chunks if chunk]
     self.fail_send = fail_send
+    self.timeout = timeout
+    self.reset = reset
+    self.sent = bytearray()
     self.sends = 0
 
   def settimeout(self, timeout:float) -> None: pass
@@ -30,7 +34,10 @@ class TestSocket:
   def close(self) -> None: pass
 
   def recv(self, size:int) -> bytes:
-    if not self.chunks: return b''
+    if not self.chunks:
+      if self.timeout: raise TimeoutError('Timed out.')
+      if self.reset: raise ConnectionResetError('Connection reset by peer.')
+      return b''
     chunk = self.chunks[0]
     if len(chunk) > size: self.chunks[0] = chunk[size:]
     else: del self.chunks[0]
@@ -39,6 +46,7 @@ class TestSocket:
   def sendall(self, data:bytes) -> None:
     self.sends += 1
     if self.sends == self.fail_send: raise BrokenPipeError('Client disconnected.')
+    self.sent.extend(data)
 
 
 def handle_connection(app:WebApp, socket:TestSocket, *, log_access:bool) -> None:

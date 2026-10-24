@@ -2,6 +2,7 @@
 
 from contextlib import redirect_stdout
 from gc import disable, enable, isenabled
+from http import HTTPStatus
 from io import StringIO
 from typing import Any
 from unittest.mock import patch
@@ -19,8 +20,10 @@ from utest import utest_run, utest_val
 
 class LifetimeApp(WebApp):
 
-  def __init__(self, read_body:bool=False) -> None:
+  def __init__(self, read_body:bool=False, catch_read_error:bool=False) -> None:
     self.read_body = read_body
+    self.catch_read_error = catch_read_error
+    self.reading_body = False
     self.requests:list[ReferenceType[Request]] = []
     self.readers:list[RequestConn] = []
 
@@ -35,21 +38,27 @@ class LifetimeApp(WebApp):
     self.requests.append(ref(request))
     assert request.conn is not None
     self.readers.append(request.conn) # Retaining a body reader must not keep its request alive.
-    if self.read_body: request.read_body(max_bytes=64)
+    if self.read_body:
+      self.reading_body = True
+      try: request.read_body(max_bytes=64)
+      except Exception:
+        if not self.catch_read_error: raise
+        return Response(HTTPStatus.BAD_REQUEST, body='Body read failed.')
+      finally: self.reading_body = False
     return Response(body='ok')
 
 
 
 class LifetimeSocket(TestSocket):
-  'Check that every completed request has been released before each socket read and before closing.'
+  'Check that every completed request has been released before each socket read outside of body reads, and before closing.'
 
-  def __init__(self, app:LifetimeApp, *chunks:bytes) -> None:
-    super().__init__(*chunks)
+  def __init__(self, app:LifetimeApp, *chunks:bytes, fail_send:int=0, timeout:bool=False) -> None:
+    super().__init__(*chunks, fail_send=fail_send, timeout=timeout)
     self.app = app
     self.closes = 0
 
   def recv(self, size:int) -> bytes:
-    self.app.check_released('recv')
+    if not self.app.reading_body: self.app.check_released('recv') # The current request is alive while its handler reads.
     return super().recv(size)
 
   def close(self) -> None:
@@ -90,16 +99,21 @@ def test_request_lifetime_access_log_failure() -> None:
 
 
 @utest_run
-def test_request_lifetime_malformed_body() -> None:
-  'Release the request before connection closure when reading a malformed body raises a protocol error.'
-  app = LifetimeApp(read_body=True)
-  socket = LifetimeSocket(app, b'POST / HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\nzz\r\n')
-  gc_was_enabled = isenabled()
-  disable() # Release must not depend on the cycle collector.
-  try:
-    with redirect_stdout(StringIO()):
-      handle_connection(app, socket, log_access=True)
-  finally:
-    if gc_was_enabled: enable()
-  utest_val(1, len(app.requests))
-  utest_val(1, socket.closes)
+def test_request_lifetime_failed_body_read() -> None:
+  'Release the request before connection closure when reading the body fails, whether or not the handler catches the error.'
+  malformed = b'POST / HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\nzz\r\n'
+  incomplete = b'POST / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 4\r\n\r\nbo'
+  for data, timeout in [(malformed, False), (incomplete, False), (incomplete, True)]:
+    for catch_read_error in (False, True):
+      for fail_send in (0, 1):
+        app = LifetimeApp(read_body=True, catch_read_error=catch_read_error)
+        socket = LifetimeSocket(app, data, fail_send=fail_send, timeout=timeout)
+        gc_was_enabled = isenabled()
+        disable() # Release must not depend on the cycle collector.
+        try:
+          with redirect_stdout(StringIO()):
+            handle_connection(app, socket, log_access=True)
+        finally:
+          if gc_was_enabled: enable()
+        utest_val(1, len(app.requests))
+        utest_val(1, socket.closes)

@@ -12,15 +12,14 @@ from socket import AF_INET, SHUT_WR, SO_REUSEADDR, SOCK_STREAM, socket as Socket
 from threading import Event, Lock, Thread
 from time import monotonic
 from traceback import clear_frames
-from typing import cast
+from typing import cast, Literal
 from urllib.parse import urlsplit as url_split
 
 from h11 import (Connection as h11_Connection, ConnectionClosed as h11_ConnectionClosed, Data as h11_Data, DONE as h11_DONE,
   EndOfMessage as h11_EndOfMessage, Event as h11_Event, IDLE as h11_IDLE, InformationalResponse as h11_InformationalResponse,
-  NEED_DATA as h11_NEED_DATA, PAUSED as h11_PAUSED, ProtocolError as h11_ProtocolError,
-  RemoteProtocolError as h11_RemoteProtocolError, Request as h11_Request, Response as h11_Response, SEND_BODY as h11_SEND_BODY,
-  SEND_RESPONSE as h11_SEND_RESPONSE, SERVER as h11_SERVER)
-from pithy.logs import logE, logI
+  NEED_DATA as h11_NEED_DATA, PAUSED as h11_PAUSED, RemoteProtocolError as h11_RemoteProtocolError, Request as h11_Request,
+  Response as h11_Response, SEND_BODY as h11_SEND_BODY, SEND_RESPONSE as h11_SEND_RESPONSE, SERVER as h11_SERVER)
+from pithy.logs import log, logE, logI, LogLevel
 
 from ..http import http_method_bytes_to_strs, may_send_body
 from .app import WebApp
@@ -29,7 +28,7 @@ from .env import web_host, web_port
 from .errorrender import render_error_text
 from .errors import ResponseError
 from .request import AddrPair, Request, RequestConn
-from .requestconn import BodyAlreadyReadError, BodyTooLargeError
+from .requestconn import BodyAlreadyReadError, BodyTooLargeError, ClientProtocolError
 from .response import close_response_body, Response
 
 
@@ -38,6 +37,10 @@ _context_keywords_ = ['access logging', 'connection draining', 'h11', 'http 1.1'
 
 
 BAD_REQUEST = HTTPStatus.BAD_REQUEST
+
+
+type _ConnStage = Literal['request_headers', 'request_body', 'request_completion', 'drain_body']
+'The most recent read stage of a connection, recorded in protocol failure logs.'
 
 
 class HttpStateError(Exception):
@@ -56,28 +59,49 @@ class _Conn():
   socket:Socket
   h11_conn:h11_Connection
   recv_size:int
-  error:h11_ProtocolError|TimeoutError|None = None # Set when an error occurs.
-  response_status:int = 500 # Updated once response headers have been sent.
+  started:float = field(default_factory=monotonic)
+  received_bytes:int = 0
+  'Connection-wide bytes received from the socket, including pipelined requests.'
+  pending_request:bool = False
+  stage:_ConnStage = 'request_headers'
+  response_sent:bool = False
+  method:str = ''
+  http_version:str = ''
+  error:ClientProtocolError|None = None
+  '''
+  The first receive failure of the connection, set and logged when a read times out or h11 rejects received data.
+  Once set, the connection is closed after the current cycle. An idle keep-alive timeout is not a failure.
+  h11 exceptions are replaced because their messages embed received bytes; the replacement is constructed outside of
+  the handling block so that it carries no reference to the original.
+  Body and completion reads raise it, so its traceback can refer to the frames that hold the request;
+  the traceback is cleared at the end of each cycle.
+  '''
+  response_status:int|None = None # Set once final response headers have been sent.
 
 
   def handle_need_data(self) -> bool:
     '''
     Handle a h11_NEED_DATA event by receiving data from the socket and feeding it to h11.
-    Returns True on success.
-    If an error occurs, `self.error` is set and False is returned.
+    Returns True on success, and False on an idle timeout or a failure; a failure also sets and logs `self.error`.
     '''
     try:
       data = self.socket.recv(self.recv_size)
+      self.received_bytes += len(data)
+      self.pending_request |= bool(data)
       self.h11_conn.receive_data(data)
       return True
-    except (TimeoutError, h11_RemoteProtocolError) as e:
-      self.error = e
-      return False
+    except TimeoutError:
+      if not self.pending_request: return False # Ordinary idle connection.
+      status = HTTPStatus.REQUEST_TIMEOUT
+    except h11_RemoteProtocolError as exc:
+      status = _status_for_h11_error(exc)
+    self.fail(ClientProtocolError(status))
+    return False
 
 
   def next_event(self) -> h11_Event|type[h11_NEED_DATA]|type[h11_PAUSED]:
     '''
-    Returns the next h11 event, clearing the traceback frames of a protocol error before it propagates.
+    Returns the next h11 event. A protocol error is replaced by a logged ClientProtocolError.
 
     h11 converts a parsing error to RemoteProtocolError by re-raising it from a frame that refers to the exception.
     That reference cycle keeps every frame of the eventual traceback alive until garbage collection,
@@ -86,69 +110,76 @@ class _Conn():
     try: return self.h11_conn.next_event()
     except h11_RemoteProtocolError as exc:
       clear_frames(exc.__traceback__) # Clear frames to break the cycle; the executing frame is skipped and line info remains.
-      raise
+      status = _status_for_h11_error(exc)
+    raise self.fail(ClientProtocolError(status))
 
 
   def next_request(self) -> h11_Request|None:
     '''
-    Returns the next Request.
-    If an error occurs, `self.error` is set and None is returned.
+    Returns the next Request, or None when the client closed the connection or an idle keep-alive timeout elapsed.
+    A read failure also returns None and sets `self.error`; malformed request headers raise ClientProtocolError.
     '''
+    self.stage = 'request_headers'
     assert self.h11_conn.our_state is h11_IDLE
     while True:
       event = self.next_event()
       if event is h11_NEED_DATA:
         if self.handle_need_data(): continue
-        return None # Error set.
-      if isinstance(event, h11_ConnectionClosed): return None # No error set.
+        return None # Idle timeout or failure.
+      if isinstance(event, h11_ConnectionClosed): return None
       if isinstance(event, h11_Request): return event
-      else: raise HttpStateError(f'next_request expected Request event; received: {event!r}.')
+      else: raise HttpStateError(f'next_request expected Request event; received: {type(event).__name__}.')
 
 
   def next_data(self) -> h11_Data|None:
     '''
     Returns the next Data event, or None if the end of the body is reached.
-    If an error occurs, `self.error` is set and None is returned.
+    Raises ClientProtocolError for a read failure; partial bodies must not be treated as complete.
     '''
+    if self.stage != 'drain_body': self.stage = 'request_body'
     assert self.h11_conn.their_state is h11_SEND_BODY
     while True:
       event = self.next_event()
       if event is h11_NEED_DATA:
         if self.handle_need_data(): continue
-        return None # Error set.
+        assert self.error is not None
+        raise self.error
       if isinstance(event, h11_Data):
         assert event.data
         return event
       if isinstance(event, h11_EndOfMessage): return None # End of body reached; no error set.
-      else: raise HttpStateError(f'next_data expected Data event; received: {event!r}.')
+      else: raise HttpStateError(f'next_data expected Data event; received: {type(event).__name__}.')
 
 
   def next_completion(self) -> h11_EndOfMessage|None:
     '''
     Returns the EndOfMessage event indicating the end of the request/response cycle.
-    If an error occurs, `self.error` is set and None is returned.
+    Raises ClientProtocolError for a read failure.
     '''
+    self.stage = 'request_completion'
     assert self.h11_conn.our_state in (h11_SEND_RESPONSE, h11_SEND_BODY)
     while True:
       event = self.next_event()
       if event is h11_NEED_DATA:
         if self.handle_need_data(): continue
-        return None # Error set.
+        assert self.error is not None
+        raise self.error
       if isinstance(event, h11_EndOfMessage): return event
-      else: raise HttpStateError(f'next_completion expected EndOfMessage event; received: {event!r}.')
+      else: raise HttpStateError(f'next_completion expected EndOfMessage event; received: {type(event).__name__}.')
 
 
   def drain_unread_body(self, max_bytes:int) -> bool:
     '''
     Read and discard the unread remainder of the request body, up to `max_bytes`.
-    Returns True if the body was fully consumed, False if the limit was reached or an error occurred.
+    Returns True if the body was fully consumed, False if the limit was reached. Raises ClientProtocolError for a read failure.
     See WebServer._close_connection for why this is necessary.
     '''
     assert self.h11_conn.their_state is h11_SEND_BODY
+    self.stage = 'drain_body'
     count = 0
     while count <= max_bytes:
       event = self.next_data()
-      if event is None: return self.error is None # End of body, or error.
+      if event is None: return True
       count += len(event.data)
     return False # The client is sending more than we are willing to read.
 
@@ -158,16 +189,46 @@ class _Conn():
     Recycle the connection for the next request/response cycle if possible.
     If True is returned, then the connection is ready for the next request/response cycle.
     If False is returned, then the connection must be closed.
-    If an error occurred, logs the error, clear it, and return False.
+    If a failure occurred, then False is returned.
     '''
-    if self.error:
-      logE('Connection error.', error=self.error, client_addr=self.client_addr)
-      self.error = None
-      return False
+    if self.error is not None: return False
     if self.h11_conn.our_state is h11_DONE and self.h11_conn.their_state is h11_DONE:
       self.h11_conn.start_next_cycle()
+      self.response_status = None
+      self.response_sent = False
+      self.method = self.http_version = ''
+      self.pending_request = bool(self.h11_conn.trailing_data[0])
       return True
     return False
+
+
+  def fail(self, error:ClientProtocolError) -> ClientProtocolError:
+    '''
+    Record the first failure of the connection as `self.error` and log it; later failures are not logged again.
+    Returns `error` for the caller to raise.
+
+    Failures are logged where they are detected, so the record stays accurate even if the application swallows the error.
+    The record holds protocol facts only, never request bytes. Duration and received bytes cover the entire connection.
+    Stage, response facts and sanitized request fields describe the current keep-alive cycle. Response sent means at least
+    one complete header block was sent, including informational responses; response_status is null until final response
+    headers are sent. Targets and headers are deliberately omitted. Only recognized methods and HTTP versions are included.
+
+    A drain failure after the final response is logged at info level. Clients commonly stop uploading after an early
+    rejection such as a 413, and the failure then only affects connection teardown.
+    '''
+    if self.error is not None: return error
+    self.error = error
+    level:LogLevel = 'info' if self.stage == 'drain_body' and self.response_status is not None else 'error'
+    log(level, 'protocol_failure', status=error.status.value, stage=self.stage, client_addr=self.client_addr,
+      elapsed=round(monotonic() - self.started, 3), received_bytes=self.received_bytes, response_sent=self.response_sent,
+      response_status=self.response_status, method=self.method, http_version=self.http_version)
+    return error
+
+
+def _status_for_h11_error(exc:h11_RemoteProtocolError) -> HTTPStatus:
+  'The response status that h11 suggests for a rejected request, defaulting to 400 for codes that HTTPStatus lacks.'
+  try: return HTTPStatus(exc.error_status_hint)
+  except ValueError: return HTTPStatus.BAD_REQUEST
 
 
 class WebServerRequestConn(RequestConn):
@@ -232,7 +293,7 @@ class ServerConfig:
     Access fields are c (client), u (uid from request.ctx, default 0), m (method), p (path), q (raw query), s (status), and d (duration).
     Duration is in seconds, from receipt of request headers through response sending, excluding connection cleanup.
     Status is the sent response status, or 500 if no response headers were sent; it does not guarantee body delivery.
-    Malformed input rejected by h11 before a request event is produced is only covered by connection error logging.
+    Client protocol failures and incomplete-request timeouts produce separate protocol_failure records, even when disabled.
   startup_message: an optional info message logged immediately after the serving URL.
   prevent_client_caching: whether to prevent clients from caching responses.
   thread_name_prefix: the prefix for thread names of worker threads.
@@ -380,10 +441,11 @@ class WebServer:
 
     try:
       while event := conn.next_request():
-        conn.response_status = 500
-        method = http_method_bytes_to_strs.get(event.method, '')
+        method = conn.method = http_method_bytes_to_strs.get(event.method, '')
+        conn.http_version = event.http_version.decode('ascii') if event.http_version in (b'1.0', b'1.1') else ''
         self._handle_connection_cycle(conn, event, method)
         if not conn.recycle(): break
+    except ClientProtocolError: pass # Logged when detected; the connection is closed below.
     except Exception as exc:
       logE('Connection handling error.', exc=exc, client_addr=client_addr)
     finally:
@@ -408,7 +470,11 @@ class WebServer:
       finally:
         close_response_body(body)
     finally:
-      if self.config.log_access: self._log_access(conn, event, start_time, request)
+      try:
+        if self.config.log_access: self._log_access(conn, event, start_time, request)
+      finally:
+        if conn.error is not None: conn.error.__traceback__ = None
+        #^ Release the frames of this cycle, including those of the original socket read, which refer to the request.
 
 
   def _log_access(self, conn:_Conn, event:h11_Request, start_time:float, request:Request|None) -> None:
@@ -425,7 +491,8 @@ class WebServer:
       client_addr = request.client_addr
       uid = request.ctx.get('uid', 0)
     logI('access', c=client_addr[0] if client_addr else '-', u=uid,
-      m=event.method.decode('ascii', errors='replace'), p=path, q=query, s=conn.response_status, d=dur)
+      m=event.method.decode('ascii', errors='replace'), p=path, q=query,
+      s=conn.response_status if conn.response_status is not None else 500, d=dur)
 
 
   def _close_connection(self, conn:_Conn) -> None:
@@ -444,7 +511,8 @@ class WebServer:
     '''
     socket = conn.socket
     try:
-      if conn.h11_conn.their_state is h11_SEND_BODY: # The body was not fully read, so unread data may be buffered.
+      # An incompletely read body may leave unread data buffered. Only attempt draining if no failure has been recorded.
+      if conn.error is None and conn.h11_conn.their_state is h11_SEND_BODY:
         try: socket.shutdown(SHUT_WR)
         except OSError as exc:
           if exc.errno == ENOTCONN: return # The client disconnected; there is nothing left to drain.
@@ -452,7 +520,9 @@ class WebServer:
         socket.settimeout(self.config.drain_timeout)
         if not conn.drain_unread_body(max_bytes=self.config.drain_max_bytes):
           logI('Unread request body was not drained; closing connection abruptly.', client_addr=conn.client_addr)
-    except Exception as exc: # Best effort: the response has already been sent, so there is nothing left to do but close.
+    except ClientProtocolError: pass # Logged when detected.
+    except Exception as exc:
+      # Cleanup is best effort: request processing has ended, and a socket error here means the client left early.
       logI('Connection close error.', exc=exc, client_addr=conn.client_addr)
     finally:
       try: socket.close()
@@ -473,8 +543,7 @@ class WebServer:
 
     try: path, query = _split_target(event.target)
     except (UnicodeDecodeError, ValueError):
-      return Response(BAD_REQUEST, body=f'Bad target/path: {event.target.decode("ascii", errors="replace")!r}.'
-        ).set_connection_close()
+      return Response(BAD_REQUEST, body='Invalid request target.').set_connection_close()
 
     headers = self._headers_dict(event.headers)
 
@@ -503,7 +572,7 @@ class WebServer:
     content_length = request.content_length
     app = self.app
     response:Response|None = None
-    try: # Outer: 500 server error; unhandled application error, including a failing app hook.
+    try: # Outer: bare responses for body read failures and unhandled application errors, including a failing app hook.
       try: # Inner: ResponseError, BodyTooLargeError, NotImplementedError.
         app.check_request(request)
         request.privileges = app.authenticate(request)
@@ -516,6 +585,7 @@ class WebServer:
           expect_response = handler.handle_expect_100_continue(request)
           if expect_response.status == HTTPStatus.CONTINUE:
             self._send_informational_response(conn.h11_conn, conn.socket, expect_response)
+            conn.response_sent = True
           else:
             response = expect_response # Reject before the body is sent; the unread body forces a connection close below.
 
@@ -540,18 +610,23 @@ class WebServer:
       finally:
         if response.body is not original_body: close_response_body(original_body)
         #^ Covers a replaced body whether the hook returned a new response, mutated the input, or raised after mutating.
-    except Exception as exc:
-      logE('Unhandled application exception.', exc=exc, client_addr=conn.client_addr, method=method, path=request.raw_path)
+    except ClientProtocolError as exc:
       if response is not None: close_response_body(response.body)
-      response = self._internal_server_error_response(method=method).set_connection_close()
+      if conn.h11_conn.trailing_data[1]: raise # The client closed its end and has most likely gone; there is no one to answer.
+      response = self._bare_response(exc.status, method=method).set_connection_close()
+    except Exception as exc:
+      if response is not None: close_response_body(response.body)
+      logE('Unhandled application exception.', exc=exc, client_addr=conn.client_addr, method=method, path=request.raw_path)
+      response = self._bare_response(HTTPStatus.INTERNAL_SERVER_ERROR, method=method).set_connection_close()
 
     # Empty requests have a pending EndOfMessage even when the handler has no reason to read a body.
     # Consume it after dispatch rather than before: next_data asserts SEND_BODY, so consuming earlier would break
     # a handler that explicitly reads the empty body.
     if conn.h11_conn.their_state is h11_SEND_BODY and 'transfer-encoding' not in headers and content_length in (None, 0):
+      conn.stage = 'request_completion'
       completion = conn.next_event() # Empty framing guarantees completion without a socket read.
       if not isinstance(completion, h11_EndOfMessage):
-        raise HttpStateError(f'Expected EndOfMessage for empty request; received: {completion!r}.')
+        raise HttpStateError(f'Expected EndOfMessage for empty request; received: {type(completion).__name__}.')
 
     # An unconsumed EndOfMessage prevents reuse, including when application dispatch raises ResponseError.
     if conn.h11_conn.their_state is h11_SEND_BODY: response.set_connection_close()
@@ -565,6 +640,7 @@ class WebServer:
     rather than its status.
     '''
     try: response = self.app.error_response(request, error)
+    except ClientProtocolError: raise
     except Exception as exc:
       logE('error_response hook failed; deferring.', exc=exc, client_addr=conn.client_addr, method=request.method,
         path=request.raw_path)
@@ -572,10 +648,10 @@ class WebServer:
     return response if response is not None else render_error_text(request, error)
 
 
-  def _internal_server_error_response(self, *, method:str) -> Response:
-    'Return a simple 500 response.'
-    body = 'Internal Server Error' if may_send_body(method, HTTPStatus.INTERNAL_SERVER_ERROR) else None
-    return Response(HTTPStatus.INTERNAL_SERVER_ERROR, body=body, media_type='text/plain')
+  def _bare_response(self, status:HTTPStatus, *, method:str) -> Response:
+    'Return a plain text response containing the standard reason phrase, without consulting the app.'
+    body = status.phrase if may_send_body(method, status) else None
+    return Response(status, body=body, media_type='text/plain')
 
 
   def _request_wants_connection_close(self, headers:dict[str,str]) -> bool:
@@ -609,6 +685,7 @@ class WebServer:
 
     socket.sendall(h11_conn.send(event))
 
+    conn.response_sent = True
     conn.response_status = int(response.status)
 
     if may_send_body(method, response.status):
