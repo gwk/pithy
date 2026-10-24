@@ -109,12 +109,16 @@ def adjust_log_level(level:LogLevel) -> Iterator[None]:
     logging_level = prev
 
 
-def log(level:str, _:str, **kwargs:Any) -> None:
+def log(level:LogLevel, _:str, **kwargs:Any) -> None:
   '''
-  Log a message at the given level with optional key-value pairs.
+  Log a message at the given level with optional key-value pairs, respecting the current logging level like logE and friends.
+  An invalid level is reported at error level and the message is then emitted at error level.
   '''
-  if level not in log_levels: print(render_log_fn('info', f'Invalid log level: {level}.'))
-  print(render_log_fn(level, _, **kwargs), flush=True)
+  try: num = _log_level_indexes[level]
+  except KeyError:
+    _log('error', f'Invalid log level: {level!r}.')
+    level, num = 'error', _ll_error
+  if num <= logging_level: _log(level, _, **kwargs)
 
 
 def _log(level:str, _:str, **kwargs:Any) -> None:
