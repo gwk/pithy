@@ -331,7 +331,8 @@ class ServerConfig:
     A worker is occupied for the whole of a request, including slow handlers and slow clients, but not between requests.
   recv_size: the maximum number of bytes to receive at once from client connections.
   log_access: whether to log each parsed HTTP request after response sending completes or fails.
-    Access fields are c (client), u (uid from request.ctx, default 0), m (method), p (path), q (raw query), s (status), and d (duration).
+    Access fields are c (client), u (uid from request.ctx, default 0), m (method), p (path), q (raw query), s (status),
+    and d (duration).
     Duration is in seconds, from receipt of request headers through response sending, excluding connection cleanup.
     Status is the sent response status; it does not guarantee body delivery.
     It is 0 if no response headers were sent, whether because the client left or because a server error aborted the cycle,
