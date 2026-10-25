@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from pithy.web.app import WebApp
-from pithy.web.auth import _access_attr, allow_public, requires_privileges
+from pithy.web.auth import _access_attr, Access, allow_public, requires_privileges
 from pithy.web.request import Request
 from pithy.web.response import Response
 from utest import utest_exc, utest_run, utest_val
@@ -18,16 +18,16 @@ def _() -> None:
   app = Restricted()
   request = Request(method='GET', scheme='http', host='localhost', port=80, raw_path='/', query_str='', headers={},
     client_addr=('127.0.0.1', 0), content_length=None)
-  setattr(Restricted.handle_request, _access_attr, frozenset())
+  setattr(Restricted.handle_request, _access_attr, Access())
   destination = app.resolve_destination(request)
-  utest_val(frozenset({'read'}), destination.required_privileges)
+  utest_val(Access(True, frozenset({'read'})), destination.required_access)
   utest_val(True, destination.get_handler(request) is app)
 
   class Public(WebApp):
     @allow_public
     def handle_request(self, request:Request) -> Response: return Response()
 
-  utest_val(frozenset(), Public().resolve_destination(request).required_privileges)
+  utest_val(Access(), Public().resolve_destination(request).required_access)
 
   def undeclared() -> None:
     class Undeclared(WebApp):

@@ -5,12 +5,12 @@ from collections.abc import Mapping
 from io import BufferedReader
 from tempfile import TemporaryDirectory
 
-from pithy.web.auth import allow_public, requires_privileges
+from pithy.web.auth import allow_public, requires_authenticated, requires_privileges
 from pithy.web.endpoint import Endpoint
 from pithy.web.request import Request as PithyRequest
 from pithy.web.response import Response as PithyResponse
 from pithy.web.starlette import _raw_path_from_scope, convert_response, endpoint_adapter, endpoint_route
-from starlette.authentication import AuthCredentials
+from starlette.authentication import AuthCredentials, SimpleUser, UnauthenticatedUser
 from starlette.exceptions import HTTPException
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import Response as StarletteResponse, StreamingResponse
@@ -93,7 +93,7 @@ class JsonEndpoint(Endpoint):
 @allow_public
 class CtxEndpoint(Endpoint):
   def get(self, request:PithyRequest, fields:None) -> PithyResponse:
-    return PithyResponse(body=f"{request.ctx.get('user')}|{request.ctx.get('session')}")
+    return PithyResponse(body=f"{request.ctx['user'].display_name}|{request.ctx.get('session')}")
 
 
 @requires_privileges('Staff')
@@ -229,7 +229,7 @@ def _() -> None:
 @utest_run
 def _() -> None:
   'Adapter: ctx is populated from the ASGI scope (user, session).'
-  resp = _run(CtxEndpoint, scope_extra={'user': 'dave', 'session': {'uid': 7}})
+  resp = _run(CtxEndpoint, scope_extra={'user': SimpleUser('dave'), 'session': {'uid': 7}})
   utest_val(b"dave|{'uid': 7}", resp.body)
 
 
@@ -258,7 +258,7 @@ def _() -> None:
 @utest_run
 def _() -> None:
   'Adapter: privileges held by the request scopes returns the endpoint response.'
-  resp = _run(PrivilegedEndpoint, scope_extra={'auth': AuthCredentials(['authenticated', 'Staff'])})
+  resp = _run(PrivilegedEndpoint, scope_extra={'user': SimpleUser('dave'), 'auth': AuthCredentials(['Staff'])})
   utest_val(200, resp.status_code)
   utest_val(b'ok', resp.body)
 
@@ -284,20 +284,20 @@ def _() -> None:
 
 @utest_run
 def _() -> None:
-  'Adapter: declarations become Starlette scopes; only privileged adapters are wrapped by `requires`.'
+  'Adapter: restricted adapters wrap access checks, and every declared scope is required.'
   class Methods(Endpoint):
     max_body_bytes = 16
-    @requires_privileges('Staff', 'authenticated')
+    @requires_privileges('Staff', 'Editor')
     def get(self, request:PithyRequest, fields:None) -> PithyResponse: return PithyResponse(body='get')
-    @requires_privileges('authenticated', 'Staff')
+    @requires_privileges('Editor', 'Staff')
     def post(self, request:PithyRequest, fields:None) -> PithyResponse: return PithyResponse(body='post')
 
   utest_val(True, hasattr(endpoint_adapter(Methods), '__wrapped__'))
   utest_val(True, hasattr(endpoint_adapter(PrivilegedEndpoint), '__wrapped__'))
   utest_val(False, hasattr(endpoint_adapter(HelloEndpoint), '__wrapped__'))
-  resp = _run(Methods, method='POST', scope_extra={'auth': AuthCredentials(['authenticated', 'Staff'])})
+  resp = _run(Methods, method='POST', scope_extra={'user': SimpleUser('dave'), 'auth': AuthCredentials(['Staff', 'Editor'])})
   utest_val(b'post', resp.body)
-  try: _run(Methods, method='POST', scope_extra={'auth': AuthCredentials(['authenticated'])})
+  try: _run(Methods, method='POST', scope_extra={'user': SimpleUser('dave'), 'auth': AuthCredentials(['Staff'])})
   except HTTPException as e: utest_val(403, e.status_code)
   else: raise AssertionError('expected HTTPException')
 
@@ -316,20 +316,61 @@ def _() -> None:
     def get(self, request:PithyRequest, fields:None) -> PithyResponse: return PithyResponse(body='get')
 
   utest_exc(TypeError(f"{Mixed.__qualname__}: a Starlette route applies one access policy to all methods; "
-    "found [[], ['Staff']]."), endpoint_adapter, Mixed)
+    "found [(False, []), (True, ['Staff'])]."), endpoint_adapter, Mixed)
   utest_exc(TypeError(f"{Undeclared.__qualname__} omits access declarations: ['GET']."), endpoint_route, '/u', Undeclared)
 
 
 @utest_run
 def _() -> None:
-  'Adapter: request.privileges holds the auth scopes; a nonempty set without authenticated is a programming error.'
+  'Adapter: user authentication is independent of scopes, including empty scopes and the former reserved name.'
   @allow_public
   class Privileges(Endpoint):
     def get(self, request:PithyRequest, fields:None) -> PithyResponse:
+      if not request.is_authenticated:
+        utest_val(frozenset(), request.privileges)
+        return PithyResponse(body='anonymous')
       return PithyResponse(body=','.join(sorted(request.privileges)))
 
-  utest_val(b'', _run(Privileges).body) # No AuthenticationMiddleware: anonymous.
-  utest_val(b'', _run(Privileges, scope_extra={'auth': AuthCredentials([])}).body)
-  utest_val(b'Staff,authenticated', _run(Privileges, scope_extra={'auth': AuthCredentials(['authenticated', 'Staff'])}).body)
-  utest_exc(ValueError('Nonempty effective privileges must contain authenticated.'),
-    _run, Privileges, scope_extra={'auth': AuthCredentials(['Staff'])})
+  utest_val(b'anonymous', _run(Privileges).body) # No AuthenticationMiddleware.
+  utest_val(b'anonymous', _run(Privileges, scope_extra={'user': UnauthenticatedUser(), 'auth': AuthCredentials([])}).body)
+  utest_val(b'anonymous', _run(Privileges, scope_extra={'auth': AuthCredentials(['authenticated', 'Staff'])}).body)
+  utest_val(b'anonymous', _run(Privileges, scope_extra={
+    'user': UnauthenticatedUser(), 'auth': AuthCredentials(['authenticated', 'Staff'])}).body)
+  for scopes in ([], ['Staff'], ['authenticated', 'Staff']):
+    utest_val(','.join(sorted(scopes)).encode(), _run(Privileges, scope_extra={
+      'user': SimpleUser('dave'), 'auth': AuthCredentials(scopes)}).body)
+  utest_val(b'', _run(Privileges, scope_extra={'user': SimpleUser('dave')}).body)
+
+
+@utest_run
+def _() -> None:
+  'Adapter: authentication without scopes admits a member; denied requests neither construct handlers nor read bodies.'
+  events:list[str] = []
+
+  @requires_authenticated
+  class Account(Endpoint):
+    max_body_bytes = 16
+    def __init__(self, request:PithyRequest, path_params:Mapping[str,object]) -> None:
+      events.append('construct')
+      super().__init__(request, path_params)
+    def post(self, request:PithyRequest, fields:None) -> PithyResponse: return PithyResponse(body='account')
+
+  async def receive() -> Message:
+    events.append('body')
+    return {'type': 'http.request', 'body': b'', 'more_body': False}
+
+  scope:Scope = {'type': 'http', 'method': 'POST', 'scheme': 'http', 'path': '/', 'query_string': b'', 'headers': [],
+    'server': ('localhost', 80), 'client': ('127.0.0.1', 1), 'path_params': {}}
+  adapted = endpoint_adapter(Account)
+  utest_val(True, hasattr(adapted, '__wrapped__'))
+  for auth_scope in ({}, {'user': UnauthenticatedUser(), 'auth': AuthCredentials(['authenticated'])}):
+    utest_exc(HTTPException(403), asyncio.run, adapted(StarletteRequest({**scope, **auth_scope}, receive)))
+    utest_val([], events)
+  scope.update(user=SimpleUser('dave'), auth=AuthCredentials([]))
+  response = asyncio.run(adapted(StarletteRequest(scope, receive)))
+  utest_val(b'account', response.body)
+  utest_val(['construct', 'body'], events)
+  utest_exc(HTTPException(403), _run, PrivilegedEndpoint, scope_extra={
+    'user': SimpleUser('dave'), 'auth': AuthCredentials([])})
+  utest_exc(HTTPException(403), _run, PrivilegedEndpoint, scope_extra={
+    'user': UnauthenticatedUser(), 'auth': AuthCredentials(['Staff'])})

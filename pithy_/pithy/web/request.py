@@ -12,6 +12,7 @@ from multipart import MultipartError, MultipartParser, parse_options_header
 
 from ..http import http_methods
 from ..json import Json, parse_json
+from .authtypes import Privileges
 from .errors import BadRequestError, decode_or_bad_request, ResponseError
 from .requestconn import AddrPair, RequestConn
 from .util import decode_path_segments
@@ -59,7 +60,8 @@ class Request:
   * content_length: Content-Length header value; None if not present or using chunked transfer encoding.
   * prevent_client_caching: whether handlers should avoid conditional or cacheable responses.
   * conn: RequestConn object for reading the request body. TODO: privatize.
-  * privileges: effective privileges from `WebApp.authenticate`; empty for anonymous requests.
+  * is_authenticated: whether the caller has authenticated, as determined by `WebApp.authenticate`.
+  * privileges: effective application privileges; empty for anonymous callers and possibly for authenticated callers.
   * ctx: an empty dictionary for applications to attach request state.
   * path_segments: canonical percent-decoded path segments, e.g. ['items', '4 2'] for raw path '/items/4%202'
     (cached property). Routing and any prefix or equality decision on the path must use these or `path`.
@@ -87,7 +89,8 @@ class Request:
   content_length:int|None
   prevent_client_caching:bool = False
   conn:RequestConn|None = None
-  privileges:frozenset[str] = frozenset() # Equivalent to `auth.Privileges`; importing auth here would be circular.
+  is_authenticated:bool = False
+  privileges:Privileges = frozenset()
   ctx:dict[str,Any] = field(default_factory=dict)
 
 

@@ -59,18 +59,19 @@ Goals:
 After constructing a Request, the server drives a fixed lifecycle; the `WebApp` docstring in `app.py` lists the steps and exceptions.
 An application overrides only the hooks it needs:
 * `check_request` checks deployment-wide constraints before authentication. `pithy.web.auth.SameOriginCheck`, constructed once from the deployment's public origin, refuses cross-site requests except top-level GET navigations, so inbound links and sign-in redirects work; exempt any path that must accept cross-site posts before calling it.
-* `authenticate` returns a `frozenset[str]` of effective privileges, stored on `request.privileges`. Empty means anonymous; every nonempty set must contain the reserved `authenticated` privilege. Invalid credentials that the client explicitly presented raise `UnauthorizedError`, but a stale session cookie should mean anonymous; malformed authentication results are programming errors. Store application user data in `request.ctx`.
+* `authenticate` returns a frozen `AuthenticationResult`, imported from `pithy.web.auth`. The server copies its `is_authenticated` and `privileges` fields to the request. Unauthenticated callers must have no privileges; authenticated callers may have none. Invalid credentials that the client explicitly presented raise `UnauthorizedError`, but a stale session cookie should return `AuthenticationResult()`; malformed authentication results are programming errors. Store application user data in `request.ctx`.
 * `www_authenticate` or `www_authenticate_for` supplies the challenge that the server adds to 401 responses without a `WWW-Authenticate` header. Page apps can instead override `error_response` to redirect a 401 to a sign-in page.
 * `error_response` shapes application error bodies; `finish_response` applies policy headers to normal responses and those errors. Protocol rejections and bare error responses bypass both hooks: a failed body read produces the status of its `ClientProtocolError`, such as 400 or 408, and an unhandled exception a 500.
 
-Declare every Endpoint method or GET function with `@allow_public` or `@requires_privileges('privilege', ...)`.
+Declare every Endpoint method or GET function with `@allow_public`, `@requires_authenticated` or `@requires_privileges('privilege', ...)`.
 To give every method of a route handler class the same policy, decorate the class instead; low-level handlers such as FilesHandler declare only this way.
-Use `@requires_privileges('authenticated')` for any authenticated caller. Privilege names match exactly; punctuation has no special meaning.
-The Router validates and snapshots declarations at registration with `pithy.web.auth.freeze_required_privileges`, which defines the rules.
+Use `@requires_authenticated` for any authenticated caller. Privilege names match exactly; no names are reserved and punctuation has no special meaning.
+The decorators declare a frozen `Access` value with `requires_authentication` and `privileges` fields.
+The Router validates and snapshots declarations at registration with `pithy.web.auth.freeze_access`, which defines the rules.
 Its `resolve_route` method returns a `ResolvedRoute` without constructing a handler.
-The server checks the resolved destination's required privileges before calling its `get_handler` method or reading a body.
+The server checks the resolved destination's `required_access` before calling its `get_handler` method or reading a body.
 Decorators only attach metadata; direct function calls do not enforce access. See `pithy.web.auth` for the contract and explicit checks.
-The Starlette adapter in `pithy.web.starlette` translates the same declarations into Starlette `requires` scopes.
+The Starlette adapter in `pithy.web.starlette` enforces the same declarations using `user.is_authenticated` and auth scopes; see its `endpoint_adapter` docstring.
 
 `Router` and `RouterApp` accept `default_public=True` for applications that permit undeclared routes; explicit restrictions still apply.
 By default the Router conceals restricted routes from anonymous callers: unknown paths and unaccepted methods of routes with any restricted method get the same 401 as restricted routes and methods.

@@ -1,8 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from dataclasses import FrozenInstanceError
+
 from pithy.web.app import WebApp
-from pithy.web.auth import (allow_public, check_access, declared_access, requires_privileges, SameOriginCheck,
-  validate_privileges)
+from pithy.web.auth import (Access, allow_public, AuthenticationResult, check_access, declare_access, declared_access,
+  has_access, requires_authenticated, requires_privileges, SameOriginCheck)
 from pithy.web.errors import ForbiddenError, ResponseError, UnauthorizedError
 from pithy.web.handler import RoutableHandler
 from pithy.web.request import Request
@@ -71,18 +73,44 @@ def _() -> None:
 
 @utest_run
 def _() -> None:
-  'Authentication results must be immutable and distinguish anonymous from authenticated without application privileges.'
-  utest(None, validate_privileges, frozenset())
-  utest(None, validate_privileges, frozenset({'authenticated'}))
-  utest_exc(TypeError, validate_privileges, {'authenticated'})
-  utest_exc(TypeError, validate_privileges, None)
-  utest_exc(TypeError, validate_privileges, frozenset({1}))
-  utest_exc(TypeError, validate_privileges, frozenset({'authenticated', ''}))
-  utest_exc(ValueError, validate_privileges, frozenset({'read'}))
-  utest(None, check_access, frozenset(), frozenset())
-  utest_exc(UnauthorizedError, check_access, frozenset(), frozenset({'authenticated'}))
-  utest(None, check_access, frozenset({'authenticated'}), frozenset({'authenticated'}))
-  utest_exc(ForbiddenError, check_access, frozenset({'authenticated'}), frozenset({'read'}))
+  'Authentication results and access requirements validate their immutable fields and reject inconsistent states.'
+  for cls, flag in ((AuthenticationResult, 'is_authenticated'), (Access, 'requires_authentication')):
+    utest_val(frozenset(), cls().privileges)
+    utest_val(False, getattr(cls(), flag))
+    utest_val(True, getattr(cls(True), flag))
+    utest_val(frozenset({'read'}), cls(True, frozenset({'read'})).privileges)
+    utest_exc(ValueError, cls, False, frozenset({'read'}))
+    for invalid_flag in (None, 0, 1, 'yes'):
+      utest_exc(TypeError, cls, invalid_flag)
+    for invalid_privileges in (None, {'read'}, frozenset({1}), frozenset({''})):
+      utest_exc(TypeError, cls, True, invalid_privileges)
+    utest_exc(FrozenInstanceError, setattr, cls(), flag, True)
+    utest_exc(FrozenInstanceError, setattr, cls(), 'privileges', frozenset({'read'}))
+
+
+@utest_run
+def _() -> None:
+  'Access checks distinguish anonymous callers, authenticated callers with no privileges, and privileged callers.'
+  authentications = (AuthenticationResult(), AuthenticationResult(True), AuthenticationResult(True, frozenset({'read'})),
+    AuthenticationResult(True, frozenset({'read', 'write'})))
+  requirements = (Access(), Access(True), Access(True, frozenset({'read'})), Access(True, frozenset({'read', 'write'})))
+  permitted = ((True, False, False, False), (True, True, False, False), (True, True, True, False), (True, True, True, True))
+  for auth, results in zip(authentications, permitted):
+    for required, allowed in zip(requirements, results):
+      utest(allowed, has_access, auth.is_authenticated, auth.privileges, required)
+      if allowed: utest(None, check_access, auth.is_authenticated, auth.privileges, required)
+      else:
+        utest_exc(ForbiddenError if auth.is_authenticated else UnauthorizedError,
+          check_access, auth.is_authenticated, auth.privileges, required)
+
+  # Privilege possession cannot substitute for authentication, even if a caller bypasses result validation.
+  utest(False, has_access, False, frozenset({'read'}), Access(True, frozenset({'read'})))
+  utest_exc(UnauthorizedError, check_access, False, frozenset({'read'}), Access(True, frozenset({'read'})))
+  # The former reserved name is now an ordinary application privilege.
+  auth = AuthenticationResult(True, frozenset({'authenticated'}))
+  required = Access(True, frozenset({'authenticated'}))
+  utest_exc(ForbiddenError, check_access, True, frozenset(), required)
+  utest(None, check_access, auth.is_authenticated, auth.privileges, required)
 
 
 @utest_run
@@ -92,7 +120,7 @@ def _() -> None:
   utest_val(None, declared_access(fn))
   utest_val(True, requires_privileges('read')(fn) is fn)
   utest(3, fn, 2) # Direct calls do not authorize.
-  utest_val(frozenset({'read'}), declared_access(fn))
+  utest_val(Access(True, frozenset({'read'})), declared_access(fn))
   utest_exc(TypeError, allow_public, fn)
   utest_exc(TypeError, requires_privileges('write'), fn)
   utest_exc(ValueError, requires_privileges)
@@ -101,8 +129,17 @@ def _() -> None:
 
   @allow_public
   def public_fn() -> None: pass
-  utest_val(frozenset(), declared_access(public_fn))
+  utest_val(Access(), declared_access(public_fn))
   utest_exc(TypeError, requires_privileges('read'), public_fn)
+
+  @requires_authenticated
+  def authenticated_fn() -> None: pass
+  utest_val(Access(True), declared_access(authenticated_fn))
+  utest_exc(TypeError, allow_public, authenticated_fn)
+  utest_exc(TypeError, requires_authenticated, authenticated_fn)
+  utest_exc(TypeError, declare_access, lambda: None, AuthenticationResult())
+  utest_exc(TypeError, declare_access, lambda: None, None)
+  utest_exc(TypeError, declare_access, lambda: None, frozenset())
 
 
 @utest_run
@@ -111,8 +148,8 @@ def _() -> None:
   @requires_privileges('read')
   class Base(RoutableHandler): pass
   class Child(Base): pass
-  utest_val(frozenset({'read'}), declared_access(Child))
-  utest_val(frozenset(), declared_access(allow_public(Child)))
+  utest_val(Access(True, frozenset({'read'})), declared_access(Child))
+  utest_val(Access(), declared_access(allow_public(Child)))
   utest_exc(TypeError, requires_privileges('write'), Base)
   utest_exc(TypeError, allow_public, Child)
 

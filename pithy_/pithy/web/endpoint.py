@@ -78,8 +78,8 @@ class Endpoint(RoutableHandler):
   where the `fields` annotation is the exact inner fields class for that method (see below), or `None` if none.
   A handler with no fields class receives `None` as its fields argument.
 
-  Declare access by decorating each handler method with `requires_privileges` or `allow_public`,
-  or decorate the class once to give every method the same policy; see `pithy.web.auth.freeze_required_privileges`.
+  Declare access by decorating each handler method with `requires_privileges`, `requires_authenticated` or `allow_public`,
+  or decorate the class once to give every method the same policy; see `pithy.web.auth.freeze_access`.
 
   # Fields
 
@@ -498,7 +498,7 @@ def get_endpoint(fn:GetHandler) -> type[Endpoint]:
   Adapt a typed function to a GET/HEAD route without declaring an Endpoint subclass or a Get fields class.
 
   Example:
-    @requires_privileges('authenticated')
+    @requires_authenticated
     def item(request:Request, item_id:int, *, detail:bool|None) -> Response: ...
     router = Router({'/item': item})
 

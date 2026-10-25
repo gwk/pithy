@@ -7,10 +7,11 @@ and an unauthorized request is refused before its body is read. 401 responses ca
 
 from socket import create_connection
 from sys import argv, executable
+from typing import cast
 
 import requests
 from pithy.web.app import AppDestination, WebApp
-from pithy.web.auth import allow_public, Privileges, requires_privileges, SameOriginCheck
+from pithy.web.auth import allow_public, AuthenticationResult, requires_authenticated, requires_privileges, SameOriginCheck
 from pithy.web.endpoint import Endpoint
 from pithy.web.errors import UnauthorizedError
 from pithy.web.request import Request
@@ -24,7 +25,13 @@ from utest.proctest import TestProcess
 class OpenEndpoint(Endpoint):
   @allow_public
   def get(self, request:Request, fields:None) -> Response:
-    return Response(body=f'open:{bool(request.privileges)}', media_type='text/plain')
+    return Response(body=f'open:{request.is_authenticated}', media_type='text/plain')
+
+
+@requires_authenticated
+class AccountEndpoint(Endpoint):
+  def get(self, request:Request, fields:None) -> Response:
+    return Response(body='account', media_type='text/plain')
 
 
 class PrivateEndpoint(Endpoint):
@@ -43,17 +50,20 @@ class LifecycleApp(RouterApp):
   www_authenticate = 'Bearer realm="test"'
 
   def __init__(self) -> None:
-    super().__init__({'/open': OpenEndpoint, '/private': PrivateEndpoint})
+    super().__init__({'/open': OpenEndpoint, '/account': AccountEndpoint, '/private': PrivateEndpoint})
 
   def check_request(self, request:Request) -> None:
     self.same_origin(request)
 
-  def authenticate(self, request:Request) -> Privileges:
+  def authenticate(self, request:Request) -> AuthenticationResult:
     credential = request.headers.get('authorization', '')
-    if not credential: return frozenset()
-    if credential == 'Bearer broken': return frozenset({'read'})
-    if credential == 'Bearer reader': return frozenset({'authenticated', 'read'})
-    if credential == 'Bearer writer': return frozenset({'authenticated', 'read', 'write'})
+    if not credential: return AuthenticationResult()
+    if credential == 'Bearer broken': return AuthenticationResult(False, frozenset({'read'}))
+    if credential == 'Bearer wrong-type': return cast(AuthenticationResult, frozenset())
+    #^ Simulate an authentication implementation that still returns the former privilege-set result.
+    if credential == 'Bearer member': return AuthenticationResult(True)
+    if credential == 'Bearer reader': return AuthenticationResult(True, frozenset({'read'}))
+    if credential == 'Bearer writer': return AuthenticationResult(True, frozenset({'read', 'write'}))
     raise UnauthorizedError('Invalid token.', headers={'www-authenticate': 'Bearer error="invalid_token"'})
 
 
@@ -75,17 +85,17 @@ class SimpleApp(WebApp):
   def check_request(self, request:Request) -> None:
     request.ctx['events'] = ['check_request']
 
-  def authenticate(self, request:Request) -> Privileges:
+  def authenticate(self, request:Request) -> AuthenticationResult:
     request.ctx['events'].append('authenticate')
     credential = request.headers.get('authorization', '')
-    if not credential: return frozenset()
-    if credential == 'Bearer reader': return frozenset({'authenticated', 'read'})
-    return frozenset({'authenticated'})
+    if not credential: return AuthenticationResult()
+    if credential == 'Bearer reader': return AuthenticationResult(True, frozenset({'read'}))
+    return AuthenticationResult(True)
 
   def resolve_destination(self, request:Request) -> AppDestination:
     request.ctx['events'].append('resolve_destination')
     destination = super().resolve_destination(request)
-    return TrackedAppDestination(required_privileges=destination.required_privileges, app=self)
+    return TrackedAppDestination(required_access=destination.required_access, app=self)
 
   def prepare_for_request(self, request:Request) -> None:
     request.ctx['events'].append('prepare_for_request')
@@ -152,6 +162,10 @@ def test_lifecycle() -> None:
 
     utest((200, 'open:False'), get, '/open')
     utest((200, 'open:True'), get, '/open', authorization='Bearer reader')
+    utest((200, 'open:True'), get, '/open', authorization='Bearer member')
+    utest(401, lambda: get('/account')[0])
+    utest((200, 'account'), get, '/account', authorization='Bearer member')
+    utest(403, lambda: get('/private', authorization='Bearer member')[0])
     utest(401, lambda: get('/private')[0])
     utest((200, 'private'), get, '/private', authorization='Bearer reader')
     # authenticate precedes routing: an invalid credential is refused even for an unknown path.
@@ -160,6 +174,7 @@ def test_lifecycle() -> None:
     utest(401, lambda: get('/open', authorization='Bearer bogus')[0])
     for path in ('/open', '/private', '/missing'):
       utest(500, lambda: get(path, authorization='Bearer broken')[0])
+      utest(500, lambda: get(path, authorization='Bearer wrong-type')[0])
     utest(401, lambda: get('/missing')[0]) # Anonymous callers cannot tell missing routes from restricted ones.
     utest(404, lambda: get('/missing', authorization='Bearer reader')[0])
     # check_request precedes authenticate: a valid credential does not rescue a cross-origin request, even to a public route.

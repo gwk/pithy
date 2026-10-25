@@ -43,7 +43,7 @@ class RoutableHandler(RequestHandler):
   It declares what the Router relies on: construction from (request, path_params),
   `_methods`, the set of accepted HTTP methods checked before dispatch, and `_access_targets`.
   Declare access by decorating the class, or the handler methods of an Endpoint;
-  see `pithy.web.auth.freeze_required_privileges`.
+  see `pithy.web.auth.freeze_access`.
   '''
 
   _methods:ClassVar[frozenset[str]] = frozenset({'GET'})

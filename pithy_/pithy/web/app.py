@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, ClassVar
 
-from .auth import declared_access, Privileges
+from .auth import Access, AuthenticationResult, declared_access
 from .destination import Destination
 from .errorrender import (bare_media_type, default_error_extension_media_types, default_error_media_type,
   default_error_renderers, error_media_type_for_path, ErrorRenderer)
@@ -23,9 +23,9 @@ class WebApp(RequestHandler):
 
   The server drives a fixed lifecycle, in this order:
   1. `check_request` refuses requests the deployment does not serve at all, e.g. from another origin.
-  2. `authenticate` identifies the requester from its credentials; the result becomes `request.privileges`.
+  2. `authenticate` identifies the requester; its result sets `request.is_authenticated` and `request.privileges`.
   3. `resolve_destination` selects a recipient and its access requirements without constructing a handler.
-  4. The server checks the authenticated privileges against the destination requirements.
+  4. The server checks authentication state and privileges against the destination requirements.
   5. The destination's `get_handler` returns or constructs the authorized handler.
   6. The handler's `handle_expect_100_continue`, when applicable, accepts or rejects the request before its body is read.
   7. If not rejected, the handler's `prepare_for_request` prepares to handle the request, e.g. by reading the body.
@@ -45,7 +45,7 @@ class WebApp(RequestHandler):
   '''
 
   # Snapshotted from handle_request when the subclass is defined.
-  _required_privileges:ClassVar[Privileges|None] = None
+  _required_access:ClassVar[Access|None] = None
 
   error_media_type:ClassVar[str] = default_error_media_type
   'The bare media type of error responses for paths without an extension, e.g. `text/html` for a page app.'
@@ -74,10 +74,10 @@ class WebApp(RequestHandler):
 
   def __init_subclass__(cls, **kwargs:Any) -> None:
     super().__init_subclass__(**kwargs)
-    cls._required_privileges = declared_access(cls.handle_request)
-    if cls.handle_request is not WebApp.handle_request and cls._required_privileges is None:
+    cls._required_access = declared_access(cls.handle_request)
+    if cls.handle_request is not WebApp.handle_request and cls._required_access is None:
       raise TypeError(f'{cls.__qualname__}.handle_request must declare access '
-        'with the allow_public or requires_privileges decorator.')
+        'with the allow_public, requires_authenticated or requires_privileges decorator.')
     media_types = {cls.error_media_type, 'text/plain', *cls.error_extension_media_types.values()}
     for media_type in sorted(media_types):
       if media_type != bare_media_type(media_type):
@@ -93,17 +93,16 @@ class WebApp(RequestHandler):
     '''
 
 
-  def authenticate(self, request:Request) -> Privileges:
+  def authenticate(self, request:Request) -> AuthenticationResult:
     '''
-    Return effective privileges without reading the body: empty for anonymous, otherwise including `authenticated`.
-    Nonempty results without `authenticated` are programming errors.
+    Return an AuthenticationResult without reading the body; authentication is independent of having privileges.
     Application user data can be stored in `request.ctx`; the server enforces destination requirements separately.
 
     Raise UnauthorizedError for invalid credentials that the client explicitly presented, such as a bad bearer token.
     This refuses every path, including public ones. Treat a stale or invalid session cookie as anonymous instead,
     so that public pages still work and restricted routes respond with 401.
     '''
-    return frozenset()
+    return AuthenticationResult()
 
 
   def www_authenticate_for(self, request:Request) -> str|None:
@@ -121,9 +120,9 @@ class WebApp(RequestHandler):
     Select this application as the destination, using the declaration on `handle_request`.
     Override to implement routing. Resolution must not construct handlers or read the request body.
     '''
-    if self._required_privileges is None: # Only possible when handle_request is not overridden.
+    if self._required_access is None: # Only possible when handle_request is not overridden.
       raise NotImplementedError(f'{type(self).__qualname__} does not implement handle_request.')
-    return AppDestination(required_privileges=self._required_privileges, app=self)
+    return AppDestination(required_access=self._required_access, app=self)
 
 
   def handle_request(self, request:Request) -> Response:

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from .app import WebApp
-from .auth import authentication_required_error, freeze_required_privileges, Privileges
+from .auth import Access, authentication_required_error, freeze_access, has_access
 from .destination import Destination
 from .endpoint import Endpoint, get_endpoint, GetHandler
 from .errors import MethodNotAllowedError, NotFoundError
@@ -46,7 +46,7 @@ class Router:
 
   Every implemented method must declare access with decorators on the handler class or its Endpoint methods.
   Missing declarations fail at registration unless `default_public=True`; explicit restrictions still apply in that mode.
-  Policies are validated and frozen at registration by `freeze_required_privileges`,
+  Policies are validated and frozen at registration by `freeze_access`,
   then checked by the server before construction.
   Authorization failures produce 401 for anonymous callers and 403 for authenticated callers,
   except where `conceal_from` hides the route or method.
@@ -71,7 +71,7 @@ class Router:
   def __init__(self, routes:Mapping[str,RouteTarget], *, default_public:bool=False,
    conceal_from:ConcealFrom='anonymous') -> None:
     if conceal_from not in ('none', 'anonymous', 'unprivileged'): raise ValueError(f'Invalid conceal_from: {conceal_from!r}.')
-    policies:dict[type[RoutableHandler],frozendict[str,Privileges]] = {}
+    policies:dict[type[RoutableHandler],frozendict[str,Access]] = {}
     handler_routes:dict[str,type[RoutableHandler]] = {}
     for path, target in routes.items():
       if isinstance(target, type):
@@ -81,13 +81,13 @@ class Router:
       else:
         try: handler_cls = get_endpoint(target)
         except TypeError as e: raise TypeError(f'Route {path!r}: {e}') from e
-      try: policies[handler_cls] = freeze_required_privileges(handler_cls, default_public=default_public)
+      try: policies[handler_cls] = freeze_access(handler_cls, default_public=default_public)
       except TypeError as e: raise TypeError(f'Route {path!r}: {e}') from e
       if issubclass(handler_cls, Endpoint):
         handler_cls._resolve_converters()
       handler_routes[path] = handler_cls
     self._policies = frozendict(policies)
-    has_restrictions = any(required for policy in policies.values() for required in policy.values())
+    has_restrictions = any(required.requires_authentication for policy in policies.values() for required in policy.values())
     self._conceal_from:ConcealFrom = conceal_from if has_restrictions else 'none'
     #^ With only public routes there is nothing to conceal.
     fixed_routes, pattern_tree = build_route_tree(handler_routes)
@@ -103,26 +103,27 @@ class Router:
     with 404 or 405 rather than the 403 of the server's access check.
     '''
     privileges = request.privileges
-    anonymous = 'authenticated' not in privileges
-    conceal = self._conceal_from == 'unprivileged' or (self._conceal_from == 'anonymous' and anonymous)
+    is_authenticated = request.is_authenticated
+    is_anonymous = not is_authenticated
+    conceal = self._conceal_from == 'unprivileged' or (self._conceal_from == 'anonymous' and is_anonymous)
     result = self.endpoint_for_segments(request.path_segments)
     if result is None:
-      if conceal and anonymous: raise authentication_required_error()
+      if conceal and is_anonymous: raise authentication_required_error()
       raise NotFoundError
     handler_cls, path_params = result
     policy = self._policies[handler_cls]
     required = policy.get(request.method) # None if the method is not accepted.
-    if conceal and not anonymous and (required is None or not required <= privileges):
+    if conceal and is_authenticated and (required is None or not has_access(is_authenticated, privileges, required)):
       # Show an authenticated caller only the methods that its privileges permit, so that routing never raises 403.
-      permitted = frozenset(method for method, req in policy.items() if req <= privileges)
+      permitted = frozenset(method for method, req in policy.items() if has_access(is_authenticated, privileges, req))
       if not permitted: raise NotFoundError
       raise MethodNotAllowedError(permitted)
     if required is None:
-      if conceal and any(policy.values()): raise authentication_required_error()
+      if conceal and any(req.requires_authentication for req in policy.values()): raise authentication_required_error()
       #^ The caller is anonymous here. A 405 would distinguish an unaccepted method from a restricted one,
       #  and its Allow header would list restricted methods.
       raise MethodNotAllowedError(handler_cls._methods)
-    return ResolvedRoute(required_privileges=required, handler_cls=handler_cls, path_params=path_params)
+    return ResolvedRoute(required_access=required, handler_cls=handler_cls, path_params=path_params)
 
 
   def endpoint_for_path(self, path:str) -> tuple[type[RoutableHandler],dict[str,Any]]|None:

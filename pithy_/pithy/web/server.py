@@ -23,7 +23,7 @@ from pithy.logs import log, logE, logI, LogLevel
 
 from ..http import http_method_bytes_to_strs, may_send_body
 from .app import WebApp
-from .auth import check_access, validate_privileges
+from .auth import AuthenticationResult, check_access
 from .env import web_host, web_port
 from .errorrender import render_error_text
 from .errors import ResponseError
@@ -567,10 +567,13 @@ class WebServer:
     try: # Outer: bare responses for body read failures and unhandled application errors, including a failing app hook.
       try: # Inner: ResponseError, BodyTooLargeError, NotImplementedError.
         app.check_request(request)
-        request.privileges = app.authenticate(request)
-        validate_privileges(request.privileges)
+        authentication = app.authenticate(request)
+        if not isinstance(authentication, AuthenticationResult):
+          raise TypeError('authenticate must return an AuthenticationResult.')
+        request.is_authenticated = authentication.is_authenticated
+        request.privileges = authentication.privileges
         destination = app.resolve_destination(request)
-        check_access(request.privileges, destination.required_privileges)
+        check_access(request.is_authenticated, request.privileges, destination.required_access)
         handler = destination.get_handler(request)
 
         if conn.h11_conn.client_is_waiting_for_100_continue:

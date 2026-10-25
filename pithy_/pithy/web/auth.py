@@ -3,14 +3,15 @@
 '''
 Privilege sets and declarative route access policies.
 
-An empty request privilege set means anonymous. Every nonempty set must contain the reserved
-`authenticated` privilege. Applications choose all other names; matching is exact, with no namespace syntax.
-`WebApp.authenticate` returns the effective privileges; application user data can live in `Request.ctx`.
-When reducing privileges for a request, preserve `authenticated`.
+`AuthenticationResult` separates authentication state from effective privileges; `Access` declares route requirements.
+Both are immutable and reject privileges without authentication. An authenticated caller may have no privileges.
+Applications choose all privilege names; matching is exact, with no reserved names or namespace syntax.
+`WebApp.authenticate` returns an AuthenticationResult; application user data can live in `Request.ctx`.
+Handlers read `request.is_authenticated` and `request.privileges` separately.
 
-`requires_privileges` and `allow_public` are decorators that attach metadata to their targets;
+`requires_privileges`, `requires_authenticated` and `allow_public` are decorators that attach metadata to their targets;
 `declare_access` attaches the same metadata directly, e.g. to generated handlers.
-They apply to Endpoint handler methods, GET functions, and RoutableHandler classes; see `freeze_required_privileges`.
+They apply to Endpoint handler methods, GET functions, and RoutableHandler classes; see `freeze_access`.
 The Router validates and snapshots policies at registration. Simple WebApps declare access on `handle_request`.
 The server checks the resolved destination before obtaining its handler or reading request bodies.
 Direct calls to decorated functions do not enforce access; use `check_access` for explicit checks.
@@ -21,6 +22,7 @@ from http import HTTPStatus
 from typing import Any
 from urllib.parse import urlsplit
 
+from .authtypes import Access as Access, AuthenticationResult as AuthenticationResult, Privileges as Privileges
 from .errors import BadRequestError, ForbiddenError, ResponseError, UnauthorizedError
 from .handler import RoutableHandler
 from .request import Request
@@ -30,22 +32,22 @@ _context_keywords_ = ['access control', 'anonymous', 'authentication', 'authoriz
   'privileges', 'same origin']
 
 
-type Privileges = frozenset[str]
-"Effective or required privilege names. Effective nonempty sets must include 'authenticated'."
+_convenience_exports = (AuthenticationResult,)
 
-_access_attr = '_web_required_privileges'
+
+_access_attr = '_web_access'
 'The attribute in which the access decorators store their declaration.'
 
 
 def requires_privileges[F:Callable[...,Any]](*privileges:str) -> Callable[[F],F]:
   '''
-  Decorator declaring that a route requires every listed privilege; use `authenticated` for any authenticated caller.
-  Empty declarations and repeated access decorators are errors. Use `allow_public` for public routes.
+  Decorator declaring that a route requires authentication and every listed privilege.
+  Empty declarations and repeated access decorators are errors. Use `requires_authenticated` or `allow_public` instead.
   Applied to a RoutableHandler class, the requirement covers every method the class accepts.
   '''
-  if not privileges: raise ValueError('requires_privileges needs at least one privilege; use allow_public for public routes.')
-  required = frozenset(privileges)
-  _validate_names(required)
+  if not privileges:
+    raise ValueError('requires_privileges needs at least one privilege; use requires_authenticated or allow_public instead.')
+  required = Access(requires_authentication=True, privileges=frozenset(privileges))
   def decorate(fn:F) -> F:
     return declare_access(fn, required)
   return decorate
@@ -53,22 +55,26 @@ def requires_privileges[F:Callable[...,Any]](*privileges:str) -> Callable[[F],F]
 
 def allow_public[F:Callable[...,Any]](fn:F) -> F:
   'Decorator declaring that a route permits anonymous callers. Authentication and deployment checks still apply.'
-  return declare_access(fn, frozenset())
+  return declare_access(fn, Access())
 
 
-def declare_access[F:Callable[...,Any]](target:F, required:Privileges) -> F:
+def requires_authenticated[F:Callable[...,Any]](fn:F) -> F:
+  'Decorator declaring that a route requires authentication without any application privileges.'
+  return declare_access(fn, Access(requires_authentication=True))
+
+
+def declare_access[F:Callable[...,Any]](target:F, required:Access) -> F:
   '''
   Attach an access declaration to a handler function or RoutableHandler class and return it.
   The decorators call this; call it directly to declare access on generated handlers, as `get_endpoint` does.
-  An empty set declares the target public. A target may be declared once; a subclass may redeclare its inherited access.
+  A target may be declared once; a subclass may redeclare its inherited access.
   '''
   if isinstance(target, type):
     if not issubclass(target, RoutableHandler):
       raise TypeError(f'Access decorators apply to handler functions and RoutableHandler classes, not {target.__qualname__}; '
         'decorate the handle_request method of a WebApp.')
   elif not callable(target): raise TypeError('Access decorators apply to handler functions and RoutableHandler classes.')
-  if not isinstance(required, frozenset): raise TypeError('Required privileges must be a frozenset of privilege names.')
-  _validate_names(required)
+  _validate_requirement(required)
   if _access_attr in getattr(target, '__dict__', ()):
     raise TypeError('A handler must have exactly one access declaration.')
   #^ A class inherits its bases' declarations; checking its own namespace lets a subclass redeclare.
@@ -76,14 +82,19 @@ def declare_access[F:Callable[...,Any]](target:F, required:Privileges) -> F:
   return target
 
 
-def check_access(privileges:Privileges, required:Privileges) -> None:
+def check_access(is_authenticated:bool, privileges:Privileges, required:Access) -> None:
   '''
   Require all named privileges, raising 401 for anonymous callers or 403 otherwise.
-  The effective privileges must already be validated; the server does so with `validate_privileges` after authentication.
+  AuthenticationResult validates the authentication state and privileges before the server copies them to the request.
   '''
-  if required <= privileges: return
-  if 'authenticated' not in privileges: raise authentication_required_error()
+  if has_access(is_authenticated, privileges, required): return
+  if not is_authenticated: raise authentication_required_error()
   raise ForbiddenError('Insufficient privileges.')
+
+
+def has_access(is_authenticated:bool, privileges:Privileges, required:Access) -> bool:
+  'Return whether authentication state and privileges satisfy the access requirement.'
+  return (not required.requires_authentication or is_authenticated) and required.privileges <= privileges
 
 
 def authentication_required_error() -> UnauthorizedError:
@@ -94,26 +105,16 @@ def authentication_required_error() -> UnauthorizedError:
   return UnauthorizedError('Authentication required.')
 
 
-def validate_privileges(privileges:Privileges) -> None:
-  'Reject malformed authentication results as programming errors, including nonempty sets without authenticated.'
-  if not isinstance(privileges, frozenset): raise TypeError('Authentication must return a frozenset of privilege names.')
-  _validate_names(privileges)
-  if privileges and 'authenticated' not in privileges:
-    raise ValueError('Nonempty effective privileges must contain authenticated.')
-
-
-def declared_access(fn:object) -> Privileges|None:
-  'Read explicit decorator metadata; None means no declaration, distinct from an explicitly public empty set.'
+def declared_access(fn:object) -> Access|None:
+  'Read decorator metadata; None means no declaration, distinct from explicit public access or authentication.'
   required = getattr(fn, _access_attr, None)
   if required is None: return None
-  if not isinstance(required, frozenset): raise TypeError('Access metadata must be a frozenset of privilege names.')
-  _validate_names(required)
-  return required
+  return _validate_requirement(required)
 
 
-def freeze_required_privileges(handler_cls:type[RoutableHandler], *, default_public:bool) -> frozendict[str,Privileges]:
+def freeze_access(handler_cls:type[RoutableHandler], *, default_public:bool) -> frozendict[str,Access]:
   '''
-  Validate and freeze the required privileges of a route handler class for every method it accepts.
+  Validate and freeze the access requirements of a route handler class for every method it accepts.
 
   Decorating the class declares access for every accepted method. An Endpoint may instead decorate each handler method;
   decorating both the class and its methods raises TypeError. Other handler classes can only be decorated as a whole.
@@ -124,7 +125,7 @@ def freeze_required_privileges(handler_cls:type[RoutableHandler], *, default_pub
   '''
   accepted = {'GET' if m == 'HEAD' else m for m in handler_cls._methods}
   targets = handler_cls._access_targets()
-  requirements:dict[str,Privileges] = {}
+  requirements:dict[str,Access] = {}
   for method in accepted:
     if (required := declared_access(targets.get(method))) is not None: requirements[method] = required
   if (class_required := declared_access(handler_cls)) is not None:
@@ -135,7 +136,7 @@ def freeze_required_privileges(handler_cls:type[RoutableHandler], *, default_pub
   if missing := accepted - set(requirements):
     if not default_public:
       raise TypeError(f'{handler_cls.__qualname__} omits access declarations: {sorted(missing)}.')
-    requirements.update(dict.fromkeys(missing, frozenset()))
+    requirements.update(dict.fromkeys(missing, Access()))
   return frozendict({method: requirements['GET' if method == 'HEAD' else method] for method in handler_cls._methods})
 
 
@@ -208,6 +209,6 @@ class SameOriginCheck:
 
 
 
-def _validate_names(privileges:Privileges) -> None:
-  if any(not isinstance(name, str) or not name for name in privileges):
-    raise TypeError('Privilege names must be nonempty strings.')
+def _validate_requirement(required:object) -> Access:
+  if not isinstance(required, Access): raise TypeError('Access requirements must be an Access instance.')
+  return required

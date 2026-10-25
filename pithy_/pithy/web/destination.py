@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from .auth import Privileges
+from .auth import Access
 from .handler import RequestHandler
 from .request import Request
 
@@ -16,10 +16,10 @@ class Destination(ABC):
   '''
   A selected recipient and its access requirements, before handler acquisition.
 
-  Resolution must not construct handlers or read request bodies. The server checks `required_privileges`
+  Resolution must not construct handlers or read request bodies. The server checks `required_access`
   before calling `get_handler`. Calling `get_handler` directly does not enforce access.
   '''
-  required_privileges:Privileges
+  required_access:Access
 
 
   @abstractmethod

@@ -1,10 +1,11 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from collections.abc import Awaitable, Callable
+from functools import wraps
 from http import HTTPStatus
 from io import BufferedReader
 from time import sleep
-from typing import Any, cast, Iterable, Mapping, overload, Sequence
+from typing import Any, Iterable, Mapping, overload, Sequence
 from urllib.parse import quote as url_quote, urlsplit as url_split
 
 from starlette.authentication import requires
@@ -26,7 +27,7 @@ from ..http import may_send_body
 from ..json import render_json
 from ..markup import MuChildLax
 from ..transtruct import bool_str_vals
-from .auth import freeze_required_privileges, validate_privileges
+from .auth import AuthenticationResult, freeze_access, has_access
 from .endpoint import Endpoint
 from .errorrender import default_error_media_type, default_error_renderers, error_media_type_for_path
 from .errors import ResponseError
@@ -508,8 +509,8 @@ def request_from_starlette(s_request:Request, conn:BytesConn) -> PithyRequest:
   '''
   Build a pithy Request from a Starlette request, using head information only.
   `conn` is the BytesConn that will serve the body once it has been read and set via `conn.set_body`.
-  `privileges` holds the Starlette auth scopes unchanged, so that they match what `requires` enforces.
-  Like the result of `WebApp.authenticate`, a nonempty set must include `authenticated`; otherwise this raises ValueError.
+  `is_authenticated` reflects the Starlette user; `privileges` holds its auth scopes only if authenticated.
+  An authenticated user with no scopes has an empty privilege set. No scope name has special meaning.
   Without Starlette's AuthenticationMiddleware the request is anonymous.
   '''
   # Combine duplicate header lines into a single comma-separated value, matching the native server's `_headers_dict`.
@@ -531,15 +532,12 @@ def request_from_starlette(s_request:Request, conn:BytesConn) -> PithyRequest:
   # which raise AssertionError when their middleware is absent.
   # `session` is passed by reference so endpoint mutations propagate back to SessionMiddleware's cookie.
   ctx:dict[str,Any] = {}
-  privileges:frozenset[str] = frozenset()
   scope = s_request.scope
   if (user := scope.get('user')) is not None: ctx['user'] = user
-  if (auth := scope.get('auth')) is not None:
-    ctx['auth'] = auth
-    privileges = frozenset(auth.scopes)
-    validate_privileges(privileges)
+  if (auth := scope.get('auth')) is not None: ctx['auth'] = auth
   if (session := scope.get('session')) is not None: ctx['session'] = session
   if cookies := s_request.cookies: ctx['cookies'] = cookies
+  authentication = _authentication_from_starlette(s_request)
 
   return PithyRequest(
     method=s_request.method,
@@ -552,9 +550,18 @@ def request_from_starlette(s_request:Request, conn:BytesConn) -> PithyRequest:
     client_addr=client_addr,
     content_length=content_length,
     conn=conn,
-    privileges=privileges,
+    is_authenticated=authentication.is_authenticated,
+    privileges=authentication.privileges,
     ctx=ctx,
   )
+
+
+def _authentication_from_starlette(request:Request) -> AuthenticationResult:
+  user = request.scope.get('user')
+  if user is None or not user.is_authenticated: return AuthenticationResult()
+  auth = request.scope.get('auth')
+  privileges = frozenset(auth.scopes) if auth is not None else frozenset()
+  return AuthenticationResult(is_authenticated=True, privileges=privileges)
 
 
 def _raw_path_from_scope(scope:Scope, decoded_path:str) -> str:
@@ -616,22 +623,20 @@ def endpoint_adapter(endpoint_cls:type[Endpoint]) -> Callable[[Request],Awaitabl
   '''
   Adapt a pithy Endpoint subclass into an async callable suitable for a Starlette Route.
 
-  Required privileges become Starlette auth scopes, which the request must all hold.
+  Restricted routes require an authenticated Starlette user and every declared auth scope.
   A Starlette route has a single policy, so every method must declare the same requirements; decorating the class does this.
   Differing or missing declarations raise TypeError.
-  Starlette's `requires` decorator enforces the scopes, so a privileged adapter carries `__wrapped__`
-  just like a decorated function endpoint, and a public adapter does not.
-  Unlike the pithy server, `requires` refuses anonymous callers with 403 rather than 401.
-  Handlers see the scopes as `request.privileges`; see `request_from_starlette`.
+  Authorization precedes handler construction and body reading. A restricted adapter carries `__wrapped__`;
+  a public adapter does not. Denials raise Starlette HTTPException(403), preserving the host app's error handling.
+  Handlers read `request.is_authenticated` and `request.privileges`; see `request_from_starlette`.
   '''
-  policies = set(freeze_required_privileges(endpoint_cls, default_public=False).values())
+  policies = set(freeze_access(endpoint_cls, default_public=False).values())
   if len(policies) != 1:
+    descriptions = sorted((p.requires_authentication, sorted(p.privileges)) for p in policies)
     raise TypeError(f'{endpoint_cls.__qualname__}: a Starlette route applies one access policy to all methods; '
-      f'found {sorted(sorted(p) for p in policies)}.')
-  scopes = sorted(policies.pop())
+      f'found {descriptions}.')
+  required = policies.pop()
 
-  # The parameter must be named `request`: `requires` inspects the signature for a parameter named
-  # `request` or `websocket` and raises at decoration time otherwise.
   async def adapted(request:Request) -> Response:
     conn = BytesConn(b'')
     p_request = request_from_starlette(request, conn)
@@ -649,10 +654,15 @@ def endpoint_adapter(endpoint_cls:type[Endpoint]) -> Callable[[Request],Awaitabl
       response = PithyResponse(HTTPStatus.CONTENT_TOO_LARGE, body='Content Too Large', media_type='text/plain')
     return convert_response(response, method=request.method)
 
-  # Wrap only when privileged: wrapping a public endpoint would give it a `__wrapped__` and break the invariant
-  # that wrapped implies privileged.
-  if scopes: return cast(Callable[[Request],Awaitable[Response]], requires(scopes)(adapted))
-  return adapted
+  if not required.requires_authentication: return adapted
+
+  @wraps(adapted)
+  async def authorized(request:Request) -> Response:
+    authentication = _authentication_from_starlette(request)
+    if not has_access(authentication.is_authenticated, authentication.privileges, required): raise HTTPException(403)
+    return await adapted(request)
+
+  return authorized
 
 
 def endpoint_route(path:str, endpoint_cls:type[Endpoint]) -> Route:
