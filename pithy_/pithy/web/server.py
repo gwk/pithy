@@ -275,7 +275,9 @@ class ServerConfig:
   log_access: whether to log each parsed HTTP request after response sending completes or fails.
     Access fields are c (client), u (uid from request.ctx, default 0), m (method), p (path), q (raw query), s (status), and d (duration).
     Duration is in seconds, from receipt of request headers through response sending, excluding connection cleanup.
-    Status is the sent response status, or 500 if no response headers were sent; it does not guarantee body delivery.
+    Status is the sent response status; it does not guarantee body delivery.
+    It is 0 if no response headers were sent, whether because the client left or because a server error aborted the cycle,
+    so that client disconnects do not count as 5xx responses; the cause is in the adjacent protocol_failure or error record.
     Client protocol failures and incomplete-request timeouts produce separate protocol_failure records, even when disabled.
   startup_message: an optional info message logged immediately after the serving URL.
   prevent_client_caching: whether to prevent clients from caching responses.
@@ -482,7 +484,7 @@ class WebServer:
       uid = request.ctx.get('uid', 0)
     logI('access', c=client_addr[0] if client_addr else '-', u=uid,
       m=event.method.decode('ascii', errors='replace'), p=path, q=query,
-      s=conn.response_status if conn.response_status is not None else 500, d=dur)
+      s=conn.response_status if conn.response_status is not None else 0, d=dur)
 
 
   def _close_connection(self, conn:_Conn) -> None:

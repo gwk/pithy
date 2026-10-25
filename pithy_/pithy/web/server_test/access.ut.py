@@ -80,8 +80,8 @@ def test_errors() -> None:
 
 @utest_run
 def test_send_failure() -> None:
-  'Log even when sending fails; retain the sent status when only the body fails.'
-  for fail_send, status in [(1, 500), (2, 200)]:
+  'Log even when sending fails: 0 when the headers were not sent, the sent status when only the body fails.'
+  for fail_send, status in [(1, 0), (2, 200)]:
     records = access_logs(raw_request(), fail_send=fail_send)
     utest_val(1, len(records))
     utest_val(status, records[0]['s'])
@@ -291,7 +291,7 @@ def test_body_failure_responses() -> None:
     records, response = connection_logs(data, enabled=True, timeout=timeout)
     if status is None: utest_val(b'', response)
     else: utest_val(True, response.startswith(f'HTTP/1.1 {status} '.encode()), response)
-    utest_val([status or 500], [r['s'] for r in records if r['_'] == 'access'])
+    utest_val([status or 0], [r['s'] for r in records if r['_'] == 'access'])
 
 
 @utest_run
