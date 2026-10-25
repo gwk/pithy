@@ -450,7 +450,9 @@ class WebServer:
             if accept_resume is not None: deadline = accept_resume if deadline is None else min(deadline, accept_resume)
             ready = selector.select(None if deadline is None else max(0, deadline - monotonic()))
             if self._stop.is_set(): break
-            for key, _ in ready:
+            # Handle connection events before the listener, so that a readable connection leaves `idle` before a new
+            # connection at capacity replaces the longest idle one. The stable sort moves only the listener.
+            for key, _ in sorted(ready, key=lambda event: event[0].fileobj is self._socket):
               if key.fileobj is self._wakeup_reader:
                 try: self._wakeup_reader.recv(65536)
                 except BlockingIOError: pass
@@ -481,7 +483,7 @@ class WebServer:
                 selector.register(conn_sock, EVENT_READ, conn)
               else:
                 conn = cast(_Conn, key.data)
-                if idle.pop(conn.socket, None) is None: continue # Replaced by a new connection earlier in this batch.
+                if idle.pop(conn.socket, None) is None: continue # Already closed; not expected given the ordering above.
                 selector.unregister(conn.socket)
                 self._conn_queue.put(conn)
             now = monotonic()

@@ -160,10 +160,10 @@ def read_response(socket:Socket) -> bytes:
 
 
 @utest_run
-def test_replaced_connection_readable_in_same_batch() -> None:
+def test_readable_idle_connection_not_replaced() -> None:
   '''
-  A replaced idle connection that is also readable in the same selector batch must not end the listener loop.
-  Event order and worker timing decide which connections are served, so the test only requires that one is.
+  An idle connection whose request shares a selector batch with a new connection at capacity is served, not replaced.
+  Worker timing decides whether the new connection finds a free slot, so its outcome is not checked.
   '''
   listener:list[Thread] = []
   hold, held, release = Event(), Event(), Event()
@@ -190,5 +190,5 @@ def test_replaced_connection_readable_in_same_batch() -> None:
         new.sendall(request)
         release.set()
         outcomes = [read_to_close(idle).endswith(b'\r\n\r\nok'), read_to_close(new).endswith(b'\r\n\r\nok')]
-      utest_val(True, True in outcomes, f'a connection served: {outcomes}')
+      utest_val(True, outcomes[0], f'readable idle connection served: {outcomes}')
     utest_val(True, thread.is_alive(), 'listener alive')
