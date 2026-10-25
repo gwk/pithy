@@ -1,15 +1,16 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from collections import OrderedDict
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from errno import ENOTCONN
 from http import HTTPStatus
 from io import BufferedReader
 from os import _exit as os_exit
-from queue import Full as QueueFull, LifoQueue
+from queue import Empty as QueueEmpty, Full as QueueFull, LifoQueue, SimpleQueue
 from selectors import DefaultSelector, EVENT_READ
 from socket import AF_INET, SHUT_WR, SO_REUSEADDR, SOCK_STREAM, socket as Socket, socketpair, SOL_SOCKET
-from threading import Event, Lock, Thread
+from threading import BoundedSemaphore, Event, Lock, Thread
 from time import monotonic
 from traceback import clear_frames
 from typing import cast, Literal
@@ -59,6 +60,8 @@ class _Conn():
   socket:Socket
   h11_conn:h11_Connection
   recv_size:int
+  idle_since:float = field(default_factory=monotonic)
+  'Start of the current wait for a request, reset by the listener thread when it registers a returned connection.'
   started:float = field(default_factory=monotonic)
   received_bytes:int = 0
   'Connection-wide bytes received from the socket, including pipelined requests.'
@@ -266,10 +269,10 @@ class ServerConfig:
   host: the hostname or IP address to bind to; defaults to 'localhost'.
   port: the port number to bind to; defaults to 0, which means the OS will choose a free port.
   backlog: the number of unaccepted connections that the system will allow before refusing new connections.
-  conn_timeout: the timeout in seconds for blocking operations on client connections.
+  conn_timeout: the timeout in seconds for idle connections and blocking operations on active connections.
   drain_timeout: the timeout in seconds for blocking reads while draining an unread request body before closing a connection.
   drain_max_bytes: the maximum number of unread request body bytes to drain before closing a connection.
-  max_queued: the maximum number of connections waiting in the queue; excess connections are dropped immediately.
+  max_queued: the connection capacity beyond the worker count, including idle connections; excess connections are dropped.
   num_threads: the number of worker threads in the thread pool.
   recv_size: the maximum number of bytes to receive at once from client connections.
   log_access: whether to log each parsed HTTP request after response sending completes or fails.
@@ -300,12 +303,11 @@ class ServerConfig:
   prevent_client_caching:bool = False
 
 
-type ConnQueueItem = tuple[Socket,AddrPair]
-
-
 class WebServer:
   '''
   WebServer is a multithreaded HTTP 1.1 server.
+  A selector holds idle connections, including speculative connections with no request yet, without occupying workers.
+  Workers handle one request at a time and return reusable connections to the selector.
   It uses a LIFO queue for incoming connections, on the assumption that under load it is better to serve some requests quickly
   and let others time out, rather than have all requests delayed or time out.
   '''
@@ -323,8 +325,12 @@ class WebServer:
     self._lock = Lock()  # Guards _serving, which decides whether shutdown() or serve_forever() closes the sockets.
     self._serving = False
     self._wakeup_reader, self._wakeup_writer = socketpair()
+    self._wakeup_reader.setblocking(False)
     self._wakeup_writer.setblocking(False)
-    self._conn_queue: LifoQueue[ConnQueueItem|None] = LifoQueue(maxsize=config.max_queued)
+    self._conn_queue: LifoQueue[_Conn|None] = LifoQueue(maxsize=config.max_queued)
+    self._idle_queue: SimpleQueue[_Conn] = SimpleQueue()
+    # A connection owns its slot across selector, queue and worker handoffs, until its socket is closed.
+    self._conn_slots = BoundedSemaphore(config.num_threads + config.max_queued)
     self._workers: list[Thread] = []
 
     socket = Socket(AF_INET, SOCK_STREAM)
@@ -333,7 +339,7 @@ class WebServer:
     socket.bind((config.host, config.port))
     socket.listen(config.backlog)
     socket.setblocking(False)
-    #^ On macOS accepted sockets inherit the non-blocking flag; _handle_connection resets it with settimeout.
+    #^ On macOS accepted sockets inherit the non-blocking flag; the accept loop resets it with settimeout.
 
     self.scheme = 'http'
     self.host = config.host
@@ -363,25 +369,74 @@ class WebServer:
       with DefaultSelector() as selector:
         selector.register(self._wakeup_reader, EVENT_READ)
         selector.register(self._socket, EVENT_READ)
-        while not self._stop.is_set():
-          selector.select()
-          #^ The wakeup reader is never drained; it only becomes readable once _stop is set, so the loop exits.
-          if self._stop.is_set(): break
-          try: conn_sock, client_addr = self._socket.accept()
-          except BlockingIOError: continue  # The pending connection was reset before it could be accepted.
-          try:
-            self._conn_queue.put_nowait((conn_sock, client_addr))
-          except QueueFull:
-            logI('Queue full; dropping connection.', client_addr=client_addr)
-            conn_sock.close()
+        idle:OrderedDict[Socket,_Conn] = OrderedDict()
+        # Only this thread stamps idle_since, immediately before insertion, so the front entry is always the next to expire.
+        # OrderedDict rather than dict: repeatedly removing the front of a dict scans past deleted slots.
+        try:
+          while not self._stop.is_set():
+            while True:
+              try: conn = self._idle_queue.get_nowait()
+              except QueueEmpty: break
+              if conn.h11_conn.trailing_data[0]:
+                self._queue_connection(conn) # A pipelined request may already be buffered in h11.
+              else:
+                conn.idle_since = monotonic()
+                idle[conn.socket] = conn
+                selector.register(conn.socket, EVENT_READ, conn)
+            timeout = None
+            if idle: timeout = max(0, next(iter(idle.values())).idle_since + cfg.conn_timeout - monotonic())
+            ready = selector.select(timeout)
+            if self._stop.is_set(): break
+            for key, _ in ready:
+              if key.fileobj is self._wakeup_reader:
+                try: self._wakeup_reader.recv(65536)
+                except BlockingIOError: pass
+              elif key.fileobj is self._socket:
+                try: conn_sock, client_addr = self._socket.accept()
+                except BlockingIOError: continue # The pending connection was reset before it could be accepted.
+                if not self._conn_slots.acquire(blocking=False):
+                  logI('Connection capacity reached; dropping connection.', client_addr=client_addr)
+                  conn_sock.close()
+                  continue
+                conn_sock.settimeout(cfg.conn_timeout)
+                conn = _Conn(client_addr=client_addr, socket=conn_sock, h11_conn=h11_Connection(h11_SERVER),
+                  recv_size=cfg.recv_size)
+                idle[conn_sock] = conn
+                selector.register(conn_sock, EVENT_READ, conn)
+              else:
+                conn = cast(_Conn, key.data)
+                del idle[conn.socket]
+                selector.unregister(conn.socket)
+                self._queue_connection(conn)
+            now = monotonic()
+            while idle:
+              socket, conn = next(iter(idle.items()))
+              if now - conn.idle_since < cfg.conn_timeout: break
+              del idle[socket]
+              selector.unregister(socket)
+              socket.close()
+              self._conn_slots.release()
+        finally:
+          for socket in idle:
+            socket.close()
+            self._conn_slots.release()
     except KeyboardInterrupt:
       logI('Interrupted.')
     finally:
       with self._lock:
-        self._serving = False
-        self._close_sockets()
+        self._stop.set()
       for _ in self._workers: self._conn_queue.put(None)  # Signal each worker to exit.
       for thread in self._workers: thread.join()
+      for queue in (self._conn_queue, self._idle_queue):
+        while True:
+          try: pending = queue.get_nowait()
+          except QueueEmpty: break
+          if pending is not None:
+            pending.socket.close()
+            self._conn_slots.release()
+      with self._lock:
+        self._serving = False
+        self._close_sockets()
 
 
   def shutdown(self) -> None:
@@ -394,8 +449,14 @@ class WebServer:
     with self._lock:
       if self._stop.is_set(): return
       self._stop.set()
-      if self._serving: self._wakeup_writer.send(b'\0')
+      if self._serving: self._wake_listener()
       else: self._close_sockets()
+
+
+  def _wake_listener(self) -> None:
+    'Notify the selector of returned connections or shutdown. A full buffer already guarantees a wakeup.'
+    try: self._wakeup_writer.send(b'\0')
+    except BlockingIOError: pass
 
 
   def _close_sockets(self) -> None:
@@ -408,29 +469,38 @@ class WebServer:
   def _worker(self) -> None:
     'Worker thread entry point.'
     while True:
-      item = self._conn_queue.get()
-      if item is None: break
-      socket, client_addr = item
+      conn = self._conn_queue.get()
+      if conn is None: break
       try:
-        self._handle_connection(socket, client_addr)
+        if not self._stop.is_set() and self._handle_connection(conn):
+          self._idle_queue.put(conn)
+          self._wake_listener()
+        else:
+          self._close_connection(conn)
+          self._conn_slots.release()
       except BaseException as exc:
-        logE('Uncaught worker exception; exiting process.', exc=exc, client_addr=client_addr)
+        logE('Uncaught worker exception; exiting process.', exc=exc, client_addr=conn.client_addr)
         os_exit(1)
 
 
-  def _handle_connection(self, socket:Socket, client_addr:AddrPair) -> None:
-    'Handle a single client connection in a worker thread.'
-    socket.settimeout(self.config.conn_timeout)
-    h11_conn = h11_Connection(h11_SERVER)
-    conn = _Conn(client_addr=client_addr, socket=socket, h11_conn=h11_conn, recv_size=self.config.recv_size)
+  def _queue_connection(self, conn:_Conn) -> None:
+    'Transfer a readable connection to a worker, dropping it if the work queue is full.'
+    try: self._conn_queue.put_nowait(conn)
+    except QueueFull:
+      logI('Queue full; dropping connection.', client_addr=conn.client_addr)
+      conn.socket.close()
+      self._conn_slots.release()
 
+
+  def _handle_connection(self, conn:_Conn) -> bool:
+    'Handle one request on a readable connection; return whether it can be reused. The caller owns socket cleanup.'
     try:
       try:
-        while event := conn.next_request():
+        if event := conn.next_request():
           method = conn.method = http_method_bytes_to_strs.get(event.method, '')
           conn.http_version = event.http_version.decode('ascii') if event.http_version in (b'1.0', b'1.1') else ''
           self._handle_connection_cycle(conn, event, method)
-          if not conn.recycle(): break
+          return conn.recycle()
       except ClientProtocolError: pass # Logged when detected.
       if conn.error is not None and conn.h11_conn.our_state is h11_IDLE and not conn.h11_conn.trailing_data[1]:
         # Malformed or incomplete request headers from a client that is still connected: answer with a bare response.
@@ -439,9 +509,8 @@ class WebServer:
         try: self._send_response(conn, response=response, method='')
         except OSError: pass # The client has gone.
     except Exception as exc:
-      logE('Connection handling error.', exc=exc, client_addr=client_addr)
-    finally:
-      self._close_connection(conn)
+      logE('Connection handling error.', exc=exc, client_addr=conn.client_addr)
+    return False
 
 
   def _handle_connection_cycle(self, conn:_Conn, event:h11_Request, method:str) -> None:

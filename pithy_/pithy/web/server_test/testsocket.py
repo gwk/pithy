@@ -7,8 +7,9 @@ Drive `WebServer` connections over a scripted socket, without any network access
 from socket import socket as Socket
 from typing import cast
 
+from h11 import Connection, SERVER
 from pithy.web.app import WebApp
-from pithy.web.server import ServerConfig, WebServer
+from pithy.web.server import _Conn, ServerConfig, WebServer
 
 
 class TestSocket:
@@ -54,4 +55,9 @@ def handle_connection(app:WebApp, socket:TestSocket, *, log_access:bool) -> None
   server = WebServer.__new__(WebServer)
   server.app = app
   server.config = ServerConfig(log_access=log_access)
-  server._handle_connection(cast(Socket, socket), ('127.0.0.1', 4321))
+  conn = _Conn(client_addr=('127.0.0.1', 4321), socket=cast(Socket, socket), h11_conn=Connection(SERVER),
+    recv_size=server.config.recv_size)
+  try:
+    while server._handle_connection(conn): pass
+  finally:
+    server._close_connection(conn)
