@@ -16,8 +16,8 @@ from .models import (Chart, ChartSpec, Dashboard, DashboardPage, DashboardSpec, 
   SectionSpec, Source, SourcePage)
 
 
-_context_keywords_ = ['api', 'better stack', 'betterstack', 'charts', 'client', 'dashboard', 'dashboard export',
-  'dashboard import', 'http', 'labels', 'metrics', 'pagination', 'requests', 'rest', 'sources', 'telemetry']
+_context_keywords_ = ['alerts', 'api', 'better stack', 'betterstack', 'charts', 'client', 'dashboard', 'dashboard export',
+  'dashboard import', 'explorations', 'http', 'labels', 'metrics', 'pagination', 'requests', 'rest', 'sources', 'telemetry']
 
 api_url = 'https://telemetry.betterstack.com/api/v2'
 
@@ -210,6 +210,49 @@ class Client:
     self._request('DELETE', _path(dashboard_id, 'sections', section_id))
 
 
+  def iter_explorations(self) -> Iterator[JsonDict]:
+    'Yield saved query summaries. Use get_exploration for queries, chart settings and variables.'
+    return self._iter_resources('/explorations')
+
+
+  def get_exploration(self, exploration_id:str) -> JsonDict:
+    return req_json_dict(self._request('GET', _exploration_path(exploration_id))['data'])
+
+
+  def create_exploration(self, spec:JsonDict) -> JsonDict:
+    body = dict(spec)
+    if self.team_name is not None: body['team_name'] = self.team_name
+    return req_json_dict(self._request('POST', '/explorations', body=body)['data'])
+
+
+  def update_exploration(self, exploration_id:str, spec:JsonDict) -> JsonDict:
+    'Patch an exploration. Supplied query and variable arrays replace the corresponding arrays entirely.'
+    return req_json_dict(self._request('PATCH', _exploration_path(exploration_id), body=spec)['data'])
+
+
+  def iter_exploration_alerts(self, exploration_id:str) -> Iterator[JsonDict]:
+    return self._iter_resources(_exploration_path(exploration_id) + '/alerts')
+
+
+  def create_exploration_alert(self, exploration_id:str, spec:JsonDict) -> JsonDict:
+    return req_json_dict(self._request('POST', _exploration_path(exploration_id) + '/alerts', body=spec)['data'])
+
+
+  def update_exploration_alert(self, exploration_id:str, alert_id:str, spec:JsonDict) -> JsonDict:
+    if not alert_id: raise ValueError('Alert ID must not be empty.')
+    path = _exploration_path(exploration_id) + '/alerts/' + quote(alert_id, safe='')
+    return req_json_dict(self._request('PATCH', path, body=spec)['data'])
+
+
+  def _iter_resources(self, path:str) -> Iterator[JsonDict]:
+    for page in count(1):
+      result = self._request('GET', path, params=dict(page=page, per_page=50))
+      data = req_json_list(result['data'])
+      for item in data: yield req_json_dict(item)
+      if not req_json_dict(result.get('pagination', {})).get('next'): return
+      if not data: raise ValueError('Empty resource page has a next page.')
+
+
 def _path(dashboard_id:str, collection:str='', child_id:str='') -> str:
   if not dashboard_id: raise ValueError('Dashboard ID must not be empty.')
   path = '/dashboards/' + quote(dashboard_id, safe='')
@@ -222,3 +265,8 @@ def _path(dashboard_id:str, collection:str='', child_id:str='') -> str:
 def _source_path(source_id:str) -> str:
   if not source_id: raise ValueError('Source ID must not be empty.')
   return '/sources/' + quote(source_id, safe='')
+
+
+def _exploration_path(exploration_id:str) -> str:
+  if not exploration_id: raise ValueError('Exploration ID must not be empty.')
+  return '/explorations/' + quote(exploration_id, safe='')

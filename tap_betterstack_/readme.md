@@ -29,7 +29,7 @@ ORDER BY time
 #   print(dashboard.id)
 ```
 
-`{{source}}` is the aggregated metrics table, so `count(*)` does not count events, even though some vendor API examples use it.
+In dashboard SQL, `{{source}}` is the aggregated metrics table, so `count(*)` does not count events.
 Count logs with `sum(logs_count)`, or all event types with `countMerge(events_count)`; see [Writing SQL queries](https://betterstack.com/docs/logs/dashboards/sql-queries/).
 
 Repository functions can share chart constructors, vary source IDs, or add components conditionally for production.
@@ -50,7 +50,28 @@ Calls are sequential and non-atomic; rerun after a partial failure with the same
 
 See the [Metrics API](https://betterstack.com/docs/logs/api/list-all-existing-metrics/) for details.
 
-## Iteration
+## Saved queries and alerts
+
+Saved queries are called [explorations](https://betterstack.com/docs/logs/api/explorations/create/) in the API.
+An [exploration alert](https://betterstack.com/docs/logs/api/exploration-alerts/create/) evaluates that saved query;
+it does not hold a separate SQL copy. The query remains independently viewable and runnable.
+Events explorations use raw log tables: count rows with `count(*)` and extract fields with `JSONExtract(raw, ...)`.
+Dashboard expressions such as `label('level')` and `sum(logs_count)` fail on these tables.
+Validate exploration SQL against the log source, not its metrics table; see [Events SQL](https://betterstack.com/docs/logs/using-logtail/explore-logs/).
+`Client` exposes exploration creation, retrieval, iteration and updates, plus attached alert iteration, creation and updates.
+These methods accept and return JSON dictionaries to preserve the API's varying chart and alert shapes.
+
+`tap_betterstack.explorations.push_exploration_alert(client, exploration, alert)` upserts both resources by exact name.
+Use a team-scoped Telemetry token to keep name matching within one team; global-token reconciliation is not supported.
+New alerts start paused unless explicitly overridden. Updates preserve routing and paused state when those fields are omitted.
+Supply a complete query/variable definition: the API replaces these arrays on update.
+Unrelated resources remain; duplicate matching names fail before writes. Run one writer at a time and rerun after partial failures.
+
+Notification routing belongs to the incident management configuration. An alert can target an escalation policy for Slack
+and email delivery. The alert's `email` flag targets responders, not arbitrary email addresses; external recipients use an
+outgoing-email integration. Connecting Slack requires an interactive Slack sign-in.
+
+## Dashboard iteration
 
 `push_dashboard` finds an exact dashboard name within the client's team, or accepts an explicit `dashboard_id`.
 Charts and sections match by unique nonempty names; matching objects retain their IDs.

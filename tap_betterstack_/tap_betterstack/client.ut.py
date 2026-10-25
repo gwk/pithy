@@ -1,6 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from copy import deepcopy
+from io import BytesIO
 from json import dumps
 from unittest.mock import Mock
 
@@ -9,6 +10,7 @@ from pithy.secrets import SecretStr
 from requests import Response, Session
 from tap_betterstack.client import api_url, BetterStackError, Client
 from tap_betterstack.dashboards import push_dashboard
+from tap_betterstack.explorations import push_exploration_alert
 from tap_betterstack.metrics import push_metrics
 from tap_betterstack.models import (Chart, ChartSpec, Dashboard, DashboardDefinition, DashboardSpec, MetricSpec, Query,
   SectionSpec, Variable)
@@ -32,8 +34,7 @@ chart_data:JsonDict = {
 def response(body:JsonDict, status:int=200) -> Response:
   result = Response()
   result.status_code = status
-  result._content = dumps(body).encode()
-  result._content_consumed = True
+  result.raw = BytesIO(dumps(body).encode())
   return result
 
 
@@ -303,3 +304,52 @@ def metric_sync_rejects_ambiguity_and_wrong_team() -> None:
   utest_exc(ValueError, push_metrics, client, '95', [spec])
   utest_val(1, request.call_count)
   utest_val(('GET', api_url + '/sources/95'), request.call_args.args)
+
+
+@utest_run
+def exploration_alert_resume_preserves_routing() -> None:
+  spec:JsonDict = {'name': 'Server errors', 'chart': {'chart_type': 'line_chart'},
+    'queries': [{'query_type': 'sql_expression', 'sql_query': 'SELECT {{time}} AS time, 1 AS value'}]}
+  alert:JsonDict = {'name': 'Any error', 'alert_type': 'threshold', 'operator': 'higher_than', 'value': 0, 'check_period': 60}
+  saved:JsonDict = {'id': '10', 'type': 'exploration', 'attributes': spec}
+  saved_alert:JsonDict = {'id': '20', 'type': 'alert', 'attributes': {
+    **alert, 'paused': False, 'escalation_target': {'policy_id': 30}}}
+  client, request = fake_client(
+    response({'data': [], 'pagination': {}}), response({'data': saved}), response({'errors': 'Unavailable'}, 503),
+    response({'data': [saved], 'pagination': {}}), response({'data': [], 'pagination': {}}),
+    response({'data': saved}), response({'data': saved_alert}),
+    response({'data': [saved], 'pagination': {}}), response({'data': [saved_alert], 'pagination': {}}),
+    response({'data': saved}), response({'data': saved_alert}))
+  client.team_name = None
+  utest_exc(BetterStackError, push_exploration_alert, client, spec, alert)
+  push_exploration_alert(client, spec, alert)
+  push_exploration_alert(client, spec, alert)
+  writes = [c for c in request.call_args_list if c.args[0] != 'GET']
+  utest_val(1, sum(c.args == ('POST', api_url + '/explorations') for c in writes))
+  for call in writes:
+    if call.args == ('POST', api_url + '/explorations/10/alerts'): utest_val(True, call.kwargs['json']['paused'])
+  utest_val(('PATCH', api_url + '/explorations/10/alerts/20'), writes[-1].args)
+  utest_val(alert, writes[-1].kwargs['json'])
+  assert 'paused' not in alert and 'team_name' not in spec
+
+
+@utest_run
+def exploration_duplicates_and_pagination() -> None:
+  spec:JsonDict = {'name': 'Errors'}
+  saved:JsonDict = {'id': '10', 'attributes': spec}
+  for duplicate_alert in (False, True):
+    responses = [response({'data': [saved] if duplicate_alert else [saved, saved], 'pagination': {}})]
+    if duplicate_alert: responses.append(response({'data': [saved, saved], 'pagination': {}}))
+    client, request = fake_client(*responses)
+    client.team_name = None
+    utest_exc(ValueError, push_exploration_alert, client, spec, spec)
+    assert all(c.args[0] == 'GET' for c in request.call_args_list)
+  client, request = fake_client(
+    response({'data': [saved], 'pagination': {'next': 'https://untrusted.example/'}}),
+    response({'data': [], 'pagination': {}}))
+  utest_val([saved], list(client.iter_explorations()))
+  utest_val([1, 2], [c.kwargs['params']['page'] for c in request.call_args_list])
+  for c in request.call_args_list: utest_val(('GET', api_url + '/explorations'), c.args)
+  client, request = fake_client()
+  utest_exc(ValueError, push_exploration_alert, client, spec, spec)
+  utest_val(0, request.call_count)
