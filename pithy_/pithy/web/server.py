@@ -3,7 +3,7 @@
 from collections import OrderedDict
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from errno import ENOTCONN
+from errno import EMFILE, ENFILE, ENOBUFS, ENOMEM, ENOTCONN
 from http import HTTPStatus
 from io import BufferedReader
 from os import _exit as os_exit
@@ -38,6 +38,11 @@ _context_keywords_ = ['access logging', 'connection draining', 'h11', 'http 1.1'
 
 
 BAD_REQUEST = HTTPStatus.BAD_REQUEST
+
+accept_pause = 0.1
+'Seconds to stop accepting connections after accept fails for lack of descriptors or kernel memory.'
+
+_accept_exhaustion_errnos = frozenset({EMFILE, ENFILE, ENOBUFS, ENOMEM})
 
 
 type _ConnStage = Literal['request_headers', 'request_body', 'request_completion', 'drain_body']
@@ -372,8 +377,12 @@ class WebServer:
         idle:OrderedDict[Socket,_Conn] = OrderedDict()
         # Only this thread stamps idle_since, immediately before insertion, so the front entry is always the next to expire.
         # OrderedDict rather than dict: repeatedly removing the front of a dict scans past deleted slots.
+        accept_resume:float|None = None # Set while accepting is paused after descriptor exhaustion.
         try:
           while not self._stop.is_set():
+            if accept_resume is not None and monotonic() >= accept_resume:
+              selector.register(self._socket, EVENT_READ)
+              accept_resume = None
             while True:
               try: conn = self._idle_queue.get_nowait()
               except QueueEmpty: break
@@ -383,9 +392,9 @@ class WebServer:
                 conn.idle_since = monotonic()
                 idle[conn.socket] = conn
                 selector.register(conn.socket, EVENT_READ, conn)
-            timeout = None
-            if idle: timeout = max(0, next(iter(idle.values())).idle_since + cfg.conn_timeout - monotonic())
-            ready = selector.select(timeout)
+            deadline = next(iter(idle.values())).idle_since + cfg.conn_timeout if idle else None
+            if accept_resume is not None: deadline = accept_resume if deadline is None else min(deadline, accept_resume)
+            ready = selector.select(None if deadline is None else max(0, deadline - monotonic()))
             if self._stop.is_set(): break
             for key, _ in ready:
               if key.fileobj is self._wakeup_reader:
@@ -393,7 +402,15 @@ class WebServer:
                 except BlockingIOError: pass
               elif key.fileobj is self._socket:
                 try: conn_sock, client_addr = self._socket.accept()
-                except BlockingIOError: continue # The pending connection was reset before it could be accepted.
+                except (BlockingIOError, ConnectionAbortedError): continue # The pending connection was reset before accept.
+                except OSError as exc:
+                  if exc.errno not in _accept_exhaustion_errnos: raise
+                  # Linux leaves the pending connection in the backlog, so the listener stays readable.
+                  # Pause to avoid spinning. macOS closes the pending connection instead.
+                  logE('Accept failed for lack of resources; pausing.', exc=exc, pause=accept_pause)
+                  selector.unregister(self._socket)
+                  accept_resume = monotonic() + accept_pause
+                  continue
                 if not self._conn_slots.acquire(blocking=False):
                   logI('Connection capacity reached; dropping connection.', client_addr=client_addr)
                   conn_sock.close()
