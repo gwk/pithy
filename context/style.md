@@ -49,6 +49,8 @@ filler, or marketing/casual/feel-good language.
 * No bare `# type: ignore`; always add error codes.
 * Error handling: early returns, custom exceptions where they clarify intent or need to be caught, explicit error messages.
 * Docstrings: single quotes for brief docs, triple single-quotes for multi-line. Use markdown syntax, not rst.
+* Use `from module import X as X` to mark explicit re-exports for mypy.
+* List otherwise unused re-exports in `_convenience_exports = (X, ...)` to satisfy pyflakes, even when using `X as X`.
 * Describe decorators as decorators, both in their docstrings and in prose that names them.
 * Do not use triple-quotes for single line strings.
 * `if __name__ == '__main__': main()` should always be inlined, not two lines.
