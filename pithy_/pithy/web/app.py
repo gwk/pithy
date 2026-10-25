@@ -38,7 +38,8 @@ class WebApp(RequestHandler):
   A 401 response without a WWW-Authenticate header receives the challenge from `www_authenticate_for`, if any.
 
   Normal responses, rejections from step 6 and responses produced by `error_response` pass through `finish_response`.
-  Protocol rejections before Request construction bypass the application entirely.
+  Protocol rejections before Request construction bypass the application entirely;
+  malformed or incomplete request headers receive a bare 400 or 408 and the connection is closed.
   An unhandled exception elsewhere, including from `finish_response`, produces a bare 500 without consulting the app again.
   Likewise, a body read that raises ClientProtocolError produces a bare response with its status, such as 400 or 408.
   '''

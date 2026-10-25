@@ -122,6 +122,7 @@ def test_protocol_failures() -> None:
       records, response = connection_logs(data, enabled=enabled)
       utest_val(False, secret.decode() in repr(records))
       utest_val(False, secret in response)
+      utest_val(True, response.startswith(b'HTTP/1.1 400 '), response) # Malformed headers are answered too, with a bare 400.
       failures = [r for r in records if r['_'] == 'protocol_failure']
       utest_val(1, len(failures))
       record = failures[0]
@@ -147,8 +148,9 @@ def test_incomplete_timeout() -> None:
     for prefix in (b'', raw_request(b'/user')):
       for partial in (b'', b'GET /?token=SECRET_SENTINEL HTTP/1.1\r\nHost:'):
         data = prefix + partial
-        records, _ = connection_logs(data, enabled=enabled, timeout=True)
+        records, response = connection_logs(data, enabled=enabled, timeout=True)
         utest_val(False, 'SECRET_SENTINEL' in repr(records))
+        utest_val(bool(partial), response.endswith(b'Request Timeout'), response) # A bare 408; an idle timeout gets nothing.
         failures = [r for r in records if r['_'] == 'protocol_failure']
         utest_val(1 if partial else 0, len(failures))
         if partial:

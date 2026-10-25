@@ -440,12 +440,19 @@ class WebServer:
     conn = _Conn(client_addr=client_addr, socket=socket, h11_conn=h11_conn, recv_size=self.config.recv_size)
 
     try:
-      while event := conn.next_request():
-        method = conn.method = http_method_bytes_to_strs.get(event.method, '')
-        conn.http_version = event.http_version.decode('ascii') if event.http_version in (b'1.0', b'1.1') else ''
-        self._handle_connection_cycle(conn, event, method)
-        if not conn.recycle(): break
-    except ClientProtocolError: pass # Logged when detected; the connection is closed below.
+      try:
+        while event := conn.next_request():
+          method = conn.method = http_method_bytes_to_strs.get(event.method, '')
+          conn.http_version = event.http_version.decode('ascii') if event.http_version in (b'1.0', b'1.1') else ''
+          self._handle_connection_cycle(conn, event, method)
+          if not conn.recycle(): break
+      except ClientProtocolError: pass # Logged when detected.
+      if conn.error is not None and conn.h11_conn.our_state is h11_IDLE and not conn.h11_conn.trailing_data[1]:
+        # Malformed or incomplete request headers from a client that is still connected: answer with a bare response.
+        # h11 permits a response before any request. Later failures were answered during the cycle, or the client has closed.
+        response = self._bare_response(conn.error.status, method='').set_connection_close()
+        try: self._send_response(conn, response=response, method='')
+        except OSError: pass # The client has gone.
     except Exception as exc:
       logE('Connection handling error.', exc=exc, client_addr=client_addr)
     finally:
