@@ -55,31 +55,25 @@ def running_server(*, idle_timeout:float=10, max_connections:int=64) -> Iterator
 def test_idle_connections_release_workers() -> None:
   'Idle keep-alive and speculative connections must not block other clients, even with only one worker.'
   with running_server() as (server, thread), ExitStack() as clients:
-    try:
-      connections = []
-      for _ in range(8):
-        conn = HTTPConnection(server.host, server.port, timeout=1)
-        clients.callback(conn.close)
-        conn.request('GET', '/')
-        response = conn.getresponse()
-        utest_val(b'ok', response.read())
-        utest_val(None, response.getheader('connection'))
-        connections.append((conn, conn.sock))
-      # Browsers can also connect before sending any request bytes.
-      clients.enter_context(create_connection((server.host, server.port), timeout=1))
-      for conn, socket in reversed(connections):
-        conn.request('GET', '/')
-        utest_val(b'ok', conn.getresponse().read())
-        utest_val(socket, conn.sock)
-      # Shutdown must close parked sockets without waiting for the ten-second idle timeout.
-      server.shutdown()
-      thread.join(timeout=1)
-      utest_val(False, thread.is_alive())
-    finally:
-      clients.close()
-      server.shutdown()
-      thread.join(timeout=3)
-      assert not thread.is_alive()
+    connections = []
+    for _ in range(8):
+      conn = HTTPConnection(server.host, server.port, timeout=1)
+      clients.callback(conn.close)
+      conn.request('GET', '/')
+      response = conn.getresponse()
+      utest_val(b'ok', response.read())
+      utest_val(None, response.getheader('connection'))
+      connections.append((conn, conn.sock))
+    # Browsers can also connect before sending any request bytes.
+    clients.enter_context(create_connection((server.host, server.port), timeout=1))
+    for conn, socket in reversed(connections):
+      conn.request('GET', '/')
+      utest_val(b'ok', conn.getresponse().read())
+      utest_val(socket, conn.sock)
+    # Shutdown must close parked sockets without waiting for the ten-second idle timeout.
+    server.shutdown()
+    thread.join(timeout=1)
+    utest_val(False, thread.is_alive())
 
 
 @utest_run

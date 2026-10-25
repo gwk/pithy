@@ -88,7 +88,7 @@ class _Conn():
   error:ClientProtocolError|None = None
   '''
   The first receive failure of the connection, set and logged when a read times out or h11 rejects received data.
-  Once set, the connection is closed after the current cycle. An idle keep-alive timeout is not a failure.
+  Once set, the connection is closed after the current cycle. A read timeout before any request bytes is not a failure.
   h11 exceptions are replaced because their messages embed received bytes; the replacement is constructed outside of
   the handling block so that it carries no reference to the original.
   Body and completion reads raise it, so its traceback can refer to the frames that hold the request;
@@ -109,7 +109,7 @@ class _Conn():
       self.h11_conn.receive_data(data)
       return True
     except TimeoutError:
-      if not self.pending_request: return False # Ordinary idle connection.
+      if not self.pending_request: return False # No request started; treat it as an idle close.
       status = HTTPStatus.REQUEST_TIMEOUT
     except h11_RemoteProtocolError as exc:
       status = _status_for_h11_error(exc)
@@ -134,8 +134,11 @@ class _Conn():
 
   def next_request(self) -> h11_Request|None:
     '''
-    Returns the next Request, or None when the client closed the connection or an idle keep-alive timeout elapsed.
+    Returns the next Request, or None when the client closed the connection.
     A read failure also returns None and sets `self.error`; malformed request headers raise ClientProtocolError.
+    Idle timeouts are enforced by the listener, which only hands readable connections to workers.
+    A read timeout before any request bytes arrive therefore indicates a spurious wakeup;
+    it also returns None, without an error.
     '''
     self.stage = 'request_headers'
     assert self.h11_conn.our_state is h11_IDLE
