@@ -319,8 +319,9 @@ class ServerConfig:
   drain_timeout: the timeout in seconds for blocking reads while draining an unread request body before closing a connection.
   drain_max_bytes: the maximum number of unread request body bytes to drain before closing a connection.
   max_connections: the maximum number of open client connections, including idle ones.
-    At capacity, a new connection is dropped. None selects `default_max_connections`, reduced if necessary to fit
-    the soft descriptor limit with `fd_reserve` descriptors to spare. An explicit value that does not fit raises ValueError.
+    At capacity, a new connection replaces the longest idle connection, or is dropped if none is idle.
+    None selects `default_max_connections`, reduced if necessary to fit the soft descriptor limit
+    with `fd_reserve` descriptors to spare. An explicit value that does not fit raises ValueError.
   raise_fd_limit: whether to raise the soft descriptor limit of the process toward the hard limit so that
     the connection cap fits. The limit is process-wide and inherited by child processes.
   num_threads: the number of worker threads, which bounds the number of requests handled concurrently.
@@ -462,9 +463,14 @@ class WebServer:
                   accept_resume = monotonic() + accept_pause
                   continue
                 if not self._conn_slots.acquire(blocking=False):
-                  logI('Connection capacity reached; dropping connection.', client_addr=client_addr)
-                  conn_sock.close()
-                  continue
+                  if not idle:
+                    logI('Connection capacity reached with no idle connections; dropping connection.', client_addr=client_addr)
+                    conn_sock.close()
+                    continue
+                  # Transfer the slot of the longest idle connection; a browser reconnects transparently.
+                  idle_socket, _ = idle.popitem(last=False)
+                  selector.unregister(idle_socket)
+                  idle_socket.close()
                 conn_sock.settimeout(cfg.conn_timeout)
                 conn = _Conn(client_addr=client_addr, socket=conn_sock, h11_conn=h11_Connection(h11_SERVER),
                   recv_size=cfg.recv_size)
@@ -472,7 +478,7 @@ class WebServer:
                 selector.register(conn_sock, EVENT_READ, conn)
               else:
                 conn = cast(_Conn, key.data)
-                del idle[conn.socket]
+                if idle.pop(conn.socket, None) is None: continue # Replaced by a new connection earlier in this batch.
                 selector.unregister(conn.socket)
                 self._conn_queue.put(conn)
             now = monotonic()
