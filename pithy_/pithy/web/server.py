@@ -18,7 +18,7 @@ from urllib.parse import urlsplit as url_split
 from h11 import (Connection as h11_Connection, ConnectionClosed as h11_ConnectionClosed, Data as h11_Data, DONE as h11_DONE,
   EndOfMessage as h11_EndOfMessage, Event as h11_Event, IDLE as h11_IDLE, InformationalResponse as h11_InformationalResponse,
   NEED_DATA as h11_NEED_DATA, PAUSED as h11_PAUSED, RemoteProtocolError as h11_RemoteProtocolError, Request as h11_Request,
-  Response as h11_Response, SEND_BODY as h11_SEND_BODY, SEND_RESPONSE as h11_SEND_RESPONSE, SERVER as h11_SERVER)
+  Response as h11_Response, SEND_BODY as h11_SEND_BODY, SERVER as h11_SERVER)
 from pithy.logs import log, logE, logI, LogLevel
 
 from ..http import http_method_bytes_to_strs, may_send_body
@@ -149,23 +149,6 @@ class _Conn():
         return event
       if isinstance(event, h11_EndOfMessage): return None # End of body reached; no error set.
       else: raise HttpStateError(f'next_data expected Data event; received: {type(event).__name__}.')
-
-
-  def next_completion(self) -> h11_EndOfMessage|None:
-    '''
-    Returns the EndOfMessage event indicating the end of the request/response cycle.
-    Raises ClientProtocolError for a read failure.
-    '''
-    self.stage = 'request_completion'
-    assert self.h11_conn.our_state in (h11_SEND_RESPONSE, h11_SEND_BODY)
-    while True:
-      event = self.next_event()
-      if event is h11_NEED_DATA:
-        if self.handle_need_data(): continue
-        assert self.error is not None
-        raise self.error
-      if isinstance(event, h11_EndOfMessage): return event
-      else: raise HttpStateError(f'next_completion expected EndOfMessage event; received: {type(event).__name__}.')
 
 
   def drain_unread_body(self, max_bytes:int) -> bool:
