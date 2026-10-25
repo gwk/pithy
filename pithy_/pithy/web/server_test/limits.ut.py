@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from errno import EMFILE
 from http.client import HTTPConnection
 from os import close, dup, listdir
-from resource import getrlimit, RLIMIT_NOFILE, setrlimit
+from resource import getrlimit, RLIM_INFINITY, RLIMIT_NOFILE, setrlimit
 from socket import create_connection
 from threading import Event, Thread
 from unittest.mock import patch
@@ -14,8 +14,8 @@ from pithy.web.app import WebApp
 from pithy.web.auth import allow_public
 from pithy.web.request import Request
 from pithy.web.response import Response
-from pithy.web.server import ServerConfig, WebServer
-from utest import utest_run, utest_val
+from pithy.web.server import _resolve_max_connections, ServerConfig, WebServer
+from utest import utest, utest_exc, utest_run, utest_val
 
 
 class App(WebApp):
@@ -76,3 +76,30 @@ def test_accept_descriptor_exhaustion() -> None:
       setrlimit(RLIMIT_NOFILE, (soft, hard))
     utest_val('Accept failed for lack of resources; pausing.', logE.call_args.args[0])
     utest_val(b'ok', get(server))
+
+
+def resolve(soft:int, hard:int, max_connections:int|None=None, *, raise_fd_limit:bool=False
+ ) -> tuple[int,list[tuple[int,int]]]:
+  'Resolve the connection cap against a simulated descriptor limit, returning the cap and any limits set.'
+  limits_set:list[tuple[int,int]] = []
+  with (patch('pithy.web.server.getrlimit', return_value=(soft, hard)),
+   patch('pithy.web.server.setrlimit', side_effect=lambda _, limits: limits_set.append(limits))):
+    return _resolve_max_connections(max_connections, raise_fd_limit=raise_fd_limit), limits_set
+
+
+@utest_run
+def test_resolve_max_connections() -> None:
+  inf = RLIM_INFINITY
+  # Default cap: reduced to fit unless raising is enabled.
+  utest((1024, []), resolve, 2560, inf)
+  utest((1024, []), resolve, inf, inf)
+  utest((192, []), resolve, 256, inf)
+  utest((1024, [(1088, inf)]), resolve, 256, inf, raise_fd_limit=True)
+  utest((448, [(512, 512)]), resolve, 256, 512, raise_fd_limit=True)
+  utest_exc(ValueError, resolve, 64, inf)
+  # Explicit cap: never reduced.
+  utest((100, []), resolve, 256, inf, 100)
+  utest_exc(ValueError, resolve, 1024, 524288, 4000)
+  utest((4000, [(4064, 524288)]), resolve, 1024, 524288, 4000, raise_fd_limit=True)
+  utest_exc(ValueError, resolve, 256, 512, 1000, raise_fd_limit=True)
+  utest_exc(ValueError, resolve, 2560, inf, 0)

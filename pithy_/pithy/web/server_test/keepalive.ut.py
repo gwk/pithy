@@ -22,9 +22,9 @@ class App(WebApp):
 
 
 @contextmanager
-def running_server(*, timeout:float=10, max_queued:int=64) -> Iterator[tuple[WebServer,Thread]]:
+def running_server(*, idle_timeout:float=10, max_connections:int=64) -> Iterator[tuple[WebServer,Thread]]:
   server = WebServer(app=App(), config=ServerConfig(host='127.0.0.1', num_threads=1,
-    conn_timeout=timeout, max_queued=max_queued, log_access=False))
+    idle_timeout=idle_timeout, max_connections=max_connections, log_access=False))
   errors:list[BaseException] = []
 
   def serve() -> None:
@@ -88,7 +88,7 @@ def test_pipelined_requests() -> None:
 @utest_run
 def test_idle_timeouts() -> None:
   'Expire both speculative and reused connections, releasing capacity for subsequent clients.'
-  with running_server(timeout=0.05, max_queued=1) as (server, _):
+  with running_server(idle_timeout=0.05, max_connections=2) as (server, _):
     for _ in range(4):
       with create_connection((server.host, server.port), timeout=1) as socket:
         utest_val(b'', socket.recv(1))
@@ -105,7 +105,7 @@ def test_idle_timeouts() -> None:
 @utest_run
 def test_connection_capacity() -> None:
   'Idle connections count toward the bounded connection capacity.'
-  with running_server(max_queued=1) as (server, _), ExitStack() as clients:
+  with running_server(max_connections=2) as (server, _), ExitStack() as clients:
     for _ in range(2):
       conn = HTTPConnection(server.host, server.port, timeout=1)
       clients.callback(conn.close)

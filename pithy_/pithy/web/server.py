@@ -7,7 +7,8 @@ from errno import EMFILE, ENFILE, ENOBUFS, ENOMEM, ENOTCONN
 from http import HTTPStatus
 from io import BufferedReader
 from os import _exit as os_exit
-from queue import Empty as QueueEmpty, Full as QueueFull, LifoQueue, SimpleQueue
+from queue import Empty as QueueEmpty, LifoQueue, SimpleQueue
+from resource import getrlimit, RLIM_INFINITY, RLIMIT_NOFILE, setrlimit
 from selectors import DefaultSelector, EVENT_READ
 from socket import AF_INET, SHUT_WR, SO_REUSEADDR, SOCK_STREAM, socket as Socket, socketpair, SOL_SOCKET
 from threading import BoundedSemaphore, Event, Lock, Thread
@@ -41,6 +42,15 @@ BAD_REQUEST = HTTPStatus.BAD_REQUEST
 
 accept_pause = 0.1
 'Seconds to stop accepting connections after accept fails for lack of descriptors or kernel memory.'
+
+default_max_connections = 1024
+'The connection cap used when `ServerConfig.max_connections` is unset, reduced if necessary to fit the descriptor limit.'
+
+fd_reserve = 64
+'''
+Descriptors kept free of connections when sizing the connection cap against the soft RLIMIT_NOFILE limit.
+They cover the listener, the wakeup pair, the selector, and files that the application opens.
+'''
 
 _accept_exhaustion_errnos = frozenset({EMFILE, ENFILE, ENOBUFS, ENOMEM})
 
@@ -216,6 +226,36 @@ class _Conn():
     return error
 
 
+def _resolve_max_connections(max_connections:int|None, *, raise_fd_limit:bool) -> int:
+  '''
+  Return the connection cap, checked against the soft RLIMIT_NOFILE limit with `fd_reserve` descriptors to spare.
+  See `ServerConfig.max_connections` and `ServerConfig.raise_fd_limit` for the policy.
+  Raising never sets the soft limit to infinity; it stops at what the cap needs, or at the hard limit.
+  '''
+  if max_connections is not None and max_connections < 1:
+    raise ValueError(f'max_connections must be positive; received {max_connections}.')
+  target = default_max_connections if max_connections is None else max_connections
+  needed = target + fd_reserve
+  soft, hard = getrlimit(RLIMIT_NOFILE)
+  if _limit_fits(soft, needed): return target
+  if raise_fd_limit:
+    raised = needed if _limit_fits(hard, needed) else hard
+    try: setrlimit(RLIMIT_NOFILE, (raised, hard))
+    except (OSError, ValueError) as exc:
+      raise ValueError(f'Could not raise the soft descriptor limit from {soft} to {raised}: {exc}') from exc
+    soft = raised
+    if soft >= needed: return target
+  if max_connections is None and soft > fd_reserve: return soft - fd_reserve
+  hard_desc = 'unlimited' if hard == RLIM_INFINITY else hard
+  raise ValueError(f'max_connections={target} needs {needed} file descriptors, but the soft limit is {soft} '
+    f'(hard limit: {hard_desc}); raise it with `ulimit -n` or LimitNOFILE, set raise_fd_limit, or lower max_connections.')
+
+
+def _limit_fits(limit:int, needed:int) -> bool:
+  'Whether a resource limit allows `needed`. RLIM_INFINITY is a large value on macOS but -1 on Linux, so test it explicitly.'
+  return limit == RLIM_INFINITY or limit >= needed
+
+
 def _status_for_h11_error(exc:h11_RemoteProtocolError) -> HTTPStatus:
   'The response status that h11 suggests for a rejected request, defaulting to 400 for codes that HTTPStatus lacks.'
   try: return HTTPStatus(exc.error_status_hint)
@@ -274,11 +314,17 @@ class ServerConfig:
   host: the hostname or IP address to bind to; defaults to 'localhost'.
   port: the port number to bind to; defaults to 0, which means the OS will choose a free port.
   backlog: the number of unaccepted connections that the system will allow before refusing new connections.
-  conn_timeout: the timeout in seconds for idle connections and blocking operations on active connections.
+  conn_timeout: the timeout in seconds for blocking operations on connections with a request in progress.
+  idle_timeout: the time in seconds that a connection may wait for its next request, or its first, before it is closed.
   drain_timeout: the timeout in seconds for blocking reads while draining an unread request body before closing a connection.
   drain_max_bytes: the maximum number of unread request body bytes to drain before closing a connection.
-  max_queued: the connection capacity beyond the worker count, including idle connections; excess connections are dropped.
-  num_threads: the number of worker threads in the thread pool.
+  max_connections: the maximum number of open client connections, including idle ones.
+    At capacity, a new connection is dropped. None selects `default_max_connections`, reduced if necessary to fit
+    the soft descriptor limit with `fd_reserve` descriptors to spare. An explicit value that does not fit raises ValueError.
+  raise_fd_limit: whether to raise the soft descriptor limit of the process toward the hard limit so that
+    the connection cap fits. The limit is process-wide and inherited by child processes.
+  num_threads: the number of worker threads, which bounds the number of requests handled concurrently.
+    A worker is occupied for the whole of a request, including slow handlers and slow clients, but not between requests.
   recv_size: the maximum number of bytes to receive at once from client connections.
   log_access: whether to log each parsed HTTP request after response sending completes or fails.
     Access fields are c (client), u (uid from request.ctx, default 0), m (method), p (path), q (raw query), s (status), and d (duration).
@@ -298,10 +344,12 @@ class ServerConfig:
   backlog:int = 128
   recv_size:int = 64 * 1024
   conn_timeout:float = 10.0
+  idle_timeout:float = 5.0
   drain_timeout:float = 1.0
   drain_max_bytes:int = 1 << 20
-  num_threads:int = 4
-  max_queued:int = 64
+  num_threads:int = 8
+  max_connections:int|None = None
+  raise_fd_limit:bool = False
   thread_name_prefix:str = 'WebServer'
   log_access:bool = True
   startup_message:str = ''
@@ -313,8 +361,8 @@ class WebServer:
   WebServer is a multithreaded HTTP 1.1 server.
   A selector holds idle connections, including speculative connections with no request yet, without occupying workers.
   Workers handle one request at a time and return reusable connections to the selector.
-  It uses a LIFO queue for incoming connections, on the assumption that under load it is better to serve some requests quickly
-  and let others time out, rather than have all requests delayed or time out.
+  Readable connections wait for workers in a LIFO queue, on the assumption that under load it is better to serve some requests
+  quickly and let others time out, rather than have all requests delayed or time out.
   '''
 
   def __init__(self, *, app:WebApp, config:ServerConfig=ServerConfig()) -> None:
@@ -322,20 +370,22 @@ class WebServer:
     Initialize the web server.
     The server will bind to the host and port specified in the config.
     If port 0 was specified then the dynamically assigned port is saved in `self.port`.
+    The connection cap is resolved against the descriptor limit and saved in `self.max_connections`.
     '''
 
     self.app = app
     self.config = config
+    self.max_connections = _resolve_max_connections(config.max_connections, raise_fd_limit=config.raise_fd_limit)
     self._stop = Event()
     self._lock = Lock()  # Guards _serving, which decides whether shutdown() or serve_forever() closes the sockets.
     self._serving = False
     self._wakeup_reader, self._wakeup_writer = socketpair()
     self._wakeup_reader.setblocking(False)
     self._wakeup_writer.setblocking(False)
-    self._conn_queue: LifoQueue[_Conn|None] = LifoQueue(maxsize=config.max_queued)
+    self._conn_queue: LifoQueue[_Conn|None] = LifoQueue() # Bounded by the connection slots.
     self._idle_queue: SimpleQueue[_Conn] = SimpleQueue()
     # A connection owns its slot across selector, queue and worker handoffs, until its socket is closed.
-    self._conn_slots = BoundedSemaphore(config.num_threads + config.max_queued)
+    self._conn_slots = BoundedSemaphore(self.max_connections)
     self._workers: list[Thread] = []
 
     socket = Socket(AF_INET, SOCK_STREAM)
@@ -359,7 +409,7 @@ class WebServer:
   def serve_forever(self) -> None:
     'Starts the server loop; call shutdown() from another thread to stop the server and then this method will return.'
     cfg = self.config
-    logI('Serving.', url=self.url)
+    logI('Serving.', url=self.url, max_connections=self.max_connections)
     if cfg.startup_message: logI(cfg.startup_message)
 
     for i in range(cfg.num_threads):
@@ -387,12 +437,12 @@ class WebServer:
               try: conn = self._idle_queue.get_nowait()
               except QueueEmpty: break
               if conn.h11_conn.trailing_data[0]:
-                self._queue_connection(conn) # A pipelined request may already be buffered in h11.
+                self._conn_queue.put(conn) # A pipelined request may already be buffered in h11.
               else:
                 conn.idle_since = monotonic()
                 idle[conn.socket] = conn
                 selector.register(conn.socket, EVENT_READ, conn)
-            deadline = next(iter(idle.values())).idle_since + cfg.conn_timeout if idle else None
+            deadline = next(iter(idle.values())).idle_since + cfg.idle_timeout if idle else None
             if accept_resume is not None: deadline = accept_resume if deadline is None else min(deadline, accept_resume)
             ready = selector.select(None if deadline is None else max(0, deadline - monotonic()))
             if self._stop.is_set(): break
@@ -424,11 +474,11 @@ class WebServer:
                 conn = cast(_Conn, key.data)
                 del idle[conn.socket]
                 selector.unregister(conn.socket)
-                self._queue_connection(conn)
+                self._conn_queue.put(conn)
             now = monotonic()
             while idle:
               socket, conn = next(iter(idle.items()))
-              if now - conn.idle_since < cfg.conn_timeout: break
+              if now - conn.idle_since < cfg.idle_timeout: break
               del idle[socket]
               selector.unregister(socket)
               socket.close()
@@ -498,15 +548,6 @@ class WebServer:
       except BaseException as exc:
         logE('Uncaught worker exception; exiting process.', exc=exc, client_addr=conn.client_addr)
         os_exit(1)
-
-
-  def _queue_connection(self, conn:_Conn) -> None:
-    'Transfer a readable connection to a worker, dropping it if the work queue is full.'
-    try: self._conn_queue.put_nowait(conn)
-    except QueueFull:
-      logI('Queue full; dropping connection.', client_addr=conn.client_addr)
-      conn.socket.close()
-      self._conn_slots.release()
 
 
   def _handle_connection(self, conn:_Conn) -> bool:
