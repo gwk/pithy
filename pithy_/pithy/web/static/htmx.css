@@ -16,7 +16,6 @@ Load this alongside pithy.css in applications that use htmx; it depends on pithy
 
 .block-emoji-icon {
   display: block;
-  margin: 1rem 0;
   min-width: 1.5rem;
 }
 
