@@ -1,12 +1,12 @@
-
 /* DbView. */
 
+/* The view stacks its heading, query form, disclosures, pagination and results with uniform gaps.
+A flex column keeps each block at full width; the results div scrolls wide tables itself. */
 .dbview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75em;
   font-size: small;
-}
-
-.dbview form {
-  margin: 1em 0;
 }
 
 .dbview form #columns {
@@ -23,13 +23,21 @@
   margin-right: 0.5em;
 }
 
+.dbview form > input[type='search'] {
+  width: 100%; /* Long where and order by clauses need the full column; limit and offset are wrapped and stay narrow. */
+}
+
 .dbview .detail {
-  margin-bottom: 1em;
+  margin-block: 0.5em;
+}
+
+.dbview .pagination-control .icon {
+  font-size: 1rem; /* The icon glyphs are too small to hit at the view's small text size. */
 }
 
 .dbview #results {
   width: 100%;
-  overflow-x: scroll;
+  overflow-x: auto;
 }
 
 .dbview #results > table {
@@ -41,23 +49,31 @@
   overflow: clip;
 }
 
+/* The flush disclosure marker hangs into the left padding, which a header cell does not have room for. */
+.dbview #results > table th summary.disclosure-flush::before {
+  position: static;
+  margin-inline-end: 0.5ch;
+}
+
 .dbview #results > table td {
   max-width: 95vw;
   overflow-wrap: break-word;
 }
 
 .dbview .error {
-  color: #800;
-}
-
-.dbview .null {
-  color: #888;
+  color: var(--fg-error, light-dark(#800, #F88));
 }
 
 .dbview .empty {
-  color: #8A8;
+  color: light-dark(oklch(50% 0.08 145), oklch(78% 0.08 145));
 }
 
+/* A reference with no matching row. */
 .dbview .unjoined {
-  color: #840;
+  color: light-dark(oklch(48% 0.12 60), oklch(80% 0.1 70));
+}
+
+/* Declared after `.unjoined` so that a NULL reference reads as an ordinary NULL rather than a broken one. */
+.dbview .null {
+  color: var(--fg-muted, GrayText);
 }
