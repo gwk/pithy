@@ -1,13 +1,18 @@
 /* Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/. */
 
+/*
+Styles for charts rendered by `pithy.html.charts`.
+Colors use the pithy.css theme variables when present, and derive from the text color, so charts work in either theme.
+The variables in "User-configurable style" at the bottom are the intended customization points.
+*/
+
 /* Chart layout. */
 figure.chart {
-  box-sizing: border-box;
   display: flex;
   flex-direction: column;
 }
 
-figure.chart * {
+figure.chart, figure.chart * {
   box-sizing: border-box;
 }
 
@@ -50,6 +55,9 @@ figure.chart > .vis-row {
   display: flex;
   flex-direction: row;
   column-gap: 0;
+  /* Expose the scroll timeline to the overflow fades on vis-wrap. WebKit ignores a timeline-scope on the element
+  whose pseudo-elements use the timeline, so the scope is declared one level up. */
+  timeline-scope: --chart-scroll-x;
 }
 
 figure.chart > .vis-row > .gutter-left {
@@ -65,7 +73,6 @@ figure.chart > .vis-row > .vis-wrap {
   min-width: 4rem;
   min-height: 1rem;
   overflow: hidden;
-  timeline-scope: --chart-scroll-x;
 }
 
 figure.chart > .vis-row > .vis-wrap::before,
@@ -116,17 +123,9 @@ figure.chart > .vis-row > .vis-wrap > .vis-scroll {
   width: 100%;
   height: 100%;
   overflow-x: auto;
+  overscroll-behavior-x: contain; /* Do not turn a horizontal scroll past the end into a back or forward navigation. */
+  scrollbar-width: none; /* The overflow fades indicate scrollability instead. */
   scroll-timeline: --chart-scroll-x inline;
-}
-
-@supports(scrollbar-width:none) {
-  figure.chart > .vis-row > .vis-wrap > .vis-scroll {
-    scrollbar-width: none; /* Hide scrollbar for Firefox. */
-  }
-}
-
-figure.chart > .vis-row > .vis-wrap > .vis-scroll::-webkit-scrollbar { /* Hide scrollbar for Chrome, Safari, and Opera. */
-  overscroll-behavior: contain;
 }
 
 figure.chart :is(.vis, .ticks.y) {
@@ -136,8 +135,7 @@ figure.chart :is(.vis, .ticks.y) {
 
 figure.chart :is(.origin, .ticks.x) {
   height: calc(0.707 * var(--tick-font-scale) * var(--max-tick-x-label-len) + var(--tick-len) + 0.5rem);
-  min-height:1ch;
-
+  min-height: 1ch;
 }
 
 /* Tick gutters. */
@@ -219,7 +217,6 @@ figure.chart .vis { /* The data visualization area. */
   left: 0;
   top: 0;
   width: var(--vis-width);
-  /*height: 100%;*/
 }
 
 figure.chart .vis > .grid,
@@ -281,35 +278,32 @@ figure.chart.categorical-numerical .vis > .series.bar > div {
   border-style: solid;
 }
 
-.swatch {
+figure.chart .swatch {
   display: inline-block;
   background-color: var(--series-color);
 }
 
 /* User-configurable style. */
 
-figure.chart * {
-  box-sizing: border-box;
-}
 figure.chart {
   position: relative;
   width: 100%;
   height: 100%;
   margin: 0;
   --chart-bar-border-width: 1px;
-  --chart-background-color: #EEE;
-  --chart-grid-color: #CCC;
+  --chart-background-color: var(--bg-subtle, color-mix(in oklab, currentColor 6%, Canvas));
+  --chart-grid-color: var(--tint-border, color-mix(in oklab, currentColor 15%, transparent));
+  --chart-line-color: currentColor; /* Tick marks and bar borders. */
   --chart-overflow-gradient-width: 1rem;
   background-color: var(--chart-background-color);
-  --series-color: gray; /* Default, can be overridden per series. */
+  /* Series fills are opaque mixes of the text color into the chart background, so that grid lines stay behind them. */
+  --series-color: color-mix(in oklab, currentColor 37%, var(--chart-background-color)); /* Default; override per series. */
 }
 figure.chart > figcaption {
   padding: 0.5rem 0;
 }
 figure.chart > .legend {
   padding: 0.5rem 0;
-}
-figure.chart .vis-row {
 }
 figure.chart .origin {
   background-color: inherit;
@@ -328,13 +322,10 @@ figure.chart .ticks > div > span.label {
   /* ^ Note: the font-size must be set using --tick-font-scale so that both the height and final half step calculations work. */
 }
 figure.chart .ticks > div > span.tick {
-  background-color: black;
+  background-color: var(--chart-line-color);
 }
 figure.chart .ticks.y > div {
   text-align: right;
-}
-figure.chart .ticks > div > span.tick {
-  background-color: black;
 }
 figure.chart .ticks.x > div > span.tick {
   width: 1px;
@@ -345,20 +336,20 @@ figure.chart .ticks.y > div > span.tick {
 }
 
 figure.chart .series > div {
-    border-color: black;
+  border-color: var(--chart-line-color);
 }
 
 figure.chart .Series0 {
-  --series-color: #888;
+  --series-color: color-mix(in oklab, currentColor 35%, var(--chart-background-color));
 }
 figure.chart .Series1 {
-  --series-color: #999;
+  --series-color: color-mix(in oklab, currentColor 28%, var(--chart-background-color));
 }
 figure.chart .Series2 {
-  --series-color: #AAA;
+  --series-color: color-mix(in oklab, currentColor 22%, var(--chart-background-color));
 }
 figure.chart .Series3 {
-  --series-color: #BBB;
+  --series-color: color-mix(in oklab, currentColor 16%, var(--chart-background-color));
 }
 
 figure.chart .swatch {
