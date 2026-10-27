@@ -39,7 +39,7 @@ nav_links = (
 def dev_page(*, title:str, main:Main, breadcrumbs:Iterable[tuple[str,str]]=(), css_paths:Sequence[str]=(),
  js_paths:Sequence[str]=()) -> HtmlResponse:
   '''
-  Return the complete page for `main`, wrapped in the dev app's shell.
+  Return a document page for `main`, wrapped in the dev app's shell.
   `css_paths` and `js_paths` are added to the head after the common stylesheets and scripts; scripts are deferred.
 
   This is the single entry point through which every dev endpoint renders a page,
@@ -60,6 +60,7 @@ def dev_page(*, title:str, main:Main, breadcrumbs:Iterable[tuple[str,str]]=(), c
     head.add_js(src=js_path)
 
   body = html.body
+  body.append_class('document')
   body.append(Header(site_name))
   body.append(Nav(cl='navbar', _=[
     *(A(href=p, _=label) for p, label in nav_links),

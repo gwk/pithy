@@ -3,6 +3,11 @@
 /*
 # Semantic guidelines
 
+## Layout and spacing
+Foundations and component styles apply everywhere. `body.document` opts into document page geometry.
+The `.flow` class spaces immediate children independently of page layout; semantic containers do not add spacing.
+Applications own their layout, viewport sizing and scrolling. No application-mode class is needed.
+
 ## Units
 * rem: for the type scale and root-level spacing, so the whole system honors user preferences.
 * em: deliberately at component boundaries, e.g. button padding in em so the button scales as a unit its font-size changes.
@@ -28,13 +33,9 @@
 
 * { margin: 0; } /* Remove all default margins. */
 
-html, body { height: 100%; } /* Allow percentage-based heights in the application.
-See: https://www.joshwcomeau.com/css/custom-css-reset/#digit-percentage-based-heights. */
-
 html:focus-within { scroll-behavior: smooth; }
 
-body { min-height: 100dvh; text-rendering: optimizeSpeed; line-height: 1.5; }
-/* dvh, not vh: on mobile browsers 100vh is the *largest* viewport height, which overflows while the URL bar is showing. */
+body { text-rendering: optimizeSpeed; line-height: 1.5; }
 
 p, h1, h2, h3, h4, h5, h6 { overflow-wrap: break-word; } /* Avoid text overflows. */
 
@@ -201,9 +202,7 @@ a per-mode override uses the same selectors as below. */
 Only the root sets a font; everything else inherits, including form controls (see "Forms"). */
 
 html {
-  /* The root paints the canvas. The body box is only viewport height on long pages (see "height: 100%" above),
-  and neither Chromium nor WebKit propagate the body background to the canvas here, so a body background alone leaves the
-  overflow area in the browser default color, which is visible in dark mode. */
+  /* Paint the canvas, including overflow beyond the body box, in both document and application layouts. */
   background-color: var(--bg);
 }
 
@@ -239,24 +238,26 @@ hr { border: none; border-top: 1px solid var(--tint-border); }
 
 
 /* Flow.
-A flow container spaces its immediate children with a single rule.
-Only the second and later children get a margin, so margins never double up and never collapse through a parent edge.
+A flow container spaces its immediate children; only the second and later children get a margin.
+In `body.document`, every `main`, `section` and `article` is a flow container.
+Elsewhere, opt in with `.flow` on each container; nested containers need their own `.flow`.
 Normal block layout is preserved: a div still fills the width, and a table still shrinks to fit.
+All flow selectors have zero specificity so any rule that sets the margin overrides them, regardless of stylesheet order.
 */
-/* Semantic document containers establish flow automatically; use `.flow` to opt in other containers. */
-/* The `* + *` "owl selector" is an established pattern for selecting all but the first child to style adjacent siblings. */
-:is(main, section, article, .flow) > * + * { margin-block-start: var(--flow-gap); }
+:where(:is(.flow, body.document :is(main, section, article)) > * + *) { margin-block-start: var(--flow-gap); }
 
 /* A large heading or nested section opens a new block, so it gets more space above. */
-:is(main, section, article, .flow) > * + :is(h1, h2, section, article) {
+:where(:is(.flow, body.document :is(main, section, article)) > * + :is(h1, h2, section, article)) {
   margin-block-start: var(--flow-gap-block);
 }
-:is(main, section, article, .flow) > * + h3 { margin-block-start: calc(1.25 * var(--flow-gap)); }
-:is(main, section, article, .flow) > * + :is(h4, h5, h6) { margin-block-start: var(--flow-gap); }
+:where(:is(.flow, body.document :is(main, section, article)) > * + h3) { margin-block-start: calc(1.25 * var(--flow-gap)); }
+:where(:is(.flow, body.document :is(main, section, article)) > * + :is(h4, h5, h6)) { margin-block-start: var(--flow-gap); }
 /* A heading hugs the content that follows it. */
-:is(main, section, article, .flow) > :is(h1, h2, h3, h4, h5, h6) + * { margin-block-start: var(--flow-gap-heading); }
+:where(:is(.flow, body.document :is(main, section, article)) > :is(h1, h2, h3, h4, h5, h6) + *) {
+  margin-block-start: var(--flow-gap-heading);
+}
 /* Consecutive headings express nested structure and need more separation than a heading and its content. */
-:is(main, section, article, .flow) > :is(h1, h2, h3, h4, h5, h6) + :is(h1, h2, h3, h4, h5, h6) {
+:where(:is(.flow, body.document :is(main, section, article)) > :is(h1, h2, h3, h4, h5, h6) + :is(h1, h2, h3, h4, h5, h6)) {
   margin-block-start: calc(0.75 * var(--flow-gap));
 }
 
@@ -294,19 +295,22 @@ pre {
 details > :not(summary) { margin-inline-start: 1.5ch; } /* Align disclosed content with the summary text. */
 
 
-/* Layout.
+/* Document layout, enabled by `body.document`.
 "page" refers to setting a fixed width content area for body child elements.
 "full" refers to full width body child elements.
 */
 
 /* Keep the vertical scrollbar gutter stable so centered layouts do not shift as the scrollbar comes and goes.
 The inline-size query container lets descendants use `cqw` to measure the root content box, excluding that gutter. */
-html {
+:where(html:has(> body.document)) {
   container-type: inline-size;
   overflow-y: scroll;
 }
 
-body {
+:where(body.document) {
+  /* A minimum rather than a fixed height, so the body grows with long content and `main` fills the slack on short pages.
+  dvh follows the visible mobile viewport as the URL bar changes. */
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   /* Let wide content establish the document width so sibling root blocks extend behind horizontal overflow.
@@ -336,7 +340,7 @@ body {
   align-self: center;
 }
 
-/* Full bleed: let one element inside the page column span the whole window.
+/* Full bleed in a document layout: let one element inside the page column span the whole window.
 This is the counterpart to the `.body-child-*` classes above, for content that is not a child of body --
 typically a wide table sitting in `main`.
 
@@ -363,15 +367,14 @@ a `.bleed` div rather than putting the class on the table itself. */
 
 
 /* Top level blocks.
-The conventional page is `header`, `nav`, `main`, `footer` as direct children of `body`.
+The conventional document page has `header`, `nav`, `main`, `footer` as direct children of `body.document`.
 All four blocks extend to the window edges with their content inset by the page padding.
 These defaults are written with `:where()`, giving them zero specificity,
 so any of the `.body-child-*` classes above still wins when an application wants a different arrangement.
 */
 
-:where(body > header, body > nav, body > footer) {
+:where(body.document > header, body.document > nav, body.document > footer) {
   width: 100%;
-  flex-shrink: 0; /* Preserve header, nav and footer padding when main overflows the body's initial viewport height. */
   padding-left: var(--page-padding);
   padding-right: var(--page-padding);
   background-color: var(--bg-subtle);
@@ -379,7 +382,7 @@ so any of the `.body-child-*` classes above still wins when an application wants
   border: 0 solid var(--tint-border); /* Blocks meet `main` at a rule rather than across a gap. */
 }
 
-:where(body > main) {
+:where(body.document > main) {
   width: 100%;
   padding-left: var(--page-padding);
   padding-right: var(--page-padding);
@@ -387,16 +390,16 @@ so any of the `.body-child-*` classes above still wins when an application wants
   flex: 1; /* Take up the slack, so that the footer sits at the bottom of a short page. */
 }
 
-:where(body > header) {
+:where(body.document > header) {
   padding-block: 0.5rem;
   font-size: 1.125rem;
 }
 
-:where(body > nav) {
+:where(body.document > nav) {
   padding-block: 0.25rem;
 }
 
-:where(body > footer) {
+:where(body.document > footer) {
   padding-block: 0.5rem;
   border-top-width: 1px;
   font-size: small;

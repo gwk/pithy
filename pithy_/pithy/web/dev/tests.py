@@ -11,8 +11,9 @@ from .pages import dev_page
 def dev_tests(request:Request) -> HtmlResponse:
   return dev_page(title='Tests', main=Main(
     H1('Browser tests'),
-    P('These checks run automatically in your current browser. They exercise color inheritance and themed components '
-      'using the live stylesheets. Run this page in Chromium and WebKit after shared style changes.'),
+    P('These checks run automatically in your current browser. They exercise document layout, flow, '
+      'color inheritance and themed components using the live stylesheets. '
+      'Run this page in Chromium and WebKit after shared style changes.'),
     P('Fixtures run in a separate frame so they can change themes without changing this page. '
       'These checks cover browser behavior, not visual quality or accessibility.'),
     Button('Run again', id='tests-run', type='button'),

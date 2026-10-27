@@ -21,8 +21,8 @@ def dev_typography(request:Request) -> HtmlResponse:
   'Baseline styling of headings, text, lists and code.'
   main = Main(
     H1('Typography'),
-    P('Every element on this page is unstyled by the application: this is what ', Code('pithy.css'),
-      ' gives a document on its own.'),
+    P('The application adds no styles to this page. ', Code('body.document'), ' provides the page layout and the spacing within ',
+      Code('main'), ', ', Code('section'), ' and ', Code('article'), '; the rest comes from ', Code('pithy.css'), '.'),
 
     Section(
       _=[
