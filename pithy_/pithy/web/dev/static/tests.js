@@ -236,6 +236,25 @@
         }
       }
 
+      await test('Disclosures use their own state and permit component marker overrides', () => {
+        fixture.innerHTML = '<details open><summary>Parent</summary>' +
+          '<details id="child"><summary>Child</summary></details></details>' +
+          '<details class="test-disclosure" open><summary>Custom</summary></details>';
+        const marker = selector => win.getComputedStyle(required(fixture.querySelector(selector)), '::before').content;
+        check(marker('details > summary') === '"▾"', 'Open disclosure should show the open marker.');
+        check(marker('#child > summary') === '"▸"', 'An open ancestor changed a closed child marker.');
+        required(fixture.querySelector('#child')).setAttribute('open', '');
+        check(marker('#child > summary') === '"▾"', 'Child disclosure should reflect its own open state.');
+        const override = doc.createElement('style');
+        override.textContent = '.test-disclosure > summary::before { content: none; }';
+        doc.head.prepend(override);
+        try {
+          check(marker('.test-disclosure > summary') === 'none', 'Component class cannot override the open marker.');
+        } finally {
+          override.remove();
+        }
+      });
+
       await test('Code inside a pre has only the block decoration', () => {
         fixture.innerHTML = '<pre><code>Block code</code></pre>';
         check(style('pre').borderTopStyle !== 'none', 'The code block lost its border.');

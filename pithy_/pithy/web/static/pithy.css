@@ -527,19 +527,19 @@ summary { list-style-type: none; cursor: pointer; } /* Chrome. */
 summary::-webkit-details-marker { display: none; } /* Safari. */
 
 /* Use Black Right-pointing Small Triangle, Black Down-pointing Small Triangle. */
-details summary {
+details > summary {
   position: relative; /* The containing block for the flush marker below. */
 }
 
-details summary::before {
+:where(details) > summary::before {
   content: "▸";
   display: inline-block;
   width: 1.5ch;
 }
 
-details[open] summary::before { content: "▾"; }
+:where(details[open]) > summary::before { content: "▾"; }
 
-details summary.disclosure-flush::before {
+details > summary.disclosure-flush::before {
   font-size: 0.75em;
   position: absolute;
   left: -1.25ch;
