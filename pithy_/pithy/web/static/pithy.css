@@ -188,9 +188,8 @@ a per-mode override uses the same selectors as below. */
   --accent: oklch(from var(--accent-base) var(--accent-l) calc(c * var(--accent-chroma-gain)) h);
   --fg-error: oklch(from var(--error-base) var(--error-l) calc(c * var(--error-chroma-gain)) h);
 
-  /* Compatibility aliases. New styles and theme overrides should use the surface names above. */
+  /* Compatibility alias. New styles and theme overrides should use the surface names above. */
   --bg-sunken: var(--bg-subtle);
-  --bg-raised: var(--bg-distinct);
 
   --tr-subheading-background-color: var(--tint-distinct);
   --tr-even-background-color: transparent;
