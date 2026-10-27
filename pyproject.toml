@@ -11,6 +11,8 @@ constraint-dependencies = ["certifi >= 2026.10.19"]
 brotli = "2026-10-24T00:00:00Z"
 # Emergency exception for the eMudhra CA compromise.
 certifi = "2026-10-22T00:00:00Z"
+# Allow the Pillow 13.0.0 release before the cooldown expires.
+pillow = "2026-10-17T00:00:00Z"
 
 [tool.uv.workspace]
 members = [
