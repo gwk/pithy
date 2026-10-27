@@ -3,6 +3,7 @@
 from ..router import RouteTarget
 from .color_ramps import dev_color_ramps
 from .colors import dev_colors
+from .dbview import DevDbView
 from .html import dev_html_index
 from .html.controls import DevControlsForm, DevImageButtonForm
 from .html.html_to_json import dev_html_to_json
@@ -26,6 +27,7 @@ routes:dict[str,RouteTarget] = {
   '/colors/ramps': dev_color_ramps,
   '/typography': dev_typography,
   '/tables': dev_tables,
+  '/dbview': DevDbView,
   '/tests': dev_tests,
   '/html': dev_html_index,
   '/html/html-to-json': dev_html_to_json,

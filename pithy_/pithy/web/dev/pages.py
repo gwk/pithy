@@ -31,6 +31,7 @@ nav_links = (
   ('/colors', 'Colors'),
   ('/typography', 'Typography'),
   ('/tables', 'Tables'),
+  ('/dbview', 'DbView'),
   ('/markdown', 'Markdown'),
   ('/tests', 'Tests'),
 )
