@@ -602,14 +602,24 @@ form.grid, .form_grid {
   justify-self: start; /* Align items to the left and do not stretch them to fill the grid cell. */
 }
 
-/* Multiline controls align to the top of their row instead of exposing their browser-dependent baseline. */
+/* Multiline controls align to the top of their row instead of exposing their browser-dependent baseline.
+A control may be wrapped, e.g. in a form that saves it independently. */
 :is(form.grid, .form_grid) > :is(
-  label:has(+ textarea, + select[multiple], + * select[multiple]),
+  label:has(+ textarea, + * > textarea, + select[multiple], + * select[multiple]),
   textarea,
+  *:has(> textarea),
   select[multiple],
   *:has(select[multiple])
 ) {
   align-self: start;
+}
+
+/* Offset a textarea's label by the textarea's border and padding, so that their first lines align.
+This duplicates the `textarea` padding and border below rather than measuring them,
+and assumes that the label and textarea share a font size, since `em` resolves against the label.
+A page that restyles its textareas or labels must adjust this offset too. */
+:is(form.grid, .form_grid) > label:has(+ textarea, + * > textarea) {
+  padding-top: calc(0.25em + 1px);
 }
 
 /* An image input is commonly paired with text in a flex wrapper, whose baseline follows the image's bottom edge. */
@@ -673,7 +683,7 @@ select {
   max-width: 100%;
 }
 
-textarea { padding: 0.25em; }
+textarea { padding: 0.25em; } /* Grid labels beside textareas match this; see the forms section. */
 
 :is(button, input, select, textarea):disabled { color: color-mix(in oklab, currentColor 60%, transparent); }
 
