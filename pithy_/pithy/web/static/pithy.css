@@ -650,9 +650,16 @@ label:has(> input) {
   and neither the label nor its container has to be marked up for it. */
   display: inline-flex;
   flex-direction: row;
-  align-items: center;
+  align-items: baseline;
   gap: 0.5ch;
   white-space: nowrap;
+}
+
+label:has(> input) > input {
+  /* Center the input on the text without letting it participate in baseline alignment.
+  The label's baseline then comes from its text rather than the input,
+  so that it aligns with neighboring text, e.g. a grid label, even when the label text is a different size. */
+  align-self: center;
 }
 
 /* Text-like controls.
