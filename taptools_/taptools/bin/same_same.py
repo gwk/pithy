@@ -121,7 +121,7 @@ def highlight_diff(lines:Iterable[str], interactive:bool=False, dbg:bool=False) 
         print(line, end='')
         continue
       # This marker belongs to the current hunk and must not end the diff.
-      if kind == 'other' and raw_text == '\\ No newline at end of file':
+      if kind == 'other' and clip_reset(match['other']) == '\\ No newline at end of file':
         buffer.append(DiffLine(kind, match))
         continue
       if kind in pass_kinds:
@@ -189,28 +189,27 @@ def handle_file_lines(lines:list[DiffLine], interactive:bool, dbg:bool) -> None:
         assert old_num not in old_ctx_nums
         line.old_num = old_num
         old_lines[old_num] = line
-        old_ctx_nums.add(old_num)
+        if kind == 'ctx': old_ctx_nums.add(old_num)
         old_num += 1
       if kind in ('ctx', 'add'):
         assert new_num not in new_lines
         assert new_num not in new_ctx_nums
         line.new_num = new_num
         new_lines[new_num] = line
-        new_ctx_nums.add(new_num)
+        if kind == 'ctx': new_ctx_nums.add(new_num)
         new_num += 1
     elif kind == 'loc':
       is_loc_colored = bool(line.match['git_color'])
       old_ranges = parse_ranges(match['old_ranges'])
       old_range = old_ranges[0] # For now simply use the first parent.
       new_range = parse_range(match['new_range'])
-      on = old_range[0]
-      nn = new_range[0]
-      if on > 0:
-        assert on > old_num, (on, old_num, match.string)
-        old_num = on
-      if nn > 0:
-        assert nn > new_num
-        new_num = nn
+      # Empty ranges name the line before the insertion or deletion point.
+      on = old_range[0] + (old_range[1] == 0)
+      nn = new_range[0] + (new_range[1] == 0)
+      assert on >= old_num, (on, old_num, match.string)
+      assert nn >= new_num, (nn, new_num, match.string)
+      old_num = on
+      new_num = nn
       line.set_text(key='loc')
     elif kind == 'diff': # Not the best way to parse paths, because paths with spaces are ambiguous.
       paths = clip_reset(match['diff_paths']).split(' ') # Split into words, then guess at old and new split as best we can.
@@ -414,7 +413,7 @@ def parse_ranges(s:str) -> list[tuple[int,int]]:
 
 git_diff_graph_mode_pat = re.compile(r'(?x) [ /\*\|\\]*') # space is treated as literal inside of brackets, even in extended mode.
 
-sgr_color_pat = r'(?: \x1b \[ \d* m )'
+sgr_color_pat = r'(?: \x1b \[ [\d;]* m )'
 sgr_rst_pat = r'(?: \x1b \[ m )'
 range_pat = r'(?: \d+ (?:,\d+)? )' # The length is omitted if it is 1.
 

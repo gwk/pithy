@@ -1,10 +1,11 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from contextlib import redirect_stdout
+from difflib import unified_diff
 from io import StringIO
 
 from pithy.ansi import strip_ctrl_seq
-from taptools.bin.same_same import highlight_diff
+from taptools.bin.same_same import C_ADD_MOVED, C_ADD_TOKEN, C_END, C_REM_MOVED, C_REM_SPACE, C_REM_TOKEN, highlight_diff
 from utest import utest, utest_val
 
 
@@ -69,3 +70,69 @@ for colored in (False, True):
       utest_val(True, plain.startswith(expected), 'comments do not overwrite renamed paths or disappear')
     utest_val(True, 'example.txt:1:' in plain if not interactive_mode else '+++ example.txt\n' in plain,
       'file header parsing resumes for the next diff')
+
+
+def highlight_source(text:str) -> list[str]:
+  'Return source lines from a highlighted diff of example.txt.'
+  return [line for line in strip_ctrl_seq(highlight(text)).splitlines() if not line.startswith('./example.txt:')]
+
+
+# Exercise real unified diffs, including empty ranges and adjacent hunks with no context.
+versions = [[], ['a'], ['a', 'b'], ['a', 'b', 'c'], ['b', 'a', 'c'], ['a', 'a', 'b'],
+  ['a', '', 'b', '', 'c'], ['a', 'b', 'x', 'c', 'd', 'y'], ['x', 'b', 'c', 'y']]
+for old in versions:
+  for new in versions:
+    for context in (0, 1, 3):
+      patch_lines = list(unified_diff([line + '\n' for line in old], [line + '\n' for line in new],
+        fromfile='example.txt', tofile='example.txt', n=context))
+      if not patch_lines: continue
+      patch = 'diff --git example.txt example.txt\n' + ''.join(patch_lines)
+      expected_source = [line[1:-1] for line in patch_lines[2:] if not line.startswith('@@')]
+      utest(expected_source, highlight_source, patch, _utest_label=f'context={context}')
+      utest_val(len(patch.splitlines()), len(highlight(patch, interactive=True).splitlines()),
+        'interactive unified diffs retain line counts')
+
+# A unique moved line anchors repeated neighbors in both directions, including changed indentation.
+moved = header + '@@ -1,4 +1,4 @@\n-repeat\n-anchor\n-repeat\n stay\n+  repeat\n+  anchor\n+  repeat\n'
+moved_result = highlight(moved)
+for text in ('repeat', 'anchor'):
+  utest_val(True, C_REM_MOVED + text + C_END in moved_result, 'removed block is marked as moved')
+  utest_val(True, C_ADD_MOVED + '  ' + text + C_END in moved_result, 'added block is marked as moved')
+utest_val(False, C_REM_MOVED + 'stay' in moved_result, 'context is not marked as moved')
+
+# Git color settings can include bold and multiple color parameters.
+bold_diff = ''.join('\x1b[1;31m' + line + '\x1b[m\n' for line in diff.splitlines())
+utest(strip_ctrl_seq(rendered), lambda: strip_ctrl_seq(highlight(bold_diff)))
+
+colored_marker = '\x1b[31m' + marker.rstrip('\n') + '\x1b[m\n'
+utest(strip_ctrl_seq(highlight(no_newline)), lambda: strip_ctrl_seq(highlight(no_newline.replace(marker, colored_marker))))
+
+# Movement expansion stops at context, even when the neighboring text matches on both sides.
+context_move = highlight(header + '@@ -1,3 +1,3 @@\n repeat\n-anchor\n-repeat\n+anchor\n+repeat\n')
+utest_val(True, '\nrepeat\n' in context_move, 'context next to a moved block remains uncolored')
+utest_val(1, context_move.count(C_REM_MOVED + 'repeat' + C_END), 'only the removed repeat is marked as moved')
+utest_val(1, context_move.count(C_ADD_MOVED + 'repeat' + C_END), 'only the added repeat is marked as moved')
+
+# Token highlighting distinguishes changed words and significant spaces while preserving source text.
+tokens = highlight(header + '@@ -1 +1 @@\n-value = old_name\n+value = new_name\n')
+utest_val(True, C_REM_TOKEN + 'old' in tokens, 'removed word is highlighted')
+utest_val(True, C_ADD_TOKEN + 'new' in tokens, 'added word is highlighted')
+spaces = highlight(header + '@@ -1 +1 @@\n-value  = 1\n+value = 1\n')
+utest_val(True, C_REM_SPACE + '  ' in spaces, 'changed internal spaces are highlighted')
+utest(['value  = 1', 'value = 1'], highlight_source, header + '@@ -1 +1 @@\n-value  = 1\n+value = 1\n')
+utest(['', ''], highlight_source, header + '@@ -1 +1 @@\n-\n+\n')
+
+# Metadata-only changes retain the information needed to understand the change.
+for metadata in ('old mode 100644\nnew mode 100755\n',
+ 'similarity index 100%\ncopy from example.txt\ncopy to copied.txt\n',
+ 'dissimilarity index 100%\n'):
+  metadata_diff = 'diff --git example.txt example.txt\n' + metadata
+  plain_metadata = strip_ctrl_seq(highlight(metadata_diff))
+  for line in metadata.splitlines():
+    utest_val(True, 'example.txt: ' + line + '\n' in plain_metadata, 'metadata values are retained')
+  utest_val(len(metadata_diff.splitlines()), len(highlight(metadata_diff, interactive=True).splitlines()),
+    'interactive metadata retains line counts')
+
+binary = 'diff --git example.txt example.txt\nindex 1234567..abcdef0 100644\nBinary files example.txt and example.txt differ\n'
+utest_val(True, highlight(binary).endswith('Binary files example.txt and example.txt differ\n'), 'binary summary is retained')
+utest('', highlight, '')
