@@ -3,6 +3,7 @@
 from contextlib import redirect_stdout
 from io import StringIO
 
+from pithy.ansi import strip_ctrl_seq
 from taptools.bin.same_same import highlight_diff
 from utest import utest, utest_val
 
@@ -46,3 +47,25 @@ marker = '\\ No newline at end of file\n'
 no_newline = header + '@@ -1 +1 @@\n-old\n' + marker + '+new\n' + marker
 utest_val(2, highlight(no_newline).count(marker), 'missing-newline markers are retained')
 utest_val(False, '+new\n' in highlight(no_newline), 'highlighting continues after a missing-newline marker')
+
+# Hunk source text can look exactly like file headers on either side of a change.
+rename_header = ('diff --git old.sql new.sql\nsimilarity index 75%\nrename from old.sql\nrename to new.sql\n'
+  'index 1234567..abcdef0 100644\n--- old.sql\n+++ new.sql\n')
+comments = '@@ -1,2 +1,2 @@\n--- Old comment.\n--- Another old comment.\n+++ New text.\n+++ More new text.\n'
+expected = ('./old.sql -> ./new.sql:\n./new.sql: similarity index 75%\n./new.sql: rename from old.sql\n'
+  './new.sql: rename to new.sql\n./new.sql:1:\n-- Old comment.\n-- Another old comment.\n++ New text.\n++ More new text.\n')
+for colored in (False, True):
+  comment_diff = rename_header + comments
+  if colored:
+    comment_diff = ''.join('\x1b[31m' + line + '\x1b[m\n' for line in comment_diff.splitlines())
+  for interactive_mode in (False, True):
+    result = highlight(comment_diff + diff, interactive=interactive_mode)
+    plain = strip_ctrl_seq(result)
+    if interactive_mode:
+      utest_val(len((comment_diff + diff).splitlines()), len(result.splitlines()), 'interactive comments retain line count')
+      utest_val(True, '-- Old comment.\n-- Another old comment.\n++ New text.\n++ More new text.\n' in plain,
+        'interactive comments retain source text')
+    else:
+      utest_val(True, plain.startswith(expected), 'comments do not overwrite renamed paths or disappear')
+    utest_val(True, 'example.txt:1:' in plain if not interactive_mode else '+++ example.txt\n' in plain,
+      'file header parsing resumes for the next diff')

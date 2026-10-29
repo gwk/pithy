@@ -95,17 +95,22 @@ def highlight_diff(lines:Iterable[str], interactive:bool=False, dbg:bool=False) 
   # Break input into groups of lines starting with 'diff' lines.
   # As soon as a group is complete, call flush_buffer() to render them.
   buffer:list[DiffLine] = []
+  in_hunk = False
 
   def flush_buffer() -> None:
+    nonlocal in_hunk
     if buffer:
       if dbg: errL('SAMESAME: FLUSH')
       handle_file_lines(buffer, interactive=interactive, dbg=dbg)
       buffer.clear()
+    in_hunk = False
 
   try:
     for line in lines:
       raw_text = line.rstrip('\n')
-      match = diff_pat.match(raw_text)
+      # Source lines can resemble file headers, such as removed SQL comments starting with '-- '.
+      match = source_pat.match(raw_text) if in_hunk else None
+      if match is None: match = diff_pat.match(raw_text)
       assert match is not None
       kind = match.lastgroup
       assert kind is not None, match
@@ -125,6 +130,8 @@ def highlight_diff(lines:Iterable[str], interactive:bool=False, dbg:bool=False) 
         continue
       if kind == 'diff':
         flush_buffer()
+      elif kind == 'loc':
+        in_hunk = True
       buffer.append(DiffLine(kind, match))
   except BrokenPipeError:
     stderr.close() # Prevents warning message.
@@ -411,6 +418,14 @@ sgr_color_pat = r'(?: \x1b \[ \d* m )'
 sgr_rst_pat = r'(?: \x1b \[ m )'
 range_pat = r'(?: \d+ (?:,\d+)? )' # The length is omitted if it is 1.
 
+source_pattern = r'''
+  (?P<ctx>        \  (?P<ctx_text>.*) )
+| (?P<rem>        -  (?P<rem_text>.*) )
+| (?P<add>        \+ (?P<add_text>.*) )
+'''
+
+source_pat = re.compile(r'(?x)(?P<git_color>' + sgr_color_pat + r')*(?:' + source_pattern + ')')
+
 diff_pat = re.compile(r'''(?x)
 (?P<git_color> &SGR_COLOR)*
 (?:
@@ -424,9 +439,7 @@ diff_pat = re.compile(r'''(?x)
 | (?P<new>        \+\+\+  \ (?P<new_path>.+) )
 | (?P<loc>        @(?P<loc_parents>@+) (?P<old_ranges>(?:\ -&RANGE)+) (?P<new_range>\ \+&RANGE)
                     \ @@+ &SGR_RST? \ ? &SGR_RST? (?P<parent_snippet>.*) ) # Note the RST SPACE RST sequence.
-| (?P<ctx>        \  (?P<ctx_text>.*) )
-| (?P<rem>        -  (?P<rem_text>.*) )
-| (?P<add>        \+ (?P<add_text>.*) )
+| &SOURCE
 | (?P<submodule>  Submodule\ \w+\ [0-9a-f]{7,}\.\.[0-9a-f]{7,}: )
 | (?P<meta>
   ( old\ mode
@@ -438,9 +451,10 @@ diff_pat = re.compile(r'''(?x)
   | rename\ from
   | rename\ to
   | similarity\ index
-  | dissimilarity\ index ) )
+  | dissimilarity\ index ) .* )
 | (?P<other> .* )
 )'''
+.replace('&SOURCE', source_pattern)
 .replace('&SGR_COLOR', sgr_color_pat)
 .replace('&SGR_RST', sgr_rst_pat)
 .replace('&RANGE', range_pat))
