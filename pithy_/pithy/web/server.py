@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from errno import EMFILE, ENFILE, ENOBUFS, ENOMEM, ENOTCONN
 from http import HTTPStatus
 from io import BufferedReader
+from math import inf, isfinite
 from os import _exit as os_exit
 from queue import Empty as QueueEmpty, LifoQueue, SimpleQueue
 from resource import getrlimit, RLIM_INFINITY, RLIMIT_NOFILE, setrlimit
@@ -75,6 +76,12 @@ class _Conn():
   socket:Socket
   h11_conn:h11_Connection
   recv_size:int
+  read_timeout:float
+  'The timeout for one blocking read or send. It is also the read budget that each request starts with.'
+  min_read_rate:float
+  'Each byte received adds `1 / min_read_rate` seconds to the read budget; see `_recv_within_budget`.'
+  read_credit:float = 0.0
+  'The remaining read budget of the current request, in seconds.'
   idle_since:float = field(default_factory=monotonic)
   'Start of the current wait for a request, reset by the listener thread when it registers a returned connection.'
   started:float = field(default_factory=monotonic)
@@ -103,7 +110,7 @@ class _Conn():
     Returns True on success, and False on an idle timeout or a failure; a failure also sets and logs `self.error`.
     '''
     try:
-      data = self.socket.recv(self.recv_size)
+      data = self._recv_within_budget()
       self.received_bytes += len(data)
       self.pending_request |= bool(data)
       self.h11_conn.receive_data(data)
@@ -115,6 +122,33 @@ class _Conn():
       status = _status_for_h11_error(exc)
     self.fail(ClientProtocolError(status))
     return False
+
+
+  def _recv_within_budget(self) -> bytes:
+    '''
+    Receive from the socket, raising TimeoutError once the read budget of the current request is used up.
+
+    This is a slow client mitigation. A per-read timeout alone is not enough,
+    because a client can hold a worker indefinitely by sending one byte at a time.
+    The budget limits the total time that one request can spend blocked in reads to
+    `read_timeout + bytes_received / min_read_rate`.
+    Only time blocked in this method counts, so a slow handler does not use up the budget of its client.
+    '''
+    if self.read_credit <= 0: raise TimeoutError('Read budget exhausted.')
+    self.socket.settimeout(min(self.read_timeout, self.read_credit))
+    start = monotonic()
+    try: data = self.socket.recv(self.recv_size)
+    finally:
+      self.read_credit -= monotonic() - start
+      self.socket.settimeout(self.read_timeout)
+    self.read_credit += len(data) / self.min_read_rate
+    return data
+
+
+  def limit_reads_to(self, timeout:float) -> None:
+    'Limit all further reads to `timeout` seconds in total. Received bytes do not add to the budget.'
+    self.read_timeout = self.read_credit = timeout
+    self.min_read_rate = inf
 
 
   def next_event(self) -> h11_Event|type[h11_NEED_DATA]|type[h11_PAUSED]:
@@ -141,6 +175,7 @@ class _Conn():
     it also returns None, without an error.
     '''
     self.stage = 'request_headers'
+    self.read_credit = self.read_timeout # Headers and body of one request share a budget.
     assert self.h11_conn.our_state is h11_IDLE
     while True:
       event = self.next_event()
@@ -317,9 +352,15 @@ class ServerConfig:
   host: the hostname or IP address to bind to; defaults to 'localhost'.
   port: the port number to bind to; defaults to 0, which means the OS will choose a free port.
   backlog: the number of unaccepted connections that the system will allow before refusing new connections.
-  conn_timeout: the timeout in seconds for blocking operations on connections with a request in progress.
+  conn_timeout: the timeout in seconds for each blocking operation on connections with a request in progress.
+    Also the initial read budget of each request; see `min_read_rate`.
+  min_read_rate: the minimum rate in bytes per second that a client must sustain while sending a request.
+    This is a slow client mitigation. The time that one request can spend blocked in reads is limited to
+    `conn_timeout + bytes_received / min_read_rate`.
+    h11 limits the size of request headers, so their read time is limited too.
+    The handler's size limit does the same for bodies.
   idle_timeout: the time in seconds that a connection may wait for its next request, or its first, before it is closed.
-  drain_timeout: the timeout in seconds for blocking reads while draining an unread request body before closing a connection.
+  drain_timeout: the total time in seconds to spend draining an unread request body before closing a connection.
   drain_max_bytes: the maximum number of unread request body bytes to drain before closing a connection.
   max_connections: the maximum number of open client connections, including idle ones.
     At capacity, a new connection replaces the longest idle connection, or is dropped if none is idle.
@@ -352,6 +393,7 @@ class ServerConfig:
   idle_timeout:float = 5.0
   drain_timeout:float = 1.0
   drain_max_bytes:int = 1 << 20
+  min_read_rate:float = 1024.0
   num_threads:int = 8
   max_connections:int|None = None
   raise_fd_limit:bool = False
@@ -361,6 +403,11 @@ class ServerConfig:
   prevent_client_caching:bool = False
 
 
+  def __post_init__(self) -> None:
+    if not isfinite(self.min_read_rate) or self.min_read_rate <= 0:
+      raise ValueError(f'min_read_rate must be finite and positive; received: {self.min_read_rate!r}.')
+
+
 class WebServer:
   '''
   WebServer is a multithreaded HTTP 1.1 server.
@@ -368,6 +415,13 @@ class WebServer:
   Workers handle one request at a time and return reusable connections to the selector.
   Readable connections wait for workers in a LIFO queue, on the assumption that under load it is better to serve some requests
   quickly and let others time out, rather than have all requests delayed or time out.
+
+  The server's limits address three different causes of failure. Code that enforces a limit names its cause:
+  * Slow client mitigation: clients are untrusted, so a slow client should lose its own connection without affecting others.
+    The server closes the connection when a client exceeds its read budget (`min_read_rate`) or `conn_timeout` on a send.
+    These limits apply to each connection separately. Many connections can still occupy all of the workers,
+    so public deployments also need per-client limits in a reverse proxy.
+    File responses have no total time limit: each chunk gets `conn_timeout`, so the time can grow with the file size.
   '''
 
   def __init__(self, *, app:WebApp, config:ServerConfig=ServerConfig()) -> None:
@@ -479,7 +533,7 @@ class WebServer:
                   idle_socket.close()
                 conn_sock.settimeout(cfg.conn_timeout)
                 conn = _Conn(client_addr=client_addr, socket=conn_sock, h11_conn=h11_Connection(h11_SERVER),
-                  recv_size=cfg.recv_size)
+                  recv_size=cfg.recv_size, read_timeout=cfg.conn_timeout, min_read_rate=cfg.min_read_rate)
                 idle[conn_sock] = conn
                 selector.register(conn_sock, EVENT_READ, conn)
               else:
@@ -637,7 +691,7 @@ class WebServer:
 
     To avoid this we half-close the socket, which tells the client that no more response data is coming
     while still allowing it to finish uploading, and then read the rest of the body before closing.
-    The drain is bounded by `drain_max_bytes` and by `drain_timeout` per read,
+    Slow client mitigation: the drain is bounded by `drain_max_bytes` and by `drain_timeout` in total,
     so that a client which keeps uploading cannot occupy the worker thread indefinitely.
     '''
     socket = conn.socket
@@ -648,7 +702,7 @@ class WebServer:
         except OSError as exc:
           if exc.errno == ENOTCONN: return # The client disconnected; there is nothing left to drain.
           raise
-        socket.settimeout(self.config.drain_timeout)
+        conn.limit_reads_to(self.config.drain_timeout)
         if not conn.drain_unread_body(max_bytes=self.config.drain_max_bytes):
           logI('Unread request body was not drained; closing connection abruptly.', client_addr=conn.client_addr)
     except ClientProtocolError: pass # Logged when detected.

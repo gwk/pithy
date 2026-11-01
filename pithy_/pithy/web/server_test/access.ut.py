@@ -41,7 +41,8 @@ class TestApp(WebApp):
 def access_logs(data:bytes, *, enabled:bool=True, fail_send:int=0) -> list[dict[str,Any]]:
   output = StringIO()
   with redirect_stdout(output), patch('pithy.logs.render_log_fn', render_log_json), \
-   patch('pithy.web.server.monotonic', side_effect=[10.0, 10.125, 20.0, 20.25]):
+   patch('pithy.web.server.monotonic', side_effect=[1.0, 1.0, 10.0, 10.125, 20.0, 20.25, 30.0, 30.0]):
+    #^ One read around two access cycles, then the read that observes EOF.
     handle_connection(TestApp(), TestSocket(data, fail_send=fail_send), log_access=enabled)
   return [record for line in output.getvalue().splitlines() if (record := loads(line)).get('_') == 'access']
 
