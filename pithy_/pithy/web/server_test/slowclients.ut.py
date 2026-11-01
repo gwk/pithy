@@ -7,7 +7,7 @@ Slow handlers and clients that meet the minimum rate are not affected.
 Most tests script a socket against a fake clock, using the default limits, so that they do not sleep.
 '''
 
-from socket import create_connection
+from socket import create_connection, socket as Socket
 from threading import Thread
 from time import sleep
 from unittest.mock import patch
@@ -64,6 +64,13 @@ def run_scripted(socket:ClockSocket, app:App) -> None:
   'Handle one connection with the default limits, reading time from the clock of `socket`.'
   with patch('pithy.web.server.monotonic', lambda: socket.now), patch('pithy.web.server.logI'), patch('pithy.web.server.log'):
     handle_connection(app, socket, log_access=False)
+
+
+def read_all(socket:Socket) -> bytes:
+  'Read until the server closes the connection.'
+  data = b''
+  while chunk := socket.recv(4096): data += chunk
+  return data
 
 
 def one_byte_chunks(data:bytes) -> list[bytes]:
@@ -145,3 +152,25 @@ def test_real_socket_timeout() -> None:
       thread.join(5)
   utest_val(False, thread.is_alive())
   utest_val(True, received.startswith(b'HTTP/1.1 408'), received)
+
+
+@utest_run
+def test_trickled_head_does_not_occupy_worker() -> None:
+  'The listener collects request heads, so that a client that is slow to send one does not take the only worker.'
+  server = WebServer(app=App(), config=ServerConfig(host='127.0.0.1', num_threads=1, log_access=False, conn_timeout=5.0))
+  with patch('pithy.web.server.logI'), patch('pithy.web.server.log'):
+    thread = Thread(target=server.serve_forever)
+    thread.start()
+    try:
+      with create_connection((server.host, server.port), timeout=2) as slow, \
+       create_connection((server.host, server.port), timeout=2) as other:
+        slow.sendall(b'GET /slow HTTP/1.1\r\nHost: loc')
+        sleep(0.05) # Let the listener receive the partial head before the other request arrives.
+        other.sendall(post_head % 2 + b'ok')
+        utest_val(True, read_all(other).endswith(b'read 2'))
+        slow.sendall(b'alhost\r\nConnection: close\r\n\r\n') # The completed head is then handled normally.
+        utest_val(True, read_all(slow).startswith(b'HTTP/1.1 200'))
+    finally:
+      server.shutdown()
+      thread.join(5)
+  utest_val(False, thread.is_alive())

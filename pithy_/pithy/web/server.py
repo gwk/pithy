@@ -61,8 +61,8 @@ Connection sizing allows for one descriptor per connection, so these files must 
 Further file responses are sent by their workers.
 '''
 
-send_deadline_scan_interval = 0.25
-'Seconds between checks of the send deadlines in the sender thread.'
+deadline_scan_interval = 0.25
+'Seconds between checks of the header deadlines in the listener thread, and of the send deadlines in the sender thread.'
 
 _accept_exhaustion_errnos = frozenset({EMFILE, ENFILE, ENOBUFS, ENOMEM})
 
@@ -255,6 +255,11 @@ class _Conn():
   worker_state:_WorkerState|None = None
   pending_send:_ResponseSend|None = None
   'Set by a worker when the rest of the response must go to the sender thread.'
+  head_event:h11_Event|None = None
+  'The complete request head or connection close, parsed by the listener thread for a worker to take.'
+  head_started:float = 0.0
+  'When the listener thread received the first bytes of the current request head; zero if it has none.'
+  head_bytes:int = 0
 
 
   def set_phase(self, phase:_WorkerPhase, request:Request|None=None) -> None:
@@ -286,6 +291,44 @@ class _Conn():
       status = _status_for_h11_error(exc)
     self.fail(ClientProtocolError(status))
     return False
+
+
+  def read_head_nonblocking(self) -> bool:
+    '''
+    Listener thread: receive any available bytes of the request head. Returns whether a worker should now take the connection.
+    This is a slow client mitigation: a worker never waits for a request head to arrive, except for one that follows
+    a pipelined request. Raises OSError if the connection failed.
+    '''
+    self.socket.setblocking(False)
+    try: data = self.socket.recv(self.recv_size)
+    except BlockingIOError: return False
+    finally: self.socket.settimeout(self.read_timeout)
+    self.stage = 'request_headers'
+    self.received_bytes += len(data)
+    self.head_bytes += len(data)
+    self.pending_request |= bool(data)
+    if data and not self.head_started: self.head_started = monotonic()
+    try: self.h11_conn.receive_data(data)
+    except h11_RemoteProtocolError as exc:
+      self.fail(ClientProtocolError(_status_for_h11_error(exc)))
+      return True
+    return self.poll_head()
+
+
+  def poll_head(self) -> bool:
+    'Parse the bytes received so far. Returns whether a complete head, a close or a failure means a worker should take over.'
+    self.stage = 'request_headers'
+    try: event = self.next_event()
+    except ClientProtocolError: return True
+    if event is h11_NEED_DATA: return False
+    self.head_event = cast(h11_Event, event)
+    return True
+
+
+  @property
+  def head_deadline(self) -> float:
+    'The time at which the client has fallen below the minimum rate while sending the request head.'
+    return self.head_started + self.read_timeout + self.head_bytes / self.min_read_rate
 
 
   def _recv_within_budget(self) -> bytes:
@@ -339,10 +382,12 @@ class _Conn():
     it also returns None, without an error.
     '''
     self.stage = 'request_headers'
-    self.read_credit = self.read_timeout # Headers and body of one request share a budget.
-    assert self.h11_conn.our_state is h11_IDLE
+    self.read_credit = self.read_timeout # Headers read here and the body of one request share a budget.
+    if self.error is not None: return None # The listener thread found a failure.
+    assert self.head_event is not None or self.h11_conn.our_state is h11_IDLE # Parsing the head advances the state.
     while True:
-      event = self.next_event()
+      event = self.head_event or self.next_event()
+      self.head_event = None
       if event is h11_NEED_DATA:
         if self.handle_need_data(): continue
         return None # Idle timeout or failure.
@@ -405,6 +450,8 @@ class _Conn():
       self.response_sent = False
       self.method = self.http_version = ''
       self.pending_request = bool(self.h11_conn.trailing_data[0])
+      self.head_started = 0.0
+      self.head_bytes = 0
       return True
     return False
 
@@ -523,8 +570,8 @@ class ServerConfig:
   conn_timeout: the timeout in seconds for each blocking operation on connections with a request in progress.
     Also the initial read budget of each request; see `min_read_rate`.
   min_read_rate: the minimum rate in bytes per second that a client must sustain while sending a request.
-    This is a slow client mitigation. The time that one request can spend blocked in reads is limited to
-    `conn_timeout + bytes_received / min_read_rate`.
+    This is a slow client mitigation. The listener thread applies this limit while it collects the request head,
+    and the worker applies it again while reading the body. Each is limited to `conn_timeout + bytes_received / min_read_rate`.
     h11 limits the size of request headers, so their read time is limited too.
     The handler's size limit does the same for bodies.
   idle_timeout: the time in seconds that a connection may wait for its next request, or its first, before it is closed.
@@ -609,6 +656,7 @@ class WebServer:
   '''
   WebServer is a multithreaded HTTP 1.1 server.
   A selector holds idle connections, including speculative connections with no request yet, without occupying workers.
+  The listener also collects each request head, so that a worker is only assigned once there is a request to handle.
   Workers handle one request at a time and return reusable connections to the selector.
   Readable connections wait for workers in a LIFO queue, on the assumption that under load it is better to serve some requests
   quickly and let others time out, rather than have all requests delayed or time out.
@@ -619,8 +667,8 @@ class WebServer:
   The server's limits address three different causes of failure. Code that enforces a limit names its cause:
   * Slow client mitigation: clients are untrusted, so a slow client should lose its own connection without affecting others.
     The server closes the connection when a client falls below `min_read_rate` or `min_send_rate`, or stalls for `conn_timeout`.
-    These limits apply to each connection separately. Many connections can still occupy all of the workers,
-    so public deployments also need per-client limits in a reverse proxy.
+    A slow client can occupy a worker only while sending a request body to a handler, or when the sender is at capacity.
+    Each connection is limited separately, so public deployments also need per-client limits in a reverse proxy.
   * Application hang recovery: application code is trusted but can have bugs, and a hung thread cannot be cancelled.
     `worker_warn_after` logs slow workers. `worker_exit_after` exits the process so that a supervisor can restart it.
   * Environment failure: if logging raises, the process can no longer report its state.
@@ -708,6 +756,8 @@ class WebServer:
         selector.register(self._wakeup_reader, EVENT_READ)
         selector.register(self._socket, EVENT_READ)
         idle:OrderedDict[Socket,_Conn] = OrderedDict()
+        partial:dict[Socket,_Conn] = {} # Connections with an incomplete request head; these are not evicted at capacity.
+        next_head_scan = 0.0
         # Only this thread stamps idle_since, immediately before insertion, so the front entry is always the next to expire.
         # OrderedDict rather than dict: repeatedly removing the front of a dict scans past deleted slots.
         accept_resume:float|None = None # Set while accepting is paused after descriptor exhaustion.
@@ -720,8 +770,12 @@ class WebServer:
             while True:
               try: conn = self._idle_queue.get_nowait()
               except QueueEmpty: break
-              if conn.h11_conn.trailing_data[0]:
-                self._conn_queue.put(conn) # A pipelined request may already be buffered in h11.
+              if conn.h11_conn.trailing_data[0]: # A pipelined request may already be buffered in h11.
+                if conn.poll_head(): self._conn_queue.put(conn)
+                else:
+                  conn.head_started = monotonic()
+                  partial[conn.socket] = conn
+                  selector.register(conn.socket, EVENT_READ, conn)
               else:
                 conn.idle_since = monotonic()
                 idle[conn.socket] = conn
@@ -731,6 +785,9 @@ class WebServer:
             if self._worker_check_interval is not None:
               check_deadline = monotonic() + self._worker_check_interval
               deadline = check_deadline if deadline is None else min(deadline, check_deadline)
+            if partial:
+              scan_deadline = monotonic() + deadline_scan_interval
+              deadline = scan_deadline if deadline is None else min(deadline, scan_deadline)
             ready = selector.select(None if deadline is None else max(0, deadline - monotonic()))
             if self._stop.is_set(): break
             # Handle connection events before the listener, so that a readable connection leaves `idle` before a new
@@ -766,10 +823,33 @@ class WebServer:
                 selector.register(conn_sock, EVENT_READ, conn)
               else:
                 conn = cast(_Conn, key.data)
-                if idle.pop(conn.socket, None) is None: continue # Already closed; not expected given the ordering above.
+                conn_sock = conn.socket
+                if conn_sock not in idle and conn_sock not in partial: continue # Closed; not expected given the ordering above.
+                try: ready_for_worker = conn.read_head_nonblocking()
+                except OSError as exc: # The client has gone.
+                  logI('Connection read error.', exc=exc, client_addr=conn.client_addr)
+                  idle.pop(conn_sock, None)
+                  partial.pop(conn_sock, None)
+                  selector.unregister(conn_sock)
+                  conn_sock.close()
+                  self._conn_slots.release()
+                  continue
+                if ready_for_worker:
+                  idle.pop(conn_sock, None)
+                  partial.pop(conn_sock, None)
+                  selector.unregister(conn_sock)
+                  self._conn_queue.put(conn)
+                elif conn.pending_request and idle.pop(conn_sock, None) is not None:
+                  partial[conn_sock] = conn
+            now = monotonic()
+            if partial and now >= next_head_scan:
+              next_head_scan = now + deadline_scan_interval
+              for conn in [conn for conn in partial.values() if now >= conn.head_deadline]:
+                # Slow client mitigation: a worker answers with 408 and closes the connection.
+                conn.fail(ClientProtocolError(HTTPStatus.REQUEST_TIMEOUT))
+                del partial[conn.socket]
                 selector.unregister(conn.socket)
                 self._conn_queue.put(conn)
-            now = monotonic()
             while idle:
               socket, conn = next(iter(idle.items()))
               if now - conn.idle_since < cfg.idle_timeout: break
@@ -778,7 +858,7 @@ class WebServer:
               socket.close()
               self._conn_slots.release()
         finally:
-          for socket in idle:
+          for socket in (*idle, *partial):
             socket.close()
             self._conn_slots.release()
     except KeyboardInterrupt:
@@ -894,7 +974,7 @@ class WebServer:
           if self._send_stop.is_set():
             if not active: break
             if grace_end is None: grace_end = monotonic() + self.config.conn_timeout
-          for key, _ in selector.select(send_deadline_scan_interval if active else None):
+          for key, _ in selector.select(deadline_scan_interval if active else None):
             if key.fileobj is self._send_wakeup_reader:
               try: self._send_wakeup_reader.recv(65536)
               except BlockingIOError: pass
