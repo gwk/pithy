@@ -12,9 +12,10 @@ from queue import Empty as QueueEmpty, LifoQueue, SimpleQueue
 from resource import getrlimit, RLIM_INFINITY, RLIMIT_NOFILE, setrlimit
 from selectors import DefaultSelector, EVENT_READ
 from socket import AF_INET, SHUT_WR, SO_REUSEADDR, SOCK_STREAM, socket as Socket, socketpair, SOL_SOCKET
-from threading import BoundedSemaphore, Event, Lock, Thread
+from sys import _current_frames
+from threading import BoundedSemaphore, current_thread, Event, get_ident, Lock, Thread
 from time import monotonic
-from traceback import clear_frames
+from traceback import clear_frames, format_stack
 from typing import cast, Literal
 from urllib.parse import urlsplit as url_split
 
@@ -22,7 +23,7 @@ from h11 import (Connection as h11_Connection, ConnectionClosed as h11_Connectio
   EndOfMessage as h11_EndOfMessage, Event as h11_Event, IDLE as h11_IDLE, InformationalResponse as h11_InformationalResponse,
   NEED_DATA as h11_NEED_DATA, PAUSED as h11_PAUSED, RemoteProtocolError as h11_RemoteProtocolError, Request as h11_Request,
   Response as h11_Response, SEND_BODY as h11_SEND_BODY, SERVER as h11_SERVER)
-from pithy.logs import log, logE, logI, LogLevel
+from pithy.logs import log, logE, logI, LogLevel, logW
 
 from ..http import http_method_bytes_to_strs, may_send_body
 from .app import WebApp
@@ -36,7 +37,7 @@ from .response import close_response_body, Response
 
 
 _context_keywords_ = ['access logging', 'connection draining', 'h11', 'http 1.1', 'http.server', 'keep alive', 'multithreading',
-  'request dispatch', 'socket', 'thread pool']
+  'request dispatch', 'socket', 'thread pool', 'watchdog', 'worker duration']
 
 
 BAD_REQUEST = HTTPStatus.BAD_REQUEST
@@ -56,12 +57,36 @@ They cover the listener, the wakeup pair, the selector, and files that the appli
 _accept_exhaustion_errnos = frozenset({EMFILE, ENFILE, ENOBUFS, ENOMEM})
 
 
+type _WorkerPhase = Literal['request_headers', 'application', 'request_body', 'response', 'cleanup']
+'What a worker is currently doing, as shown in duration reports. Only `application` runs application code.'
+
 type _ConnStage = Literal['request_headers', 'request_body', 'request_completion', 'drain_body']
 'The most recent read stage of a connection, recorded in protocol failure logs.'
 
 
 class HttpStateError(Exception):
   'Raised when H11 is in an unexpected state.'
+
+
+@dataclass(slots=True)
+class _WorkerState:
+  '''
+  The state of a worker while it handles one connection assignment. It is discarded when the worker finishes the assignment.
+
+  `worker_exit_after` applies only to the `application` phase, when the worker is running application code.
+  In the other phases the worker is doing client IO, and the slow client limits end any long waits.
+  '''
+
+  name:str
+  client_addr:AddrPair
+  started:float
+  phase_started:float
+  lock:Lock
+  'The shared `WebServer._monitoring_lock`; protects consistent updates and reads of the worker state.'
+  phase:_WorkerPhase = 'request_headers'
+  method:str = ''
+  path:str = ''
+  warned:bool = False
 
 
 @dataclass(slots=True)
@@ -102,6 +127,18 @@ class _Conn():
   the traceback is cleared at the end of each cycle.
   '''
   response_status:int|None = None # Set once final response headers have been sent.
+  worker_state:_WorkerState|None = None
+
+
+  def set_phase(self, phase:_WorkerPhase, request:Request|None=None) -> None:
+    'Record the worker phase for monitoring.'
+    if (state := self.worker_state) is None: return # Direct connection tests do not run a worker.
+    with state.lock:
+      state.phase = phase
+      state.phase_started = monotonic()
+      if request is not None:
+        state.method = request.method
+        state.path = request.raw_path
 
 
   def handle_need_data(self) -> bool:
@@ -197,7 +234,11 @@ class _Conn():
     while True:
       event = self.next_event()
       if event is h11_NEED_DATA:
-        if self.handle_need_data(): continue
+        # While a handler waits for its request body, the worker is waiting on the client. See `worker_exit_after`.
+        if self.stage == 'request_body': self.set_phase('request_body')
+        ok = self.handle_need_data()
+        if self.stage == 'request_body': self.set_phase('application')
+        if ok: continue
         assert self.error is not None
         raise self.error
       if isinstance(event, h11_Data):
@@ -370,6 +411,19 @@ class ServerConfig:
     the connection cap fits. The limit is process-wide and inherited by child processes.
   num_threads: the number of worker threads, which bounds the number of requests handled concurrently.
     A worker is occupied for the whole of a request, including slow handlers and slow clients, but not between requests.
+  worker_warn_after: the seconds that a worker can spend on one assignment before a warning with a stack trace is logged.
+    None disables warnings. This is a diagnostic for any cause of slowness.
+    It covers every phase of the assignment, but not time waiting in the queue.
+    Each assignment warns once. A warning means that the assignment is slow, not necessarily that the worker is hung.
+  worker_exit_after: the seconds that a worker can run application code without interruption before the server logs an error
+    and exits the entire process with status 1. None disables this policy.
+    This is for application hang recovery. A hung thread cannot be cancelled and would occupy its worker permanently,
+    so the only remedy is for a supervisor to restart the process.
+    Client IO does not count and restarts the clock. This includes body reads made by a handler.
+    A slow client therefore cannot trigger an exit, but a request that makes a handler legitimately slow can.
+    Set this above the longest application timeout. Forced exit bypasses application cleanup.
+    Both thresholds must be finite and positive when enabled. Checks continue during shutdown, at intervals of at most
+    one second, provided Python threads can still execute.
   recv_size: the maximum number of bytes to receive at once from client connections.
   log_access: whether to log each parsed HTTP request after response sending completes or fails.
     Access fields are c (client), u (uid from request.ctx, default 0), m (method), p (path), q (raw query), s (status),
@@ -395,6 +449,8 @@ class ServerConfig:
   drain_max_bytes:int = 1 << 20
   min_read_rate:float = 1024.0
   num_threads:int = 8
+  worker_warn_after:float|None = 30.0
+  worker_exit_after:float|None = None
   max_connections:int|None = None
   raise_fd_limit:bool = False
   thread_name_prefix:str = 'WebServer'
@@ -406,6 +462,9 @@ class ServerConfig:
   def __post_init__(self) -> None:
     if not isfinite(self.min_read_rate) or self.min_read_rate <= 0:
       raise ValueError(f'min_read_rate must be finite and positive; received: {self.min_read_rate!r}.')
+    for name, value in (('worker_warn_after', self.worker_warn_after), ('worker_exit_after', self.worker_exit_after)):
+      if value is not None and (not isfinite(value) or value <= 0):
+        raise ValueError(f'{name} must be finite and positive, or None; received: {value!r}.')
 
 
 class WebServer:
@@ -422,6 +481,12 @@ class WebServer:
     These limits apply to each connection separately. Many connections can still occupy all of the workers,
     so public deployments also need per-client limits in a reverse proxy.
     File responses have no total time limit: each chunk gets `conn_timeout`, so the time can grow with the file size.
+  * Application hang recovery: application code is trusted but can have bugs, and a hung thread cannot be cancelled.
+    `worker_warn_after` logs slow workers. `worker_exit_after` exits the process so that a supervisor can restart it.
+  * Environment failure: if logging raises, the process can no longer report its state.
+    It exits so that a supervisor can restart it with new descriptors.
+    If logging blocks, each thread that logs waits until it unblocks, so a brief stall recovers on its own.
+    The watchdog waits too, so a permanent stall requires an external liveness check.
   '''
 
   def __init__(self, *, app:WebApp, config:ServerConfig=ServerConfig()) -> None:
@@ -446,6 +511,15 @@ class WebServer:
     # A connection owns its slot across selector, queue and worker handoffs, until its socket is closed.
     self._conn_slots = BoundedSemaphore(self.max_connections)
     self._workers: list[Thread] = []
+    self._monitoring_lock = Lock()
+    '''Protect `_active_workers` and its worker states with short critical sections.
+
+    This lock is non-reentrant. Do not acquire other locks, wait on queues, perform IO, format stacks, log or call
+    application code while holding it. Do not call `_Conn.set_phase` while holding it; that method acquires this lock.
+    '''
+    self._active_workers:dict[int,_WorkerState] = {}
+    thresholds = [t for t in (config.worker_warn_after, config.worker_exit_after) if t is not None]
+    self._worker_check_interval = min(1.0, *thresholds) if thresholds else None
 
     socket = Socket(AF_INET, SOCK_STREAM)
     self._socket = socket
@@ -489,6 +563,7 @@ class WebServer:
         accept_resume:float|None = None # Set while accepting is paused after descriptor exhaustion.
         try:
           while not self._stop.is_set():
+            self._check_workers()
             if accept_resume is not None and monotonic() >= accept_resume:
               selector.register(self._socket, EVENT_READ)
               accept_resume = None
@@ -503,6 +578,9 @@ class WebServer:
                 selector.register(conn.socket, EVENT_READ, conn)
             deadline = next(iter(idle.values())).idle_since + cfg.idle_timeout if idle else None
             if accept_resume is not None: deadline = accept_resume if deadline is None else min(deadline, accept_resume)
+            if self._worker_check_interval is not None:
+              check_deadline = monotonic() + self._worker_check_interval
+              deadline = check_deadline if deadline is None else min(deadline, check_deadline)
             ready = selector.select(None if deadline is None else max(0, deadline - monotonic()))
             if self._stop.is_set(): break
             # Handle connection events before the listener, so that a readable connection leaves `idle` before a new
@@ -559,7 +637,10 @@ class WebServer:
       with self._lock:
         self._stop.set()
       for _ in self._workers: self._conn_queue.put(None)  # Signal each worker to exit.
-      for thread in self._workers: thread.join()
+      for thread in self._workers:
+        while thread.is_alive():
+          thread.join(timeout=self._worker_check_interval)
+          self._check_workers()
       for queue in (self._conn_queue, self._idle_queue):
         while True:
           try: pending = queue.get_nowait()
@@ -604,16 +685,61 @@ class WebServer:
     while True:
       conn = self._conn_queue.get()
       if conn is None: break
+      ident = get_ident()
+      now = monotonic()
+      state = _WorkerState(current_thread().name, conn.client_addr, now, now, self._monitoring_lock)
+      with self._monitoring_lock:
+        self._active_workers[ident] = conn.worker_state = state
       try:
-        if not self._stop.is_set() and self._handle_connection(conn):
+        try:
+          reusable = not self._stop.is_set() and self._handle_connection(conn)
+          if not reusable:
+            conn.set_phase('cleanup')
+            self._close_connection(conn)
+            self._conn_slots.release()
+        finally:
+          with self._monitoring_lock:
+            del self._active_workers[ident]
+            conn.worker_state = None
+        if reusable:
           self._idle_queue.put(conn)
           self._wake_listener()
-        else:
-          self._close_connection(conn)
-          self._conn_slots.release()
       except BaseException as exc:
-        logE('Uncaught worker exception; exiting process.', exc=exc, client_addr=conn.client_addr)
-        os_exit(1)
+        try: logE('Uncaught worker exception; exiting process.', exc=exc, client_addr=conn.client_addr)
+        finally: os_exit(1) # Environment failure: exit even if logging raises. Otherwise the thread would end with no record.
+
+
+  def _check_workers(self) -> None:
+    '''
+    The application hang recovery check.
+    Warn about long-running requests and exit the process if application code has exceeded `worker_exit_after`.
+    It does not hold the monitoring lock while formatting stacks, logging or exiting.
+    '''
+    warn_after = self.config.worker_warn_after
+    exit_after = self.config.worker_exit_after
+    if warn_after is None and exit_after is None: return
+    reports:list[tuple[int,_WorkerState,bool,dict[str,object]]] = []
+    with self._monitoring_lock:
+      now = monotonic()
+      for ident, state in self._active_workers.items():
+        elapsed = now - state.started
+        # Count only application time, so that a slow client cannot make the process exit.
+        fatal = exit_after is not None and state.phase == 'application' and now - state.phase_started >= exit_after
+        if not fatal and (warn_after is None or state.warned or elapsed < warn_after): continue
+        state.warned = True
+        reports.append((ident, state, fatal, dict(worker=state.name, client_addr=state.client_addr,
+          elapsed=round(elapsed, 3), phase=state.phase, method=state.method, path=state.path)))
+    for ident, state, fatal, fields in reports:
+      frame = _current_frames().get(ident)
+      try: fields['stack'] = format_stack(frame) if frame is not None else []
+      finally: del frame # Do not retain frames, requests or application locals after reporting.
+      with self._monitoring_lock:
+        if self._active_workers.get(ident) is not state: continue # Completed or reassigned while formatting the stack.
+      try:
+        if fatal: logE('Application exceeded duration threshold; exiting process.', **fields)
+        else: logW('Worker exceeded duration threshold.', **fields)
+      except (OSError, ValueError): fatal = True # Environment failure: stdout is broken or closed; see `WebServer`.
+      if fatal: os_exit(1)
 
 
   def _handle_connection(self, conn:_Conn) -> bool:
@@ -645,6 +771,7 @@ class WebServer:
       result = self._make_request(conn, event, method)
       if isinstance(result, Request):
         request = result
+        conn.set_phase('application', request)
         response = self._handle_request(conn, request)
       else:
         response = result
@@ -653,6 +780,7 @@ class WebServer:
         if self.config.prevent_client_caching: response.set_no_cache_headers()
         self._send_response(conn, response=response, method=method)
       finally:
+        conn.set_phase('cleanup')
         close_response_body(body)
     finally:
       try:
@@ -772,7 +900,9 @@ class WebServer:
         if conn.h11_conn.client_is_waiting_for_100_continue:
           expect_response = handler.handle_expect_100_continue(request)
           if expect_response.status == HTTPStatus.CONTINUE:
+            conn.set_phase('response') # Sending to the client does not count as application time.
             self._send_informational_response(conn.h11_conn, conn.socket, expect_response)
+            conn.set_phase('application')
             conn.response_sent = True
           else:
             response = expect_response # Reject before the body is sent; the unread body forces a connection close below.
@@ -867,6 +997,7 @@ class WebServer:
 
 
   def _send_response(self, conn:_Conn, *, response:Response, method:str) -> None:
+    conn.set_phase('response')
     event = h11_Response(status_code=response.status.value, headers=response.headers_bytes_list(), reason=response.reason)
     h11_conn = conn.h11_conn
     socket = conn.socket
