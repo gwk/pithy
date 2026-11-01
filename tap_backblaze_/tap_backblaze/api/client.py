@@ -44,7 +44,7 @@ class Progress(Protocol):
 class B2Client:
   '''
   A client for the B2 native API.
-  Construction does no I/O; authorization happens lazily on first use.
+  Construction does no IO; authorization happens lazily on first use.
   `session` and `sleep` are injectable so that retry and refresh logic is unit testable without network.
   '''
 
