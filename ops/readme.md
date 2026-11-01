@@ -2,6 +2,11 @@
 
 Shell scripts for setting up computers: macOS developer machines and Fedora Linux servers.
 
+Run `common/install-all.sh` to build and install SQLite, then Python, then install Rust, uv and Vector in that order.
+It stops if any step fails.
+Pass `-outdated` to skip installations matching `versions.sh`; Python is also rebuilt if it loads the wrong SQLite after the SQLite installation is updated.
+In this mode, Rust is installed if missing, or its installed default toolchain is upgraded if `rustup check` reports an update.
+
 * `common/`: scripts that apply to both platforms.
 * `linux/`: server setup.
 * `mac/`: macOS developer machine setup.
