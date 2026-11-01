@@ -6,20 +6,20 @@
 # SQLite also needs its release year in the archive path. Checksums are for the downloaded archives.
 
 # Python versions omit the git tag prefix v; prerelease suffixes aN, bN and rcN are supported.
-py_point_version="3.15.1"
-py_sha256='673ae7232d84c894729882c8257d300ef2d26523911bfd3917ec8ce7f526f99b'
+py_point_version="3.15.2"
+py_sha256='8b5536d280142ecf6cdfe15d12a21ba1c65e300bbf7b28a8d0cdb849575797de'
 
 sqlite_version='3.54.1'
 sqlite_zip_remote_path='2026/sqlite-src-3540100.zip'
 sqlite_sha3='877c6f4996ce7adb368686bce21638de9e3d91534832ad3d9d119037d1bc22ad'
 
-uv_version="0.13.4"
-uv_sha256_linux_x86_64="2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-uv_sha256_linux_aarch64="1ae72b4718729e2ccc4f1ae2c6d1e531ca8467800e0546e9130b3886023a60ab"
-uv_sha256_macos_arm64="e0b1d4743ce64c55d9f0f4a444afa6b81125680070ee04e853fcd0f6c1ebf8f1"
-uv_sha256_macos_x86_64="7be2dcd316122f4b3e5a0a7889f6248266c14425374e105ff7dc9779184603a6"
+uv_version="0.13.6"
+uv_sha256_linux_x86_64="f29c3e94ffabd7e6f3ba521dba169a9b7ec12100bf3257087f0f24f6123f3645"
+uv_sha256_linux_aarch64="229e194255c7958d86d56e8790d969a6f74736592133f0dfd0076f754c642c1d"
+uv_sha256_macos_arm64="60fbd5c8a1ed681845eea28d9d622fcde03c51e91a43465b64a1e17db1ed3472"
+uv_sha256_macos_x86_64="63ba17fdda55ad1a230d4b37fc6017ffa10c23688c83818bd3bfdf914c652a02"
 
-vector_version='0.60.0'
-vector_sha256_linux_aarch64='1540662d8bc33af5afd287f821ba930417e0f3124073bc9db6a29c59dda88dbb'
-vector_sha256_linux_x86_64='89a9f134dcc35a6fbba9cb8ad0fec2d4802657bba6cb1c374a30660ef9456bdc'
-vector_sha256_macos_arm64='aa5c9d89416b39f1a90a7f1a088a9ecbb8c8c3a5669fb86609c9d4a958fe1a28'
+vector_version='0.61.0'
+vector_sha256_linux_aarch64='4f6e3093c0963611c8e31478137adca07920e729bdcc734d4ba7ab6f948a7e9f'
+vector_sha256_linux_x86_64='84a27c3ad6b772fdb05bb76ea01a31498bfc8f5e71f32cc78a0d96841f1aa827'
+vector_sha256_macos_arm64='5e747594bb12c8d9ab85c16f2fb5e9fa35bc92911e17099a9721f7d833ae3503'
