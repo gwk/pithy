@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from collections import OrderedDict
+from collections import deque, OrderedDict
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from errno import EMFILE, ENFILE, ENOBUFS, ENOMEM, ENOTCONN
@@ -10,7 +10,7 @@ from math import inf, isfinite
 from os import _exit as os_exit
 from queue import Empty as QueueEmpty, LifoQueue, SimpleQueue
 from resource import getrlimit, RLIM_INFINITY, RLIMIT_NOFILE, setrlimit
-from selectors import DefaultSelector, EVENT_READ
+from selectors import DefaultSelector, EVENT_READ, EVENT_WRITE
 from socket import AF_INET, SHUT_WR, SO_REUSEADDR, SOCK_STREAM, socket as Socket, socketpair, SOL_SOCKET
 from sys import _current_frames
 from threading import BoundedSemaphore, current_thread, Event, get_ident, Lock, Thread
@@ -54,6 +54,16 @@ Descriptors kept free of connections when sizing the connection cap against the 
 They cover the listener, the wakeup pair, the selector, and files that the application opens.
 '''
 
+max_handed_off_files = fd_reserve // 2
+'''
+The maximum number of open file bodies held by the sender thread.
+Connection sizing allows for one descriptor per connection, so these files must fit within `fd_reserve`.
+Further file responses are sent by their workers.
+'''
+
+send_deadline_scan_interval = 0.25
+'Seconds between checks of the send deadlines in the sender thread.'
+
 _accept_exhaustion_errnos = frozenset({EMFILE, ENFILE, ENOBUFS, ENOMEM})
 
 
@@ -87,6 +97,121 @@ class _WorkerState:
   method:str = ''
   path:str = ''
   warned:bool = False
+
+
+@dataclass(slots=True)
+class _ResponseSend:
+  '''
+  The progress of sending one framed response. Exactly one thread owns this at a time: a worker, then possibly the sender.
+
+  A slow client mitigation limits the total time to `timeout + bytes_sent / min_rate`.
+  It does not retain the response or the request, because the sender can hold this for a long time.
+  '''
+
+  conn:_Conn
+  status:int
+  head_len:int
+  buffers:deque[memoryview]
+  body:bytes|None
+  'A `bytes`-like body until it is framed, which happens after the head is sent.'
+  file:BufferedReader|None
+  'The file while it still has unread bytes.'
+  file_to_close:BufferedReader|None
+  chunk_size:int
+  timeout:float
+  min_rate:float
+  started:float = 0.0
+  last_progress:float = 0.0
+  sent:int = 0
+  ended:bool = False
+  'Whether the end of the message has been framed.'
+  charge:int = 0
+  'The bytes reserved against `ServerConfig.send_buffer_limit`.'
+  access_fields:dict[str,object]|None = None
+  access_start:float = 0.0
+
+
+  @classmethod
+  def frame(cls, conn:_Conn, response:Response, method:str, *, chunk_size:int, timeout:float, min_rate:float) -> _ResponseSend:
+    'Frame the response head. The body is framed after the head is sent, so that a framing error follows a sent status.'
+    event = h11_Response(status_code=response.status.value, headers=response.headers_bytes_list(), reason=response.reason)
+    head = conn.h11_conn.send(event)
+    body = response.body if may_send_body(method, response.status) else None
+    file = body if isinstance(body, BufferedReader) else None
+    #^ bytearray is bytes-like; h11.Data is documented to accept any bytes-like object despite the type being `bytes`.
+    bytes_body = None if isinstance(body, BufferedReader) or not body else cast(bytes, body)
+    file_to_close = response.body if isinstance(response.body, BufferedReader) else None
+    return cls(conn=conn, status=int(response.status), head_len=len(head), buffers=deque((memoryview(head),)), body=bytes_body,
+      file=file, file_to_close=file_to_close, chunk_size=chunk_size, timeout=timeout, min_rate=min_rate)
+
+
+  @property
+  def deadline(self) -> float:
+    'The time at which the client has fallen below the minimum rate, or has stalled.'
+    return min(self.started + self.timeout + self.sent / self.min_rate, self.last_progress + self.timeout)
+
+
+  def send_blocking(self) -> None:
+    'Send everything that remains on a socket with a timeout, raising TimeoutError if the client is too slow.'
+    if self.file is not None: self.started = self.last_progress = monotonic()
+    while (buffer := self._next_buffer()) is not None:
+      if self.file is not None:
+        self.last_progress = monotonic() # `conn_timeout` limits each send, so only the total can expire here.
+        if self.last_progress >= self.deadline: raise TimeoutError('Minimum send rate not met.')
+      self.conn.socket.sendall(buffer)
+      self.buffers.popleft()
+      self._note_sent(len(buffer))
+
+
+  def try_send_now(self, limit:int) -> bool:
+    'Send up to about `limit` bytes without blocking. Returns whether the response is finished.'
+    self.started = self.last_progress = monotonic()
+    socket = self.conn.socket
+    socket.setblocking(False)
+    try:
+      while self.sent < limit:
+        if not self.send_some(): return True
+    except BlockingIOError: pass
+    finally: socket.settimeout(self.timeout)
+    return self._next_buffer() is None
+
+
+  def send_some(self) -> bool:
+    'Make one send on a non-blocking socket. Returns False if nothing remains; raises BlockingIOError if the socket is full.'
+    if (buffer := self._next_buffer()) is None: return False
+    count = self.conn.socket.send(buffer)
+    if count == len(buffer): self.buffers.popleft()
+    else: self.buffers[0] = buffer[count:]
+    self._note_sent(count)
+    self.last_progress = monotonic()
+    return True
+
+
+  def _next_buffer(self) -> memoryview|None:
+    'Return the next nonempty buffer, reading from the file if necessary, or None if the response is finished.'
+    while True:
+      while self.buffers:
+        if self.buffers[0]: return self.buffers[0]
+        self.buffers.popleft()
+      h11_conn = self.conn.h11_conn
+      if (body := self.body) is not None:
+        self.body = None
+        self.buffers.append(memoryview(h11_conn.send(h11_Data(data=body))))
+      elif self.file is not None and (chunk := self.file.read(self.chunk_size)):
+        self.buffers.append(memoryview(h11_conn.send(h11_Data(data=chunk))))
+      elif self.ended: return None
+      else:
+        self.file = None
+        self.ended = True
+        self.buffers.append(memoryview(h11_conn.send(h11_EndOfMessage())))
+
+
+  def _note_sent(self, count:int) -> None:
+    previous = self.sent
+    self.sent += count
+    if previous < self.head_len <= self.sent:
+      self.conn.response_sent = True
+      self.conn.response_status = self.status
 
 
 @dataclass(slots=True)
@@ -128,6 +253,8 @@ class _Conn():
   '''
   response_status:int|None = None # Set once final response headers have been sent.
   worker_state:_WorkerState|None = None
+  pending_send:_ResponseSend|None = None
+  'Set by a worker when the rest of the response must go to the sender thread.'
 
 
   def set_phase(self, phase:_WorkerPhase, request:Request|None=None) -> None:
@@ -403,6 +530,11 @@ class ServerConfig:
   idle_timeout: the time in seconds that a connection may wait for its next request, or its first, before it is closed.
   drain_timeout: the total time in seconds to spend draining an unread request body before closing a connection.
   drain_max_bytes: the maximum number of unread request body bytes to drain before closing a connection.
+  min_send_rate: the minimum rate in bytes per second that a client must sustain while receiving a response.
+    This is a slow client mitigation. The time to send one file response or handed off response is limited to
+    `conn_timeout + bytes_sent / min_send_rate`, and it fails if `conn_timeout` passes with no progress.
+  send_buffer_limit: the maximum total bytes of responses held in memory by the sender thread.
+    A response that does not fit is sent by its worker instead.
   max_connections: the maximum number of open client connections, including idle ones.
     At capacity, a new connection replaces the longest idle connection, or is dropped if none is idle.
     None selects `default_max_connections`, reduced if necessary to fit the soft descriptor limit
@@ -410,7 +542,8 @@ class ServerConfig:
   raise_fd_limit: whether to raise the soft descriptor limit of the process toward the hard limit so that
     the connection cap fits. The limit is process-wide and inherited by child processes.
   num_threads: the number of worker threads, which bounds the number of requests handled concurrently.
-    A worker is occupied for the whole of a request, including slow handlers and slow clients, but not between requests.
+    A worker is occupied while it reads a request and runs its handler, but not between requests.
+    It is also occupied while sending a response if the sender thread is at capacity.
   worker_warn_after: the seconds that a worker can spend on one assignment before a warning with a stack trace is logged.
     None disables warnings. This is a diagnostic for any cause of slowness.
     It covers every phase of the assignment, but not time waiting in the queue.
@@ -448,6 +581,8 @@ class ServerConfig:
   drain_timeout:float = 1.0
   drain_max_bytes:int = 1 << 20
   min_read_rate:float = 1024.0
+  min_send_rate:float = 1024.0
+  send_buffer_limit:int = 1 << 26
   num_threads:int = 8
   worker_warn_after:float|None = 30.0
   worker_exit_after:float|None = None
@@ -460,8 +595,11 @@ class ServerConfig:
 
 
   def __post_init__(self) -> None:
-    if not isfinite(self.min_read_rate) or self.min_read_rate <= 0:
-      raise ValueError(f'min_read_rate must be finite and positive; received: {self.min_read_rate!r}.')
+    for name, rate in (('min_read_rate', self.min_read_rate), ('min_send_rate', self.min_send_rate)):
+      if not isfinite(rate) or rate <= 0:
+        raise ValueError(f'{name} must be finite and positive; received: {rate!r}.')
+    if self.send_buffer_limit < 0:
+      raise ValueError(f'send_buffer_limit must not be negative; received: {self.send_buffer_limit!r}.')
     for name, value in (('worker_warn_after', self.worker_warn_after), ('worker_exit_after', self.worker_exit_after)):
       if value is not None and (not isfinite(value) or value <= 0):
         raise ValueError(f'{name} must be finite and positive, or None; received: {value!r}.')
@@ -474,13 +612,15 @@ class WebServer:
   Workers handle one request at a time and return reusable connections to the selector.
   Readable connections wait for workers in a LIFO queue, on the assumption that under load it is better to serve some requests
   quickly and let others time out, rather than have all requests delayed or time out.
+  A worker sends what it can of a response without blocking, then passes the rest to a single sender thread.
+  A slow download therefore holds a connection slot and not a worker.
+  The sender runs no application code, and it reads files on its own thread so that a slow disk only delays other downloads.
 
   The server's limits address three different causes of failure. Code that enforces a limit names its cause:
   * Slow client mitigation: clients are untrusted, so a slow client should lose its own connection without affecting others.
-    The server closes the connection when a client exceeds its read budget (`min_read_rate`) or `conn_timeout` on a send.
+    The server closes the connection when a client falls below `min_read_rate` or `min_send_rate`, or stalls for `conn_timeout`.
     These limits apply to each connection separately. Many connections can still occupy all of the workers,
     so public deployments also need per-client limits in a reverse proxy.
-    File responses have no total time limit: each chunk gets `conn_timeout`, so the time can grow with the file size.
   * Application hang recovery: application code is trusted but can have bugs, and a hung thread cannot be cancelled.
     `worker_warn_after` logs slow workers. `worker_exit_after` exits the process so that a supervisor can restart it.
   * Environment failure: if logging raises, the process can no longer report its state.
@@ -511,6 +651,15 @@ class WebServer:
     # A connection owns its slot across selector, queue and worker handoffs, until its socket is closed.
     self._conn_slots = BoundedSemaphore(self.max_connections)
     self._workers: list[Thread] = []
+    self._sender:Thread|None = None
+    self._send_queue:SimpleQueue[_ResponseSend] = SimpleQueue()
+    self._send_stop = Event() # Set only after the workers have exited, so that no more sends can arrive.
+    self._send_wakeup_reader, self._send_wakeup_writer = socketpair()
+    self._send_wakeup_reader.setblocking(False)
+    self._send_wakeup_writer.setblocking(False)
+    self._send_lock = Lock() # Guards the two reservation totals below.
+    self._reserved_send_bytes = 0
+    self._reserved_send_files = 0
     self._monitoring_lock = Lock()
     '''Protect `_active_workers` and its worker states with short critical sections.
 
@@ -549,11 +698,12 @@ class WebServer:
       thread = Thread(target=self._worker, daemon=False, name=f'{cfg.thread_name_prefix}-worker-{i}')
       thread.start()
       self._workers.append(thread)
-
     try:
       with self._lock:
         if self._stop.is_set(): return  # shutdown() was called first and has already closed the sockets.
         self._serving = True
+      self._sender = Thread(target=self._send_loop, daemon=False, name=f'{cfg.thread_name_prefix}-sender')
+      self._sender.start()
       with DefaultSelector() as selector:
         selector.register(self._wakeup_reader, EVENT_READ)
         selector.register(self._socket, EVENT_READ)
@@ -641,6 +791,10 @@ class WebServer:
         while thread.is_alive():
           thread.join(timeout=self._worker_check_interval)
           self._check_workers()
+      if self._sender is not None:
+        self._send_stop.set()
+        self._wake_sender()
+        self._sender.join()
       for queue in (self._conn_queue, self._idle_queue):
         while True:
           try: pending = queue.get_nowait()
@@ -656,6 +810,7 @@ class WebServer:
   def shutdown(self) -> None:
     '''
     Request shutdown, waking the accept loop immediately. Active requests finish before serve_forever returns.
+    Responses held by the sender thread get `conn_timeout` more to finish, and are then abandoned.
 
     Closing a listening socket from another thread does not reliably wake accept on Unix, so a socket pair is used instead.
     If serve_forever is not running then the sockets are closed here, so that a server that never served does not leak them.
@@ -673,11 +828,19 @@ class WebServer:
     except BlockingIOError: pass
 
 
+  def _wake_sender(self) -> None:
+    'Notify the sender of new sends or shutdown. A full buffer already guarantees a wakeup.'
+    try: self._send_wakeup_writer.send(b'\0')
+    except BlockingIOError: pass
+
+
   def _close_sockets(self) -> None:
-    'Close the listener and the wakeup pair; safe to call repeatedly.'
+    'Close the listener and the wakeup pairs; safe to call repeatedly.'
     self._socket.close()
     self._wakeup_reader.close()
     self._wakeup_writer.close()
+    self._send_wakeup_reader.close()
+    self._send_wakeup_writer.close()
 
 
   def _worker(self) -> None:
@@ -693,7 +856,8 @@ class WebServer:
       try:
         try:
           reusable = not self._stop.is_set() and self._handle_connection(conn)
-          if not reusable:
+          send = conn.pending_send
+          if not reusable and send is None:
             conn.set_phase('cleanup')
             self._close_connection(conn)
             self._conn_slots.release()
@@ -701,12 +865,98 @@ class WebServer:
           with self._monitoring_lock:
             del self._active_workers[ident]
             conn.worker_state = None
-        if reusable:
+        if send is not None: # The sender takes ownership only after this worker has finished with the connection.
+          self._send_queue.put(send)
+          self._wake_sender()
+        elif reusable:
           self._idle_queue.put(conn)
           self._wake_listener()
       except BaseException as exc:
         try: logE('Uncaught worker exception; exiting process.', exc=exc, client_addr=conn.client_addr)
         finally: os_exit(1) # Environment failure: exit even if logging raises. Otherwise the thread would end with no record.
+
+
+  def _send_loop(self) -> None:
+    'Sender thread entry point: finish sending the responses handed off by workers.'
+    try:
+      with DefaultSelector() as selector:
+        selector.register(self._send_wakeup_reader, EVENT_READ)
+        active:dict[Socket,_ResponseSend] = {}
+        grace_end:float|None = None
+        while True:
+          while True:
+            try: send = self._send_queue.get_nowait()
+            except QueueEmpty: break
+            send.conn.pending_send = None
+            send.conn.socket.setblocking(False)
+            active[send.conn.socket] = send
+            selector.register(send.conn.socket, EVENT_WRITE, send)
+          if self._send_stop.is_set():
+            if not active: break
+            if grace_end is None: grace_end = monotonic() + self.config.conn_timeout
+          for key, _ in selector.select(send_deadline_scan_interval if active else None):
+            if key.fileobj is self._send_wakeup_reader:
+              try: self._send_wakeup_reader.recv(65536)
+              except BlockingIOError: pass
+              continue
+            send = cast(_ResponseSend, key.data)
+            try:
+              if send.send_some(): continue
+              ok = True
+            except BlockingIOError: continue
+            except OSError as exc: # The client has gone.
+              logI('Response send failed.', exc=exc, client_addr=send.conn.client_addr)
+              ok = False
+            except Exception as exc:
+              logE('Response send error.', exc=exc, client_addr=send.conn.client_addr)
+              ok = False
+            selector.unregister(send.conn.socket)
+            del active[send.conn.socket]
+            self._finish_send(send, ok=ok)
+          now = monotonic()
+          for send in [send for send in active.values() if now >= send.deadline or (grace_end and now >= grace_end)]:
+            # Slow client mitigation: the client loses its connection. A shutdown can also end the grace period.
+            logI('Response send timed out.', client_addr=send.conn.client_addr, sent=send.sent)
+            selector.unregister(send.conn.socket)
+            del active[send.conn.socket]
+            self._finish_send(send, ok=False)
+    except BaseException as exc:
+      try: logE('Uncaught sender exception; exiting process.', exc=exc)
+      finally: os_exit(1) # Environment failure: exit even if logging raises. Otherwise the thread would end with no record.
+
+
+  def _finish_send(self, send:_ResponseSend, *, ok:bool) -> None:
+    'Release the resources of a handed off response, log access, and then reuse or close the connection.'
+    conn = send.conn
+    if send.file_to_close is not None: close_response_body(send.file_to_close)
+    with self._send_lock:
+      self._reserved_send_bytes -= send.charge
+      if send.file_to_close is not None: self._reserved_send_files -= 1
+    if send.access_fields is not None:
+      logI('access', **send.access_fields, s=conn.response_status if conn.response_status is not None else 0,
+        d=round(monotonic() - send.access_start, 3))
+    if ok and not self._stop.is_set() and conn.recycle():
+      conn.socket.settimeout(conn.read_timeout)
+      self._idle_queue.put(conn)
+      self._wake_listener()
+    else:
+      try: conn.socket.close() # The request was completely read, so there is no body to drain.
+      except OSError: pass
+      self._conn_slots.release()
+
+
+  def _reserve_send(self, send:_ResponseSend) -> bool:
+    'Reserve memory and a file allowance for a handoff, so that slow clients cannot exhaust either. Returns False if full.'
+    charge = sum(len(buffer) for buffer in send.buffers) + (len(send.body) if send.body else 0)
+    if send.file is not None: charge += send.chunk_size
+    has_file = send.file_to_close is not None
+    with self._send_lock:
+      if self._reserved_send_bytes + charge > self.config.send_buffer_limit: return False
+      if has_file and self._reserved_send_files >= max_handed_off_files: return False
+      self._reserved_send_bytes += charge
+      if has_file: self._reserved_send_files += 1
+    send.charge = charge
+    return True
 
 
   def _check_workers(self) -> None:
@@ -750,7 +1000,7 @@ class WebServer:
           method = conn.method = http_method_bytes_to_strs.get(event.method, '')
           conn.http_version = event.http_version.decode('ascii') if event.http_version in (b'1.0', b'1.1') else ''
           self._handle_connection_cycle(conn, event, method)
-          return conn.recycle()
+          return conn.pending_send is None and conn.recycle()
       except ClientProtocolError: pass # Logged when detected.
       if conn.error is not None and conn.h11_conn.our_state is h11_IDLE and not conn.h11_conn.trailing_data[1]:
         # Malformed or incomplete request headers from a client that is still connected: answer with a bare response.
@@ -781,18 +1031,24 @@ class WebServer:
         self._send_response(conn, response=response, method=method)
       finally:
         conn.set_phase('cleanup')
-        close_response_body(body)
+        if conn.pending_send is None: close_response_body(body) # Otherwise the sender closes it after sending.
     finally:
       try:
-        if self.config.log_access: self._log_access(conn, event, start_time, request)
+        if self.config.log_access:
+          fields = self._access_fields(conn, event, request)
+          if (send := conn.pending_send) is None:
+            logI('access', **fields, s=conn.response_status if conn.response_status is not None else 0,
+              d=round(monotonic() - start_time, 3))
+          else: # The sender logs when sending finishes. The fields do not retain the request.
+            send.access_fields = fields
+            send.access_start = start_time
       finally:
         if conn.error is not None: conn.error.__traceback__ = None
         #^ Release the frames of this cycle, including those of the original socket read, which refer to the request.
 
 
-  def _log_access(self, conn:_Conn, event:h11_Request, start_time:float, request:Request|None) -> None:
-    'Log at the server boundary so that application dispatch and early rejections are always covered.'
-    dur = round(monotonic() - start_time, 3)
+  def _access_fields(self, conn:_Conn, event:h11_Request, request:Request|None) -> dict[str,object]:
+    'The access record fields other than status and duration, taken at the server boundary so that all requests are covered.'
     if request is None:
       try: path, query = _split_target(event.target)
       except (UnicodeDecodeError, ValueError): # Log the rejected target faithfully; backslashreplace emits only ASCII.
@@ -803,9 +1059,8 @@ class WebServer:
       path, query = request.raw_path, request.query_str
       client_addr = request.client_addr
       uid = request.ctx.get('uid', 0)
-    logI('access', c=client_addr[0] if client_addr else '-', u=uid,
-      m=event.method.decode('ascii', errors='replace'), p=path, q=query,
-      s=conn.response_status if conn.response_status is not None else 0, d=dur)
+    method = event.method.decode('ascii', errors='replace')
+    return dict(c=client_addr[0] if client_addr else '-', u=uid, m=method, p=path, q=query)
 
 
   def _close_connection(self, conn:_Conn) -> None:
@@ -997,29 +1252,19 @@ class WebServer:
 
 
   def _send_response(self, conn:_Conn, *, response:Response, method:str) -> None:
+    '''
+    Send a response. Under a worker, set `conn.pending_send` if the rest must go to the sender thread.
+    Workers send to clients that are slow only if the sender is at capacity, or if the request was not completely read,
+    because the connection might then need draining, which blocks.
+    '''
     conn.set_phase('response')
-    event = h11_Response(status_code=response.status.value, headers=response.headers_bytes_list(), reason=response.reason)
-    h11_conn = conn.h11_conn
-    socket = conn.socket
-
-    socket.sendall(h11_conn.send(event))
-
-    conn.response_sent = True
-    conn.response_status = int(response.status)
-
-    if may_send_body(method, response.status):
-      body = response.body
-      if isinstance(body, BufferedReader):
-        self._send_body_file(h11_conn, socket, body)
-      elif body:
-        socket.sendall(h11_conn.send(h11_Data(data=cast(bytes, body))))
-        #^ bytearray is bytes-like; h11.Data is documented to accept any bytes-like object despite the type being `bytes`.
-
-    socket.sendall(h11_conn.send(h11_EndOfMessage()))
-
-
-  def _send_body_file(self, h11_conn:h11_Connection, socket:Socket, file:BufferedReader) -> None:
-    while True:
-      chunk = file.read(self.config.recv_size)
-      if not chunk: break
-      socket.sendall(h11_conn.send(h11_Data(data=chunk)))
+    cfg = self.config
+    send = _ResponseSend.frame(conn, response, method, chunk_size=cfg.recv_size, timeout=cfg.conn_timeout,
+      min_rate=cfg.min_send_rate)
+    if conn.worker_state is not None and conn.error is None and conn.h11_conn.their_state is h11_DONE \
+     and not self._stop.is_set():
+      if send.try_send_now(cfg.recv_size): return
+      if self._reserve_send(send):
+        conn.pending_send = send
+        return
+    send.send_blocking()

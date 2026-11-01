@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from selectors import DefaultSelector, SelectorKey
-from threading import Event, Thread
+from threading import current_thread, Event, Thread
 from unittest.mock import patch
 
 from pithy.web.app import WebApp
@@ -29,7 +29,11 @@ def test_shutdown_wakes_listener() -> None:
         try: server.serve_forever()
         except BaseException as error: errors.append(error)
 
-      with patch('pithy.web.server.DefaultSelector', return_value=selector), \
+      def make_selector() -> DefaultSelector:
+        'Script only the selector of the listener, not that of the sender thread.'
+        return DefaultSelector() if current_thread().name.endswith('-sender') else selector
+
+      with patch('pithy.web.server.DefaultSelector', side_effect=make_selector), \
        patch.object(selector, 'select', side_effect=select), patch('pithy.web.server.logI'):
         thread = Thread(target=serve)
         thread.start()
