@@ -1,5 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from http import HTTPStatus
 from io import BufferedReader
@@ -17,13 +18,12 @@ from .headers import add_header_item, ResponseHeadersDict
 
 
 _context_keywords_ = ['cache control', 'csv', 'file body', 'html', 'htmx fragments', 'http', 'json', 'redirect',
-  'text']
+  'streaming', 'text']
 
 
-ResponseBody = str|bytes|bytearray|BufferedReader|Mu|None
+ResponseBody = str|bytes|bytearray|BufferedReader|Iterator[bytes]|Mu|None
 
-BinaryResponseBody = bytes|bytearray|BufferedReader|None
-# TODO: support iterable[bytes]?
+BinaryResponseBody = bytes|bytearray|BufferedReader|Iterator[bytes]|None
 
 
 @dataclass(slots=True)
@@ -33,7 +33,9 @@ class Response():
   * status: The HTTP status code (default: OK).
   * headers: a dictionary of HTTP headers. The dictionary will be copied by the constructor.
   * body: The response body.
-    A `BufferedReader` body is owned by the response and must be closed by the caller after sending or discarding it.
+    A file or iterator body is owned by the response; the sender calls its `close()` if available after sending or discarding it.
+    An iterator yields byte chunks and has no Content-Length. Iteration may run on a different thread from the handler.
+    Iterators must cooperate with cancellation by returning periodically; arbitrary application code cannot be interrupted.
 
   Additionally, there are keyword parameters for some common headers:
   * media_type: The Content-Type header value.
@@ -41,7 +43,7 @@ class Response():
     if no charset is already present. To set a non-utf-8 charset, include it explicitly (e.g. `'text/plain;charset=latin1'`).
   * last_modified: The Last-Modified header.
 
-  'Content-Length' is automatically set based on the status and body.
+  'Content-Length' is automatically set based on the status and body, except for iterator bodies.
 
   The constructor checks that the body is appropriate for the status code.
   '''
@@ -94,6 +96,8 @@ class Response():
 
     if isinstance(self.body, BufferedReader):
       content_length = content_length_for_file(self.body)
+    elif isinstance(self.body, Iterator):
+      content_length = None
     elif self.body is not None: # Non-file body.
       content_length = len(self.body)
     else:
@@ -101,7 +105,7 @@ class Response():
 
     assert 'content-length' not in headers
     # 1xx and 204 prohibit Content-Length. For 304, the absent body does not determine the representation length.
-    if status >= 200 and status not in (HTTPStatus.NO_CONTENT, HTTPStatus.NOT_MODIFIED):
+    if content_length is not None and status >= 200 and status not in (HTTPStatus.NO_CONTENT, HTTPStatus.NOT_MODIFIED):
       headers['content-length'] = content_length
 
     assert 'connection' not in headers
@@ -126,8 +130,9 @@ class Response():
 
 
 def close_response_body(body:BinaryResponseBody) -> None:
-  'Close a file body; other body types need no cleanup.'
-  if isinstance(body, BufferedReader): body.close()
+  'Close an owned file or iterator body when it supports cleanup.'
+  if isinstance(body, BufferedReader|Iterator):
+    if (close := getattr(body, 'close', None)) is not None: close()
 
 
 def content_length_for_file(file:BufferedReader) -> int:

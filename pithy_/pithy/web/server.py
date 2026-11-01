@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from collections import deque, OrderedDict
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from errno import EMFILE, ENFILE, ENOBUFS, ENOMEM, ENOTCONN
 from http import HTTPStatus
@@ -34,10 +34,11 @@ from .errors import ResponseError
 from .request import AddrPair, Request, RequestConn
 from .requestconn import BodyAlreadyReadError, BodyTooLargeError, ClientProtocolError
 from .response import close_response_body, Response
+from .sse import _SseBody, SseChannel
 
 
 _context_keywords_ = ['access logging', 'connection draining', 'h11', 'http 1.1', 'http.server', 'keep alive', 'multithreading',
-  'request dispatch', 'socket', 'thread pool', 'watchdog', 'worker duration']
+  'request dispatch', 'server sent events', 'socket', 'streaming', 'thread pool', 'watchdog', 'worker duration']
 
 
 BAD_REQUEST = HTTPStatus.BAD_REQUEST
@@ -67,7 +68,7 @@ deadline_scan_interval = 0.25
 _accept_exhaustion_errnos = frozenset({EMFILE, ENFILE, ENOBUFS, ENOMEM})
 
 
-type _WorkerPhase = Literal['request_headers', 'application', 'request_body', 'response', 'cleanup']
+type _WorkerPhase = Literal['request_headers', 'application', 'request_body', 'response', 'cleanup', 'stream_wait']
 'What a worker is currently doing, as shown in duration reports. Only `application` runs application code.'
 
 type _ConnStage = Literal['request_headers', 'request_body', 'request_completion', 'drain_body']
@@ -97,6 +98,23 @@ class _WorkerState:
   method:str = ''
   path:str = ''
   warned:bool = False
+  streaming:bool = False
+  'For streams, warn about one long application call rather than the intentional lifetime of the response.'
+
+
+@dataclass(slots=True)
+class _StreamSend:
+  'A response transferred to the stream pool after dispatch; holds no request except what the application iterator retains.'
+
+  conn:_Conn
+  body:Iterator[bytes]
+  head:bytes
+  status:int
+  deadline:float
+  method:str = ''
+  path:str = ''
+  access_fields:dict[str,object]|None = None
+  access_start:float = 0.0
 
 
 @dataclass(slots=True)
@@ -255,6 +273,8 @@ class _Conn():
   worker_state:_WorkerState|None = None
   pending_send:_ResponseSend|None = None
   'Set by a worker when the rest of the response must go to the sender thread.'
+  pending_stream:_StreamSend|None = None
+  'Set by a worker after stream admission; the stream pool takes ownership after dispatch and access fields are complete.'
   head_event:h11_Event|None = None
   'The complete request head or connection close, parsed by the listener thread for a worker to take.'
   head_started:float = 0.0
@@ -582,6 +602,15 @@ class ServerConfig:
     `conn_timeout + bytes_sent / min_send_rate`, and it fails if `conn_timeout` passes with no progress.
   send_buffer_limit: the maximum total bytes of responses held in memory by the sender thread.
     A response that does not fit is sent by its worker instead.
+  max_streams: the maximum number of admitted iterator responses, each occupying one dedicated stream worker.
+    Admission never waits: excess streams receive 503 before any response headers are sent. Zero disables streams.
+    Streams also count toward max_connections. The pool runs iterators separately from ordinary workers and the sender.
+  stream_max_duration: the finite maximum lifetime in seconds of an iterator response, independent of activity.
+    Expiration or shutdown ends an SSE response normally. Any other unfinished iterator response is aborted without
+    its terminal chunk, so that clients can detect the truncation. An iterator must return periodically for expiration
+    and shutdown to take effect. SSE channels do so; arbitrary application code cannot be interrupted.
+    Empty chunks let the server check deadlines without sending data. Each nonempty chunk is sent in recv_size pieces
+    with conn_timeout per send. The minimum send rate counts only time spent sending, excluding producer waiting.
   max_connections: the maximum number of open client connections, including idle ones.
     At capacity, a new connection replaces the longest idle connection, or is dropped if none is idle.
     None selects `default_max_connections`, reduced if necessary to fit the soft descriptor limit
@@ -639,9 +668,14 @@ class ServerConfig:
   log_access:bool = True
   startup_message:str = ''
   prevent_client_caching:bool = False
+  max_streams:int = 32
+  stream_max_duration:float = 300.0
 
 
   def __post_init__(self) -> None:
+    if self.max_streams < 0: raise ValueError('max_streams must not be negative.')
+    if not isfinite(self.stream_max_duration) or self.stream_max_duration <= 0:
+      raise ValueError('stream_max_duration must be finite and positive.')
     for name, rate in (('min_read_rate', self.min_read_rate), ('min_send_rate', self.min_send_rate)):
       if not isfinite(rate) or rate <= 0:
         raise ValueError(f'{name} must be finite and positive; received: {rate!r}.')
@@ -663,6 +697,10 @@ class WebServer:
   A worker sends what it can of a response without blocking, then passes the rest to a single sender thread.
   A slow download therefore holds a connection slot and not a worker.
   The sender runs no application code, and it reads files on its own thread so that a slow disk only delays other downloads.
+  Iterator responses use a separate lazy pool bounded by max_streams. They never occupy ordinary workers while streaming,
+  and their producers never run on the sender. Saturated streams receive 503 instead of waiting in an unbounded queue.
+  A healthy stream's lifetime is governed by stream_max_duration, not the ordinary worker duration warning.
+  The watchdog still monitors application calls to next() and close(); channel waits are a separate cooperative phase.
 
   The server's limits address three different causes of failure. Code that enforces a limit names its cause:
   * Slow client mitigation: clients are untrusted, so a slow client should lose its own connection without affecting others.
@@ -699,6 +737,10 @@ class WebServer:
     # A connection owns its slot across selector, queue and worker handoffs, until its socket is closed.
     self._conn_slots = BoundedSemaphore(self.max_connections)
     self._workers: list[Thread] = []
+    self._stream_workers:list[Thread] = []
+    self._stream_queue:SimpleQueue[_StreamSend|None] = SimpleQueue()
+    self._stream_slots = BoundedSemaphore(config.max_streams)
+    self._stream_lock = Lock() # Guards lazy creation of stream workers; never held during stream processing.
     self._sender:Thread|None = None
     self._send_queue:SimpleQueue[_ResponseSend] = SimpleQueue()
     self._send_stop = Event() # Set only after the workers have exited, so that no more sends can arrive.
@@ -871,6 +913,11 @@ class WebServer:
         while thread.is_alive():
           thread.join(timeout=self._worker_check_interval)
           self._check_workers()
+      for _ in self._stream_workers: self._stream_queue.put(None)
+      for thread in self._stream_workers:
+        while thread.is_alive():
+          thread.join(timeout=self._worker_check_interval)
+          self._check_workers()
       if self._sender is not None:
         self._send_stop.set()
         self._wake_sender()
@@ -937,7 +984,8 @@ class WebServer:
         try:
           reusable = not self._stop.is_set() and self._handle_connection(conn)
           send = conn.pending_send
-          if not reusable and send is None:
+          stream = conn.pending_stream
+          if not reusable and send is None and stream is None:
             conn.set_phase('cleanup')
             self._close_connection(conn)
             self._conn_slots.release()
@@ -945,15 +993,140 @@ class WebServer:
           with self._monitoring_lock:
             del self._active_workers[ident]
             conn.worker_state = None
-        if send is not None: # The sender takes ownership only after this worker has finished with the connection.
+        if stream is not None:
+          self._submit_stream(stream)
+        elif send is not None: # The sender takes ownership only after this worker has finished with the connection.
           self._send_queue.put(send)
           self._wake_sender()
         elif reusable:
           self._idle_queue.put(conn)
           self._wake_listener()
+        del stream # The ordinary worker must not retain an iterator after handing it off.
       except BaseException as exc:
         try: logE('Uncaught worker exception; exiting process.', exc=exc, client_addr=conn.client_addr)
         finally: os_exit(1) # Environment failure: exit even if logging raises. Otherwise the thread would end with no record.
+
+
+  def _submit_stream(self, stream:_StreamSend) -> None:
+    'Publish an admitted stream after the ordinary worker has relinquished the connection.'
+    self._stream_queue.put(stream)
+    with self._stream_lock:
+      if len(self._stream_workers) < self.config.max_streams:
+        thread = Thread(target=self._stream_worker, daemon=False,
+          name=f'{self.config.thread_name_prefix}-stream-{len(self._stream_workers)}')
+        self._stream_workers.append(thread)
+        thread.start()
+
+
+  def _stream_worker(self) -> None:
+    'Consume admitted streams. Slots bound active and queued streams together, so none waits behind an indefinite stream.'
+    try:
+      while (stream := self._stream_queue.get()) is not None:
+        conn = stream.conn
+        if self._run_stream(stream):
+          conn.socket.settimeout(conn.read_timeout)
+          self._idle_queue.put(conn)
+          self._wake_listener()
+        else:
+          self._close_connection(conn)
+          self._conn_slots.release()
+        del stream, conn # Release application iterators before waiting for another stream.
+    except BaseException as exc:
+      try: logE('Uncaught stream worker exception; exiting process.', exc=exc)
+      finally: os_exit(1)
+
+
+  def _run_stream(self, stream:_StreamSend) -> bool:
+    'Send and clean up one admitted stream on this thread, releasing its slot. Return whether the connection was recycled.'
+    conn = stream.conn
+    conn.pending_stream = None
+    ident = get_ident()
+    now = monotonic()
+    state = _WorkerState(current_thread().name, conn.client_addr, now, now, self._monitoring_lock,
+      streaming=True, method=stream.method, path=stream.path)
+    with self._monitoring_lock:
+      self._active_workers[ident] = conn.worker_state = state
+    try:
+      try: reusable = self._write_stream(stream)
+      finally:
+        conn.set_phase('application') # Iterator cleanup is application code too.
+        try: close_response_body(stream.body)
+        except Exception as exc:
+          reusable = False
+          logE('Stream cleanup error.', exc=exc, client_addr=conn.client_addr)
+    finally:
+      with self._monitoring_lock:
+        del self._active_workers[ident]
+        conn.worker_state = None
+      self._stream_slots.release()
+    if stream.access_fields is not None:
+      logI('access', **stream.access_fields, s=conn.response_status if conn.response_status is not None else 0,
+        d=round(monotonic() - stream.access_start, 3))
+    return reusable and not self._stop.is_set() and conn.recycle()
+
+
+  def _write_stream(self, stream:_StreamSend) -> bool:
+    '''
+    Send one stream, returning whether normal completion allows keep-alive. Socket errors end only this connection.
+
+    Only an SSE body ends cleanly when cut off by lifetime or shutdown, because SSE has no defined end and clients reconnect.
+    Any other cut off body omits the terminal chunk, so that the client can detect the truncation.
+    '''
+    conn = stream.conn
+    cfg = self.config
+    is_sse = isinstance(stream.body, _SseBody)
+    reason = 'complete'
+    credit = cfg.conn_timeout
+
+    def send(data:bytes, *, limit:float|None=None) -> None:
+      'Send with a timeout bounded by `limit` if given, and otherwise by the remaining stream lifetime.'
+      nonlocal credit
+      timeout = min(cfg.conn_timeout, credit, stream.deadline - monotonic() if limit is None else limit)
+      if timeout <= 0: raise TimeoutError('Minimum stream send rate not met.')
+      conn.socket.settimeout(timeout)
+      started = monotonic()
+      conn.socket.sendall(data)
+      credit += len(data) / cfg.min_send_rate - (monotonic() - started)
+      #^ Slow client mitigation: producer waiting is legitimate and does not use send credit.
+
+    try:
+      conn.set_phase('response')
+      send(stream.head, limit=deadline_scan_interval if monotonic() >= stream.deadline else None)
+      conn.response_sent = True
+      conn.response_status = stream.status
+      while True:
+        if self._stop.is_set():
+          reason = 'shutdown'
+          break
+        if monotonic() >= stream.deadline:
+          reason = 'lifetime'
+          break
+        cooperative_wait = isinstance(stream.body, _SseBody) and isinstance(stream.body.events, SseChannel)
+        conn.set_phase('stream_wait' if cooperative_wait else 'application')
+        try: chunk = next(stream.body)
+        except StopIteration:
+          if is_sse and monotonic() >= stream.deadline: reason = 'lifetime' # _SseBody also stops at its deadline.
+          break
+        finally: conn.set_phase('response')
+        if not isinstance(chunk, bytes): raise TypeError('Streaming response chunks must be bytes.')
+        if self._stop.is_set() or monotonic() >= stream.deadline: continue
+        for offset in range(0, len(chunk), cfg.recv_size):
+          remaining = stream.deadline - monotonic()
+          if remaining <= 0 or self._stop.is_set(): break
+          send(conn.h11_conn.send(h11_Data(data=chunk[offset:offset + cfg.recv_size])))
+      if reason == 'complete':
+        send(conn.h11_conn.send(h11_EndOfMessage()), limit=cfg.conn_timeout)
+        return True
+      if is_sse:
+        send(conn.h11_conn.send(h11_EndOfMessage()), limit=deadline_scan_interval)
+        logI('Stream ended.', client_addr=conn.client_addr, reason=reason)
+      else:
+        logI('Stream aborted before completion.', client_addr=conn.client_addr, reason=reason)
+    except OSError as exc:
+      logI('Stream send failed.', exc=exc, client_addr=conn.client_addr)
+    except Exception as exc:
+      logE('Stream response error.', exc=exc, client_addr=conn.client_addr)
+    return False
 
 
   def _send_loop(self) -> None:
@@ -1053,9 +1226,11 @@ class WebServer:
       now = monotonic()
       for ident, state in self._active_workers.items():
         elapsed = now - state.started
+        warning_elapsed = now - state.phase_started if state.streaming else elapsed
         # Count only application time, so that a slow client cannot make the process exit.
         fatal = exit_after is not None and state.phase == 'application' and now - state.phase_started >= exit_after
-        if not fatal and (warn_after is None or state.warned or elapsed < warn_after): continue
+        if state.streaming and state.phase != 'application': continue
+        if not fatal and (warn_after is None or state.warned or warning_elapsed < warn_after): continue
         state.warned = True
         reports.append((ident, state, fatal, dict(worker=state.name, client_addr=state.client_addr,
           elapsed=round(elapsed, 3), phase=state.phase, method=state.method, path=state.path)))
@@ -1080,7 +1255,7 @@ class WebServer:
           method = conn.method = http_method_bytes_to_strs.get(event.method, '')
           conn.http_version = event.http_version.decode('ascii') if event.http_version in (b'1.0', b'1.1') else ''
           self._handle_connection_cycle(conn, event, method)
-          return conn.pending_send is None and conn.recycle()
+          return conn.pending_send is None and conn.pending_stream is None and conn.recycle()
       except ClientProtocolError: pass # Logged when detected.
       if conn.error is not None and conn.h11_conn.our_state is h11_IDLE and not conn.h11_conn.trailing_data[1]:
         # Malformed or incomplete request headers from a client that is still connected: answer with a bare response.
@@ -1111,12 +1286,14 @@ class WebServer:
         self._send_response(conn, response=response, method=method)
       finally:
         conn.set_phase('cleanup')
-        if conn.pending_send is None: close_response_body(body) # Otherwise the sender closes it after sending.
+        if conn.pending_send is None and conn.pending_stream is None:
+          if isinstance(body, Iterator) and not isinstance(body, BufferedReader): conn.set_phase('application')
+          close_response_body(body)
     finally:
       try:
         if self.config.log_access:
           fields = self._access_fields(conn, event, request)
-          if (send := conn.pending_send) is None:
+          if (send := conn.pending_send or conn.pending_stream) is None:
             logI('access', **fields, s=conn.response_status if conn.response_status is not None else 0,
               d=round(monotonic() - start_time, 3))
           else: # The sender logs when sending finishes. The fields do not retain the request.
@@ -1339,6 +1516,27 @@ class WebServer:
     '''
     conn.set_phase('response')
     cfg = self.config
+    if isinstance(response.body, Iterator) and not isinstance(response.body, BufferedReader) \
+     and may_send_body(method, response.status):
+      if self._stop.is_set() or not self._stream_slots.acquire(blocking=False):
+        rejection = self._bare_response(HTTPStatus.SERVICE_UNAVAILABLE, method=method).set_connection_close()
+        send = _ResponseSend.frame(conn, rejection, method, chunk_size=cfg.recv_size, timeout=cfg.conn_timeout,
+          min_rate=cfg.min_send_rate)
+        send.send_blocking() # Keep original-body cleanup with this worker even if the rejected client is slow.
+        return
+      try:
+        event = h11_Response(status_code=response.status.value, headers=response.headers_bytes_list(), reason=response.reason)
+        stream = _StreamSend(conn, response.body, conn.h11_conn.send(event), int(response.status),
+          monotonic() + cfg.stream_max_duration, method=method,
+          path=conn.worker_state.path if conn.worker_state is not None else '')
+        if isinstance(response.body, _SseBody):
+          stream.deadline = min(stream.deadline, monotonic() + response.body.max_duration)
+          response.body.deadline = min(response.body.deadline, stream.deadline)
+      except BaseException:
+        self._stream_slots.release()
+        raise
+      conn.pending_stream = stream
+      return
     send = _ResponseSend.frame(conn, response, method, chunk_size=cfg.recv_size, timeout=cfg.conn_timeout,
       min_rate=cfg.min_send_rate)
     if conn.worker_state is not None and conn.error is None and conn.h11_conn.their_state is h11_DONE \

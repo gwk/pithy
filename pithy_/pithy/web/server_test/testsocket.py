@@ -5,6 +5,7 @@ Drive `WebServer` connections over a scripted socket, without any network access
 '''
 
 from socket import socket as Socket
+from threading import BoundedSemaphore, Event, Lock
 from typing import cast
 
 from h11 import Connection, SERVER
@@ -55,10 +56,17 @@ def handle_connection(app:WebApp, socket:TestSocket, *, log_access:bool) -> None
   server = WebServer.__new__(WebServer)
   server.app = app
   server.config = ServerConfig(log_access=log_access)
+  server._stop = Event()
+  server._stream_slots = BoundedSemaphore(server.config.max_streams)
+  server._monitoring_lock = Lock()
+  server._active_workers = {}
   conn = _Conn(client_addr=('127.0.0.1', 4321), socket=cast(Socket, socket), h11_conn=Connection(SERVER),
     recv_size=server.config.recv_size, read_timeout=server.config.conn_timeout,
     min_read_rate=server.config.min_read_rate)
   try:
-    while server._handle_connection(conn): pass
+    while True:
+      reusable = server._handle_connection(conn)
+      if (stream := conn.pending_stream) is not None: reusable = server._run_stream(stream)
+      if not reusable: break
   finally:
     server._close_connection(conn)

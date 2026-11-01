@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterator
 from functools import wraps
 from http import HTTPStatus
 from io import BufferedReader
@@ -38,7 +38,7 @@ from .static import pithy_web_static_dir_path
 
 
 _context_keywords_ = ['asgi adapter', 'auth scopes', 'csv', 'endpoint integration', 'form validation', 'html', 'htmx fragments',
-  'path parameters', 'query parameters', 'response conversion', 'static assets']
+  'path parameters', 'query parameters', 'response conversion', 'static assets', 'streaming']
 
 
 _convenience_exports = (
@@ -584,9 +584,9 @@ def convert_response(p_response:PithyResponse, *, method:str='GET') -> Response:
   if not may_send_body(method, p_response.status):
     close_response_body(body)
     response = Response(content=b'', status_code=p_response.status.value)
-  elif isinstance(body, BufferedReader):
+  elif isinstance(body, BufferedReader|Iterator):
     try:
-      response = _FileStreamingResponse(p_response, body)
+      response = _BodyStreamingResponse(p_response, body)
       response.raw_headers = p_response.headers_bytes_list()
     except:
       close_response_body(body)
@@ -598,16 +598,17 @@ def convert_response(p_response:PithyResponse, *, method:str='GET') -> Response:
   return response
 
 
-class _FileStreamingResponse(StreamingResponse):
+class _BodyStreamingResponse(StreamingResponse):
 
-  def __init__(self, p_response:PithyResponse, file:BufferedReader) -> None:
-    super().__init__(iter(lambda: file.read(64 * 1024), b''), status_code=p_response.status.value)
-    self._file = file
+  def __init__(self, p_response:PithyResponse, body:BufferedReader|Iterator[bytes]) -> None:
+    chunks = iter(lambda: body.read(64 * 1024), b'') if isinstance(body, BufferedReader) else body
+    super().__init__(chunks, status_code=p_response.status.value)
+    self._body = body
 
 
   async def __call__(self, scope:Scope, receive:Receive, send:Send) -> None:
     try: await super().__call__(scope, receive, send)
-    finally: self._file.close()
+    finally: close_response_body(self._body)
 
 
 def _run_body(endpoint:Endpoint, request:PithyRequest) -> PithyResponse:

@@ -81,6 +81,15 @@ For a simple WebApp, decorate `handle_request`; its declaration is validated and
 The default `resolve_destination` returns an `AppDestination` for the app itself. RouterApp overrides that hook to return a resolved route.
 Both participate in the same server authorization step. A custom resolver must return a `Destination` with explicit requirements and defer handler construction to `get_handler`.
 
+## Streaming Responses
+
+`Response.body` accepts an iterator of byte chunks, which the native server sends through a separate bounded stream pool using HTTP chunked encoding.
+Pithy owns iterator cleanup, stream admission, connection limits and transport deadlines; applications supply the data.
+For server-sent events, use `SseResponse`, `SseEvent` and `SseChannel` from `pithy.web.sse`; that module documents publishing, heartbeats, cancellation and reconnection responsibilities.
+Both SSE responses and the native server impose a finite configurable stream lifetime.
+At the lifetime limit or shutdown, an SSE response ends normally, while the native server aborts any other unfinished iterator response so that the client can detect the truncation.
+Custom iterators must cooperate by returning periodically; Pithy cannot interrupt arbitrary application code.
+
 ## Browser Regression Tests
 
 Standalone browser regression pages live in `pithy_/test/web/`, relative to the repository root.
