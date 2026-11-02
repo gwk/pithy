@@ -45,22 +45,34 @@ esac
 uv_dl_dir="uv-${uv_target}"
 uv_dl_name="${uv_dl_dir}.tar.gz"
 uv_dl_url="https://github.com/astral-sh/uv/releases/download/${uv_version}/${uv_dl_name}"
+# Upstream archive names omit the version; include it locally so upgrades cannot reuse an older release.
+uv_archive_name="uv-${uv_version}-${uv_target}.tar.gz"
 
 # Remove other versions and any previous extraction of this one, keeping only the current archive.
-rm -rf uv-!("${uv_dl_name#uv-}")
+rm -rf uv-!("${uv_archive_name#uv-}")
 
-[[ -f "$uv_dl_name" ]] || curl --proto '=https' --tlsv1.2 -fsSL -o "$uv_dl_name" "$uv_dl_url"
-
-if [[ "$machine_os" == Darwin ]]; then
-  echo "${uv_sha256}  ${uv_dl_name}" | shasum -a 256 -c -
+if [[ ! -f "$uv_archive_name" ]]; then
+  echo "Downloading uv $uv_version from $uv_dl_url"
+  curl --proto '=https' --tlsv1.2 -fL --progress-bar --connect-timeout 30 --speed-limit 1 --speed-time 60 \
+    -o "$uv_archive_name.download" "$uv_dl_url"
+  mv "$uv_archive_name.download" "$uv_archive_name"
 else
-  echo "${uv_sha256}  ${uv_dl_name}" | sha256sum -c -
+  echo "Using cached archive: $uv_archive_name"
 fi
 
-tar -xzf "$uv_dl_name"
+echo "Verifying uv $uv_version archive."
+if [[ "$machine_os" == Darwin ]]; then
+  echo "${uv_sha256}  ${uv_archive_name}" | shasum -a 256 -c -
+else
+  echo "${uv_sha256}  ${uv_archive_name}" | sha256sum -c -
+fi
+
+echo "Extracting uv $uv_version."
+tar -xzf "$uv_archive_name"
 [[ -d "$uv_dl_dir" ]] || fail "Missing uv directory: $uv_dl_dir."
 "$uv_dl_dir/uv" --version
 
+echo "Installing uv $uv_version to $prefix/bin (sudo may request authentication)."
 sudo install -d -o root -m 755 "$prefix" "$prefix/bin"
 sudo install -o root -m 755 "$uv_dl_dir/uv" "$uv_dl_dir/uvx" "$prefix/bin"
 "$prefix/bin/uv" --version
