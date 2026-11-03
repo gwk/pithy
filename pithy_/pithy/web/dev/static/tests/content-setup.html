@@ -1,0 +1,146 @@
+<!doctype html>
+<!-- Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/. -->
+<meta charset="utf-8">
+<title>Content setup regression tests</title>
+<link rel="stylesheet" href="/static/pithy/pithy.css">
+<script src="/static/pithy/pithy.js"></script>
+<script src="suite.js"></script>
+<script defer src="/static/pithy/htmx/htmx4.min.js"></script>
+<pre id="results">Running...</pre>
+<dialog id="initial-modal" class="modal" data-transient-modal><div class="pane">Initial</div></dialog>
+<button id="reusable-opener" data-open-modal="reusable-modal">Open</button>
+<dialog id="reusable-modal" class="modal">
+  <div class="pane"><p>Reusable</p><button data-close-modal>Close</button></div>
+</dialog>
+<div id="region">
+  <table id="proposed" class="collapsible">
+    <caption>Proposed</caption>
+    <tbody><tr><td>Prebook</td></tr></tbody>
+  </table>
+</div>
+<div id="main-target"></div>
+<div id="oob"></div>
+<script>
+runTestSuite(async check => {
+  function checkToggle(table) {
+    const caption = table.querySelector('caption');
+    caption.click();
+    check(table.classList.contains('collapsed'), 'One click collapses');
+    check(getComputedStyle(table.tBodies[0]).display === 'none', 'Collapsed rows are hidden');
+    caption.click();
+    check(!table.classList.contains('collapsed'), 'Another click expands');
+    check(getComputedStyle(table.tBodies[0]).display !== 'none', 'Expanded rows are visible');
+  }
+  function swap(target, swapStyle, text) {
+    return htmx.swap({target: document.querySelector(target), sourceElement: document.body, swap: swapStyle, text});
+  }
+  const regionHtml = label => `<div id="region"><table id="proposed" class="collapsible"><caption>Proposed</caption>
+    <thead><tr><th>Name</th></tr></thead><tbody><tr><td>${label}</td></tr></tbody></table></div>`;
+  // pithy.js registered its DOMContentLoaded listener first, so it has already configured the initial document.
+  const initialModal = document.querySelector('#initial-modal');
+  check(initialModal.open && initialModal.matches(':modal'), 'Initial-page modal dialog is shown as a modal');
+  const initialClosed = new Promise(resolve => initialModal.addEventListener('close', resolve, {once: true}));
+  initialModal.click();
+  await initialClosed;
+  check(!initialModal.isConnected, 'Backdrop click closes and removes the initial-page modal');
+
+  async function checkReusableModal(opener, modal) {
+    check(!modal.open, 'Reusable modal starts hidden');
+    const closers = [
+      ['Backdrop click', () => modal.click()],
+      ['Click on a data-close-modal element', () => modal.querySelector('[data-close-modal]').click()],
+      ['Close request', () => modal.requestClose()],
+    ];
+    for (const [desc, close] of closers) {
+      opener.click();
+      check(modal.matches(':modal'), 'Opener click shows the reusable modal');
+      modal.querySelector('p').click();
+      check(modal.open, 'Pane click leaves the reusable modal open');
+      const closed = new Promise(resolve => modal.addEventListener('close', resolve, {once: true}));
+      close();
+      await closed;
+      check(!modal.open && modal.isConnected, `${desc} closes the reusable modal and leaves it in the document`);
+    }
+    opener.remove();
+    modal.remove();
+  }
+  await checkReusableModal(document.querySelector('#reusable-opener'), document.querySelector('#reusable-modal'));
+  await swap('body', 'beforeend', '<button id="swapped-opener" data-open-modal="swapped-reusable-modal">Open</button>' +
+    '<dialog id="swapped-reusable-modal" class="modal"><div class="pane"><p>Reusable</p>' +
+    '<button data-close-modal>Close</button></div></dialog>');
+  await checkReusableModal(document.querySelector('#swapped-opener'), document.querySelector('#swapped-reusable-modal'));
+
+  for (const closedBy of ['any', 'closerequest', 'none']) {
+    await swap('body', 'beforeend', `<dialog id="closedby-modal" class="modal" closedby="${closedBy}"><div class="pane">` +
+      '<p>Closed by</p><button data-close-modal>Close</button></div></dialog>');
+    const modal = document.querySelector('#closedby-modal');
+    modal.showModal();
+    modal.click();
+    // Native light dismiss may close the dialog asynchronously, so wait a frame before checking.
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    const outcome = closedBy === 'any' ? 'closes' : 'leaves open';
+    check(modal.open === (closedBy !== 'any'), `Backdrop click with closedby="${closedBy}" ${outcome}`);
+    if (modal.open) {
+      const closed = new Promise(resolve => modal.addEventListener('close', resolve, {once: true}));
+      modal.querySelector('[data-close-modal]').click();
+      await closed;
+      check(!modal.open, `Close button closes a modal with closedby="${closedBy}"`);
+    }
+    modal.remove();
+  }
+
+  const region = document.querySelector('#region');
+  const originalCaption = region.querySelector('caption');
+  checkToggle(region.querySelector('table'));
+  for (let i = 0; i < 4; ++i) {
+    await swap('#region', 'outerMorph', regionHtml(`Updated ${i}`));
+    check(document.querySelector('#region') === region, 'Morph retains the region');
+    check(region.querySelector('caption') === originalCaption, 'Morph retains the caption');
+    checkToggle(region.querySelector('table')); // Setup must be idempotent when a morph processes retained elements.
+  }
+
+  await swap('#region', 'outerHTML', regionHtml('Replaced'));
+  const replaced = document.querySelector('#region');
+  check(replaced !== region, 'outerHTML replaces the region');
+  check(replaced.querySelector('thead').hasAttribute('data-dblclick-select-configured'), 'outerHTML thead is configured');
+  checkToggle(replaced.querySelector('table'));
+
+  await swap('#main-target', 'innerHTML', '<p>Main</p>' +
+    '<div id="oob" hx-swap-oob="true"><table class="collapsible"><caption>Out of band</caption>' +
+    '<thead><tr><th>Name</th></tr></thead><tbody><tr><td>OOB</td></tr></tbody></table></div>');
+  const oob = document.querySelector('#oob');
+  check(oob.querySelector('thead').hasAttribute('data-dblclick-select-configured'), 'Out-of-band thead is configured');
+  checkToggle(oob.querySelector('table'));
+
+  const modalHtml = '<dialog id="test-modal" class="modal" data-transient-modal><div class="pane"><p>Modal</p>' +
+    '<button data-close-modal><span>Close</span></button></div></dialog>';
+  const closeEvent = modal => new Promise(resolve => modal.addEventListener('close', resolve, {once: true}));
+  async function swapModal() {
+    await swap('body', 'beforeend', modalHtml);
+    const modal = document.querySelector('#test-modal');
+    check(modal.open && modal.matches(':modal'), 'Swapped-in modal dialog is shown as a modal');
+    return modal;
+  }
+
+  let modal = await swapModal();
+  modal.querySelector('p').click();
+  check(modal.open && modal.isConnected, 'Pane click leaves the modal open');
+  let closed = closeEvent(modal);
+  modal.click(); // A click targeting the dialog itself is how a ::backdrop click arrives.
+  await closed;
+  check(!modal.isConnected, 'Backdrop click closes and removes the modal');
+
+  modal = await swapModal();
+  closed = closeEvent(modal);
+  modal.querySelector('button span').click();
+  await closed;
+  check(!modal.isConnected, 'Click within a data-close-modal element closes and removes the modal');
+
+  modal = await swapModal();
+  closed = closeEvent(modal);
+  modal.requestClose();
+  await closed;
+  check(!modal.isConnected, 'Close request, as from the escape key, removes the modal');
+  check(document.querySelectorAll('dialog').length === 0, 'No dialogs remain');
+});
+</script>

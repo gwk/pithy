@@ -1,6 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from pithy.web.dev.routes import routes
+from pithy.web.dev.tests import fixture_pages
 from pithy.web.request import Request
 from pithy.web.response import close_response_body
 from pithy.web.router import Router
@@ -28,3 +29,11 @@ def _() -> None:
   utest_val('text/css;charset=utf-8', _content_type(router, '/static/dev/dev.css'), desc='dev.css served as css')
   utest_val('font/woff2', _content_type(router, '/static/pithy/fonts/NotoEmoji-VariableFont_wght.woff2'),
     desc='bundled Noto Emoji served as a font without a text charset')
+
+
+@utest_run
+def _() -> None:
+  'pithy.web.dev: every fixture page listed on the tests page is served as html.'
+  router = Router(routes, default_public=True)
+  for path, name, _desc in fixture_pages:
+    utest_val('text/html;charset=utf-8', _content_type(router, path), desc=name)

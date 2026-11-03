@@ -92,13 +92,9 @@ Custom iterators must cooperate by returning periodically; Pithy cannot interrup
 
 ## Browser Regression Tests
 
-Standalone browser regression pages live in `pithy_/test/web/`, relative to the repository root.
-When changing `pithy.js` or htmx integration, run the relevant pages in both Chromium and WebKit.
-These tests are not run by `just check` or `just typecheck-js`.
+The `/tests` page of the dev app (`python3 -m pithy.web.dev`) runs the browser regression checks.
+Run it in both Chromium and WebKit when changing `static/` scripts or stylesheets; `just check` does not run these checks.
+Automation can await the `window.pithyDevTests` promise on that page; `dev/tests.py` describes the result.
 
-Serve the repository root over HTTP and open each test page at its corresponding URL, such as `/pithy_/test/web/checkbox-inclusion.html`.
-The pages load the repository's JavaScript through relative paths, run automatically, and display `PASS` with a check count or `FAIL` with error details.
-
-* `checkbox-inclusion.html`: Checks boolean and set checkbox submission through `hx-include` and prefixed attributes, including inheritance, append behavior, disabled controls, and explicit value overrides. All test requests are canceled before transmission.
-* `markdown-editor.html`: Checks the `markdown-editor` element of `static/markdown.js` under a strict Content Security Policy: syntax coloring, exact text round trips, equal layout of the textarea and its coloring layer, survival of DOM replacement, and pasted image attachments. Its checks are in `markdown-editor.js`, because the policy forbids inline scripts.
-* `collapsible-tables.html`: Checks that `pithy.js` configures swapped-in content, including collapse toggling across morphs, thead setup in outerHTML and out-of-band swaps, and modal display, dismissal and removal.
+The page runs style checks in a scratch frame, then each fixture page in `dev/static/tests/` in its own frame.
+Add a fixture page by loading `suite.js` in it and listing it in `fixture_pages` in `dev/tests.py`.

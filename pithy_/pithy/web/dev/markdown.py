@@ -97,7 +97,7 @@ def dev_markdown(request:Request) -> HtmlResponse:
         Li('Coloring is computed per line. Fenced code blocks are tracked across lines; ',
           'emphasis and links that span a line break are not colored.'),
         Li('The script and stylesheet work under a strict Content Security Policy; see ',
-          Code('pithy_/test/web/markdown-editor.html'), '.')])]))
+          A(href='/static/dev/tests/markdown-editor.html', _='the markdown editor fixture page'), '.')])]))
 
 
 class MarkdownSettingsHtmx(Endpoint):

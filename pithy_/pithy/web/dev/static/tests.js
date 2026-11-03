@@ -14,6 +14,8 @@
   const runButton = runControl;
   const summary = required(document.querySelector('#tests-summary'));
   const list = required(document.querySelector('#tests-results'));
+  /** @type {NodeListOf<HTMLAnchorElement>} */
+  const suiteLinks = document.querySelectorAll('#tests-suites a');
 
   function check(condition, message) {
     if (!condition) throw new Error(message);
@@ -273,12 +275,54 @@
       report('Test setup', 'fail', error instanceof Error ? error.message : String(error));
     } finally {
       frame.remove();
-      runButton.disabled = false;
     }
+    for (const link of suiteLinks) await runSuite(link.textContent ?? link.href, link.href, report);
+    runButton.disabled = false;
     const failed = results.filter(result => result.status === 'fail').length;
     summary.textContent = `${results.length - failed} passed; ${failed} failed.`;
     summary.classList.toggle('error-red', failed > 0);
     return {status: failed ? 'fail' : 'pass', results};
+  }
+
+  /**
+   * Run the fixture page at `url` in its own frame and report its outcome as a single result.
+   * @param {string} name @param {string} url @param {(name:string, status:string, message?:string) => void} report
+   */
+  async function runSuite(name, url, report) {
+    const frame = document.createElement('iframe');
+    frame.className = 'tests-frame';
+    frame.title = `${name} fixture page`;
+    frame.tabIndex = -1;
+    frame.setAttribute('aria-hidden', 'true');
+    let timer = 0;
+    try {
+      /** @type {{checks:string[], error:string}} */
+      const outcome = await new Promise((resolve, reject) => {
+        timer = setTimeout(() => reject(new Error('Fixture page did not finish within 30 seconds.')), 30000);
+        // The window property is assigned as the page parses, so it exists by the load event.
+        frame.onload = () => {
+          try {
+            // A browser error page is cross-origin, so this read throws if the page failed to load.
+            const promise = frame.contentWindow && Reflect.get(frame.contentWindow, 'pithyTestSuite');
+            // The promise belongs to the frame's realm, so `instanceof Promise` would be false.
+            if (typeof promise?.then === 'function') promise.then(resolve, reject);
+            else reject(new Error('Fixture page did not define pithyTestSuite.'));
+          } catch (error) {
+            reject(error);
+          }
+        };
+        frame.src = url;
+        document.body.append(frame);
+      });
+      const label = `${name}: ${outcome.checks.length} checks passed`;
+      if (outcome.error) report(label + ' before failure', 'fail', outcome.error);
+      else report(label, 'pass');
+    } catch (error) {
+      report(name, 'fail', error instanceof Error ? error.message : String(error));
+    } finally {
+      clearTimeout(timer);
+      frame.remove();
+    }
   }
 
   function start() {

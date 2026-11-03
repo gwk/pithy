@@ -1,9 +1,10 @@
 /* Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/. */
 
-/* A real viewport is needed for layout and scrolling tests. Do not use display:none. */
+/* A real viewport is needed for layout and scrolling tests. Do not use display:none.
+   Keep the frame within the viewport: WebKit throttles animation frames in frames positioned off screen. */
 .tests-frame {
   position: fixed;
-  left: -10000px;
+  left: 0;
   top: 0;
   width: 800px;
   height: 600px;
