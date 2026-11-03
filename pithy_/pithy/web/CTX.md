@@ -101,4 +101,4 @@ The pages load the repository's JavaScript through relative paths, run automatic
 
 * `checkbox-inclusion.html`: Checks boolean and set checkbox submission through `hx-include` and prefixed attributes, including inheritance, append behavior, disabled controls, and explicit value overrides. All test requests are canceled before transmission.
 * `markdown-editor.html`: Checks the `markdown-editor` element of `static/markdown.js` under a strict Content Security Policy: syntax coloring, exact text round trips, equal layout of the textarea and its coloring layer, survival of DOM replacement, and pasted image attachments. Its checks are in `markdown-editor.js`, because the policy forbids inline scripts.
-* `collapsible-tables.html`: Checks collapse toggling, hidden rows, and listener preservation across htmx morphs.
+* `collapsible-tables.html`: Checks that `pithy.js` configures swapped-in content, including collapse toggling across morphs, thead setup in outerHTML and out-of-band swaps, and modal display.

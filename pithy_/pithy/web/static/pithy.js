@@ -314,10 +314,6 @@ function _configureHtmx() {
     }
   });
 
-  document.body.addEventListener('htmx:after:swap', (event) => {
-    _configureSwappedContent(event.detail.ctx.target);
-  });
-
   // Send checkbox state for the elements that htmx serializes itself; see `isBoolCheckbox` and `isSetCheckbox`.
   // The `formdata` listener handles forms; reconcile their set markers after htmx has also collected hx-include values.
   document.body.addEventListener('htmx:config:request', (event) => {
@@ -345,27 +341,47 @@ function _configureHtmx() {
   // Configure universal 'once' callback for all DOM elements that define that attribute.
   _onLoadRunOnceAttrs(document.body); // Call immediately.
   _htmx.onLoad(_onLoadRunOnceAttrs);
+
+  // Configure each root of swapped-in content, including out-of-band and partial swaps.
+  // `htmx:after:swap` is not suitable: its `ctx.target` is the detached old element after an outerHTML swap,
+  // and it does not cover out-of-band content.
+  // The initial document is not affected, because htmx processes it before `_configurePithy` registers this callback.
+  _htmx.onLoad(_configureLoadedContent);
 }
 
 
 /**
- * Configure content that htmx has just swapped in: show modal dialogs and set up tables.
- * @param {Element} target - The swap target element.
+ * Configure content that htmx has just processed: show modal dialogs and set up tables.
+ * This is idempotent, because a morph can process retained elements again.
+ * @param {Element} root - A root element of the processed content.
  */
-function _configureSwappedContent(target) {
+function _configureLoadedContent(root) {
   // Show modal dialogs after they are swapped in.
-  for (const modal of target.querySelectorAll('dialog.modal')) {
-    if (modal instanceof HTMLDialogElement) {
+  for (const modal of _queryRootAndDescendants(root, 'dialog.modal')) {
+    if (modal instanceof HTMLDialogElement && !modal.open) {
       modal.showModal();
     }
   }
 
   // Add double-click handlers to table theads in swapped-in content.
-  for (const thead of target.querySelectorAll('table thead')) {
+  for (const thead of _queryRootAndDescendants(root, 'table thead')) {
     makeElementSelectTableContentsOnDoubleClick(thead);
   }
 
-  _configureCollapsibleTables(target);
+  _configureCollapsibleTables(root);
+}
+
+
+/**
+ * Return `root` if it matches `selector`, followed by its matching descendants.
+ * @param {Element} root
+ * @param {string} selector
+ * @returns {Element[]}
+ */
+function _queryRootAndDescendants(root, selector) {
+  const matches = Array.from(root.querySelectorAll(selector));
+  if (root.matches(selector)) matches.unshift(root);
+  return matches;
 }
 
 

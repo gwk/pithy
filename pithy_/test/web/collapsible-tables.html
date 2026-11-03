@@ -1,7 +1,7 @@
 <!doctype html>
 <!-- Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/. -->
 <meta charset="utf-8">
-<title>Collapsible table morph regression tests</title>
+<title>Swapped content setup regression tests</title>
 <link rel="stylesheet" href="../../pithy/web/static/pithy.css">
 <script src="../../pithy/web/static/pithy.js"></script>
 <script defer src="../../pithy/web/static/htmx/htmx4.min.js"></script>
@@ -12,16 +12,17 @@
     <tbody><tr><td>Prebook</td></tr></tbody>
   </table>
 </div>
+<div id="main-target"></div>
+<div id="oob"></div>
 <script>
 // Serve the pithy repository root and open this page in a browser.
-addEventListener('DOMContentLoaded', () => {
+addEventListener('DOMContentLoaded', async () => {
   const results = [];
   function check(condition, message) {
     if (!condition) throw new Error(message);
     results.push(message);
   }
-  function checkToggle() {
-    const table = document.querySelector('table');
+  function checkToggle(table) {
     const caption = table.querySelector('caption');
     caption.click();
     check(table.classList.contains('collapsed'), 'One click collapses');
@@ -30,28 +31,41 @@ addEventListener('DOMContentLoaded', () => {
     check(!table.classList.contains('collapsed'), 'Another click expands');
     check(getComputedStyle(table.tBodies[0]).display !== 'none', 'Expanded rows are visible');
   }
+  function swap(target, swapStyle, text) {
+    return htmx.swap({target: document.querySelector(target), sourceElement: document.body, swap: swapStyle, text});
+  }
+  const regionHtml = label => `<div id="region"><table id="proposed" class="collapsible"><caption>Proposed</caption>
+    <thead><tr><th>Name</th></tr></thead><tbody><tr><td>${label}</td></tr></tbody></table></div>`;
   try {
-    let api;
-    htmx.registerExtension('caption-test', {init: value => { api = value; }});
     const region = document.querySelector('#region');
     const originalCaption = region.querySelector('caption');
-    function configureSwap() {
-      region.dispatchEvent(new CustomEvent('htmx:after:swap', {bubbles: true, detail: {ctx: {target: region}}}));
-    }
-    checkToggle();
+    checkToggle(region.querySelector('table'));
     for (let i = 0; i < 4; ++i) {
-      const template = document.createElement('template');
-      template.innerHTML = `<div id="region"><table id="proposed" class="collapsible"><caption>Proposed</caption>
-        <tbody><tr><td>Updated ${i}</td></tr></tbody></table></div>`;
-      api.morph(region, template.content, false);
-      configureSwap();
-      configureSwap(); // Setup must be idempotent even when called repeatedly.
+      await swap('#region', 'outerMorph', regionHtml(`Updated ${i}`));
+      check(document.querySelector('#region') === region, 'Morph retains the region');
       check(region.querySelector('caption') === originalCaption, 'Morph retains the caption');
-      checkToggle();
+      checkToggle(region.querySelector('table')); // Setup must be idempotent when a morph processes retained elements.
     }
-    region.innerHTML = '<table class="collapsible"><caption>New table</caption><tbody><tr><td>New</td></tr></tbody></table>';
-    configureSwap();
-    checkToggle();
+
+    await swap('#region', 'outerHTML', regionHtml('Replaced'));
+    const replaced = document.querySelector('#region');
+    check(replaced !== region, 'outerHTML replaces the region');
+    check(replaced.querySelector('thead').hasAttribute('data-dblclick-select-configured'), 'outerHTML thead is configured');
+    checkToggle(replaced.querySelector('table'));
+
+    await swap('#main-target', 'innerHTML', '<p>Main</p>' +
+      '<div id="oob" hx-swap-oob="true"><table class="collapsible"><caption>Out of band</caption>' +
+      '<thead><tr><th>Name</th></tr></thead><tbody><tr><td>OOB</td></tr></tbody></table></div>');
+    const oob = document.querySelector('#oob');
+    check(oob.querySelector('thead').hasAttribute('data-dblclick-select-configured'), 'Out-of-band thead is configured');
+    checkToggle(oob.querySelector('table'));
+
+    await swap('body', 'beforeend', '<dialog id="test-modal" class="modal"><div class="pane">Modal</div></dialog>');
+    const modal = document.querySelector('#test-modal');
+    check(modal.open && modal.matches(':modal'), 'Swapped-in modal dialog is shown as a modal');
+    modal.close();
+    modal.remove();
+
     document.querySelector('#results').textContent = `PASS: ${results.length} checks\n` + results.join('\n');
   } catch (error) {
     document.querySelector('#results').textContent = 'FAIL: ' + error.stack;
