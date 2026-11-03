@@ -58,14 +58,17 @@ def _() -> None:
 
 @utest_run
 def _() -> None:
-  'The reload filter keeps source and asset changes and skips bytecode and isort temporaries.'
+  'The reload filter keeps source changes and skips bytecode, isort temporaries and ignored directories.'
   root = realpath(gettempdir())
-  watch_filter = reload_filter()
+  static = path_join(root, 'pkg', 'static')
+  watch_filter = reload_filter(ignore=[static])
   for path, expected in [
     ('pkg/app.py', True),
-    ('pkg/static/app.js', True),
     ('pkg/__pycache__/app.cpython-315.pyc', False),
     ('pkg/app.py.isorted', False),
+    ('pkg/static/app.js', False),
+    ('pkg/static/fixtures/page.html', False),
+    ('pkg/static-src/app.py', True), # A sibling sharing the ignored directory's name prefix.
   ]:
     utest_val(expected, watch_filter(watchfiles.Change.modified, path_join(root, path)), desc=path)
 
@@ -80,11 +83,12 @@ def _() -> None:
 
 @utest_run
 def _() -> None:
-  'Watching resolves the port, exports it, and spawns the target by name with the resolved config.'
+  'Watching resolves the port, exports it, and spawns the target by name with the resolved config and ignored paths.'
+  static = path_join(realpath(gettempdir()), 'pkg', 'static')
   with (patch.object(watchfiles, 'run_process') as run_process,
         patch.dict(sys.modules, {'__main__': _patch_main('mypkg.__main__')}),
         patch.dict(environ)):
-    DevServerCmd(port=0, watch=True).serve(_run, watch=[], quiet=True)
+    DevServerCmd(port=0, watch=True).serve(_run, watch=[], ignore=[static], quiet=True)
     (call,) = run_process.call_args_list
     config = call.kwargs['kwargs']['config']
     utest_val('mypkg.__main__._run', call.kwargs['target'])
@@ -92,3 +96,4 @@ def _() -> None:
     utest_val(True, config.port > 0)
     utest_val(True, config.prevent_client_caching)
     utest_val(str(config.port), environ['WEB_PORT'])
+    utest_val(False, call.kwargs['watch_filter'](watchfiles.Change.modified, path_join(static, 'app.js')))

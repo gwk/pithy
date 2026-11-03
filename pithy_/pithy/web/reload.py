@@ -3,7 +3,8 @@
 from collections.abc import Callable, Iterable
 from dataclasses import replace
 from importlib.resources import files as resource_files
-from os import environ
+from os import environ, sep as path_sep
+from os.path import realpath
 from socket import AF_INET, SOCK_STREAM, socket as Socket
 from sys import modules as sys_modules
 from types import ModuleType
@@ -44,6 +45,12 @@ Typical usage in an app's `__main__.py`:
     WebServer(app=mypkg.MyApp(), config=config).serve_forever()
 
   if __name__ == '__main__': main()
+
+Any change under the watched paths restarts the server, except for bytecode, version control and editor files.
+Pass `ignore` to `serve` or `serve_with_reload` to skip directories whose files the server reads afresh on each request,
+such as static assets served by `FilesHandler`; edits there take effect on the next request without a restart.
+For example, `pithy.web.dev` ignores the pithy and dev static directories.
+Files that the server reads only at startup, such as templates or data loaded at import time, must not be ignored.
 '''
 
 
@@ -54,7 +61,7 @@ class DevServerCmd(Cmd):
   '''
 
   port:int = opt(default=0, doc='Port to bind to; 0 selects a free port.')
-  watch:bool = flag(default=True, doc='Reload the server when watched source files change.')
+  watch:bool = flag(default=True, doc='Reload the server when watched source files change (the default); disable with -no-watch.')
 
 
   @property
@@ -62,22 +69,25 @@ class DevServerCmd(Cmd):
     return ServerConfig(host='localhost', port=self.port, prevent_client_caching=True)
 
 
-  def serve(self, run:Callable[[ServerConfig],None], *, watch:Iterable[str|ModuleType], quiet:bool=False) -> None:
+  def serve(self, run:Callable[[ServerConfig],None], *, watch:Iterable[str|ModuleType], ignore:Iterable[str]=(),
+   quiet:bool=False) -> None:
     '''Run a local server, reloading it by default.
 
     `run` must be a module-level function taking a ServerConfig.
     When watching is disabled it is called directly;
     otherwise it is spawned in a child process by its qualified name (see `target_name`).
+    `ignore` lists directories whose changes do not trigger a reload; see `reload_filter`.
     If `quiet` is true then suppress the reload startup message.
     '''
     config = self.server_config
     if self.watch:
-      serve_with_reload(target=target_name(run), watch=watch, config=config, quiet=quiet)
+      serve_with_reload(target=target_name(run), watch=watch, ignore=ignore, config=config, quiet=quiet)
     else:
       run(config)
 
 
-def serve_with_reload(*, target:str, watch:Iterable[str|ModuleType], config:ServerConfig|None=None, quiet:bool=False) -> None:
+def serve_with_reload(*, target:str, watch:Iterable[str|ModuleType], ignore:Iterable[str]=(), config:ServerConfig|None=None,
+ quiet:bool=False) -> None:
   '''
   Spawn a subprocess to run the function named by `target` (a dotted path string) using `watchfiles.run_process`.
   `watch` is an iterable of paths or modules to watch.
@@ -104,18 +114,24 @@ def serve_with_reload(*, target:str, watch:Iterable[str|ModuleType], config:Serv
     errL(msg)
 
   run_process(*watch_paths, target=target, target_type='function', kwargs={'config': config},
-    watch_filter=reload_filter(), callback=_watch_callback)
+    watch_filter=reload_filter(ignore), callback=_watch_callback)
 
 
-def reload_filter() -> DefaultFilter:
+def reload_filter(ignore:Iterable[str]=()) -> DefaultFilter:
   '''
   Return the watch filter used by `serve_with_reload`.
 
   It extends the watchfiles `DefaultFilter`, which skips bytecode, version control and editor files,
-  to also skip isort's `.isorted` temporaries.
+  to also skip isort's `.isorted` temporaries and every file under the `ignore` directories.
+  Ignore directories whose files the server reads on each request, such as static assets served by `FilesHandler`.
+  Do not ignore files that the server reads only at startup; the server would keep serving stale content.
   '''
   from watchfiles import DefaultFilter
-  return DefaultFilter(ignore_entity_patterns=(*DefaultFilter.ignore_entity_patterns, r'\.isorted$'))
+
+  # watchfiles matches ignore paths as string prefixes against the real paths it reports; the trailing separator
+  # prevents a directory from also matching its siblings with the same prefix.
+  return DefaultFilter(ignore_entity_patterns=(*DefaultFilter.ignore_entity_patterns, r'\.isorted$'),
+    ignore_paths=[realpath(path).rstrip(path_sep) + path_sep for path in ignore])
 
 
 def target_name(fn:Callable[...,Any]) -> str:

@@ -5,6 +5,8 @@ import pithy
 from ..reload import DevServerCmd
 from ..router import RouterApp
 from ..server import ServerConfig, WebServer
+from ..static import pithy_web_static_dir_path
+from .pages import DevStaticFiles
 from .routes import routes
 
 
@@ -19,7 +21,8 @@ For integration tests, see `pithy.web.testapp`.
 
 def main() -> None:
   'Parent process (watcher) entrypoint.'
-  DevServerCmd.parse_or_exit().serve(run, watch=[pithy])
+  # Static assets are read on each request, so editing them needs no restart.
+  DevServerCmd.parse_or_exit().serve(run, watch=[pithy], ignore=[pithy_web_static_dir_path(), DevStaticFiles.local_dir])
 
 
 def run(config:ServerConfig) -> None:
