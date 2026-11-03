@@ -10,6 +10,7 @@ Applications own their layout, viewport sizing and scrolling. No application-mod
 
 ## Units
 * rem: for the type scale and root-level spacing, so the whole system honors user preferences.
+  Root-level spacing in rem takes a step of the `--space-*` scale rather than a literal.
 * em: deliberately at component boundaries, e.g. button padding in em so the button scales as a unit its font-size changes.
   Beware of the compounding scaling as em values nest.
 * ch: for text measure. It is the advance width of the "0" glyph in the current font, so it is font-dependent.
@@ -68,12 +69,20 @@ a:not([class]) { text-decoration-skip-ink: auto; } /* A elements that do not hav
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
   --prose-width: 96ch;
 
-  /* Spacing. See "Flow" below. */
-  --flow-gap: 1rem; /* The vertical space between ordinary siblings. */
+  /* Spacing scale, in quarter-rem steps; the name is the step count. Root-level spacing is expressed in these steps. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  /* Flow spacing; see "Flow" below. */
+  --flow-gap: var(--space-4); /* The vertical space between ordinary siblings. */
   --flow-gap-block: calc(1.5 * var(--flow-gap)); /* The vertical space above a large heading or nested section. */
   --flow-gap-heading: calc(0.25 * var(--flow-gap)); /* The vertical space below a heading. */
   --page-width: 64rem;
-  --page-padding: 0.5rem;
+  --page-padding: var(--space-2);
 
   /* Color anchors for opaque neutral surfaces and text; see "Palette" below.
   The schemes are not mirrored: light keeps headroom below white, and dark sits above black to limit halation. */
@@ -261,8 +270,8 @@ All flow selectors have zero specificity so any rule that sets the margin overri
 }
 
 /* The derived gaps scale with `--flow-gap`, so these modifiers retune the vertical rhythm. */
-.flow-tight { --flow-gap: 0.5rem; }
-.flow-loose { --flow-gap: 2rem; }
+.flow-tight { --flow-gap: var(--space-2); }
+.flow-loose { --flow-gap: var(--space-8); }
 
 /* Prose. */
 :is(p, blockquote, ul, ol, dl) { max-width: var(--prose-width); }
@@ -390,16 +399,16 @@ so any of the `.body-child-*` classes above still wins when an application wants
 }
 
 :where(body.document > header) {
-  padding-block: 0.5rem;
+  padding-block: var(--space-2);
   font-size: 1.125rem;
 }
 
 :where(body.document > nav) {
-  padding-block: 0.25rem;
+  padding-block: var(--space-1);
 }
 
 :where(body.document > footer) {
-  padding-block: 0.5rem;
+  padding-block: var(--space-2);
   border-top-width: 1px;
   font-size: small;
   color: var(--fg-muted);
@@ -757,7 +766,7 @@ tbody {
 }
 
 th, td {
-  padding: 0.25rem 0.5rem;
+  padding: var(--space-1) var(--space-2);
   border-color: var(--border-strong);
   border-style: solid;
   border-width: 1px;
@@ -866,7 +875,7 @@ ol.json-array > li > :is(ul, ol) {
   color: var(--fg);
   border: 1px solid var(--border);
   border-radius: 3px;
-  padding: 0.5rem 0.75rem;
+  padding: var(--space-2) var(--space-3);
 }
 
 
@@ -914,14 +923,14 @@ dialog.modal {
 nav.breadcrumbs {
   display: flex;
   flex-direction: row;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 
 .breadcrumbs a { color: inherit; }
 
 .breadcrumbs span + span::before {
   content: "›";
-  margin-inline: 0.25rem;
+  margin-inline: var(--space-1);
   color: color-mix(in srgb, currentColor 50%, transparent);
 }
 
