@@ -6,6 +6,8 @@
 <script src="../../pithy/web/static/pithy.js"></script>
 <script defer src="../../pithy/web/static/htmx/htmx4.min.js"></script>
 <pre id="results">Running...</pre>
+<dialog id="initial-modal" class="modal" data-transient-modal><div class="pane">Initial</div></dialog>
+<dialog id="reusable-modal" class="modal"><div class="pane">Reusable</div></dialog>
 <div id="region">
   <table id="proposed" class="collapsible">
     <caption>Proposed</caption>
@@ -37,6 +39,31 @@ addEventListener('DOMContentLoaded', async () => {
   const regionHtml = label => `<div id="region"><table id="proposed" class="collapsible"><caption>Proposed</caption>
     <thead><tr><th>Name</th></tr></thead><tbody><tr><td>${label}</td></tr></tbody></table></div>`;
   try {
+    // pithy.js registered its DOMContentLoaded listener first, so it has already configured the initial document.
+    const initialModal = document.querySelector('#initial-modal');
+    check(initialModal.open && initialModal.matches(':modal'), 'Initial-page modal dialog is shown as a modal');
+    const initialClosed = new Promise(resolve => initialModal.addEventListener('close', resolve, {once: true}));
+    initialModal.click();
+    await initialClosed;
+    check(!initialModal.isConnected, 'Backdrop click closes and removes the initial-page modal');
+
+    async function checkReusableModal(modal) {
+      check(!modal.open, 'Reusable modal starts hidden');
+      for (let i = 0; i < 2; ++i) {
+        modal.showModal();
+        check(modal.matches(':modal'), 'Reusable modal can be opened');
+        const closed = new Promise(resolve => modal.addEventListener('close', resolve, {once: true}));
+        modal.close();
+        await closed;
+        check(!modal.open && modal.isConnected, 'Reusable modal stays in the document after closing');
+      }
+      modal.remove();
+    }
+    await checkReusableModal(document.querySelector('#reusable-modal'));
+    await swap('body', 'beforeend',
+      '<dialog id="swapped-reusable-modal" class="modal"><div class="pane">Reusable</div></dialog>');
+    await checkReusableModal(document.querySelector('#swapped-reusable-modal'));
+
     const region = document.querySelector('#region');
     const originalCaption = region.querySelector('caption');
     checkToggle(region.querySelector('table'));
@@ -60,7 +87,7 @@ addEventListener('DOMContentLoaded', async () => {
     check(oob.querySelector('thead').hasAttribute('data-dblclick-select-configured'), 'Out-of-band thead is configured');
     checkToggle(oob.querySelector('table'));
 
-    const modalHtml = '<dialog id="test-modal" class="modal"><div class="pane"><p>Modal</p>' +
+    const modalHtml = '<dialog id="test-modal" class="modal" data-transient-modal><div class="pane"><p>Modal</p>' +
       '<button data-close-modal><span>Close</span></button></div></dialog>';
     const closeEvent = modal => new Promise(resolve => modal.addEventListener('close', resolve, {once: true}));
     async function swapModal() {

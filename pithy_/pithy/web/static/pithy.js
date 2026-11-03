@@ -72,10 +72,8 @@ function _configurePithy() {
   _configureSafariDateInputs();
   _configureCheckboxes();
   _configureHtmx();
-  for (const thead of document.querySelectorAll('table thead')) {
-    makeElementSelectTableContentsOnDoubleClick(thead);
-  }
-  _configureCollapsibleTables(document);
+  _configureLoadedContent(document.body);
+  //^ htmx processes the initial document before `_configureHtmx` registers this as an `htmx.onLoad` callback.
 }
 
 
@@ -345,19 +343,21 @@ function _configureHtmx() {
   // Configure each root of swapped-in content, including out-of-band and partial swaps.
   // `htmx:after:swap` is not suitable: its `ctx.target` is the detached old element after an outerHTML swap,
   // and it does not cover out-of-band content.
-  // The initial document is not affected, because htmx processes it before `_configurePithy` registers this callback.
+  // The initial document is not affected, because htmx processes it before `_configurePithy` registers this callback;
+  // `_configurePithy` configures it directly instead.
   _htmx.onLoad(_configureLoadedContent);
 }
 
 
 /**
- * Configure content that htmx has just processed: show modal dialogs and set up tables.
+ * Configure the initial document or content that htmx has just processed:
+ * show modal dialogs that opt in via the `data-transient-modal` attribute, and set up tables.
  * This is idempotent, because a morph can process retained elements again.
  * @param {Element} root - A root element of the processed content.
  */
 function _configureLoadedContent(root) {
-  // Configure and show modal dialogs after they are swapped in.
-  for (const modal of _queryRootAndDescendants(root, 'dialog.modal')) {
+  // Only transient modals are shown and removed automatically; the modal class alone supplies styling.
+  for (const modal of _queryRootAndDescendants(root, 'dialog.modal[data-transient-modal]')) {
     if (!(modal instanceof HTMLDialogElement)) continue;
     _addModalListeners(modal);
     if (!modal.open) {

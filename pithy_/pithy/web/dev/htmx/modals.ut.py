@@ -48,7 +48,7 @@ def _() -> None:
     utest_val(2, page.count(edit_url), desc='Both contexts open the same editor')
     utest_val(2, page.count(f'{DomainEvent.user_updated} from:body'), desc='Both views listen for updates')
     modal = request_text(edit_url)
-    utest_val(True, "dialog class='modal'" in modal, desc='Uses the standard dismissible modal')
+    utest_val(True, "dialog class='modal' data-transient-modal" in modal, desc='Uses the standard dismissible modal')
     utest_val(True, "value='Alex Morgan'" in modal, desc='Editor contains current name')
     utest_val(True, "type='checkbox' name='vip'" in modal, desc='VIP checkbox is unchecked')
     utest_val(True, "name='privileges' value='publish' checked=''" in modal, desc='Held privilege is checked')

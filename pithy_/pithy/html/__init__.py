@@ -801,12 +801,14 @@ class Dialog(HtmlFlow, HtmlSectioningRoot, HtmlFlowParent):
   @classmethod
   def modal(cls, *args:Any, **kw_attrs:Any) -> Self:
     '''
-    Create a dialog with the 'modal' class, and a child div with the 'pane' class.
+    Create a dialog with the 'modal' class and `data-transient-modal` attribute, and a child div with the 'pane' class.
     All children and attributes are passed to the pane.
 
-    `pithy.js` shows the dialog when htmx swaps it in, and closes and removes it on a backdrop click or the escape key.
+    `pithy.js` shows the dialog when the page loads or htmx swaps it in, and closes and removes it on a backdrop click or the escape key.
     A click on a descendant with the `data-close-modal` attribute also closes it, e.g. `Button('Close', data_close_modal=Present(True))`.
     No inline script is emitted, so modals work under a Content Security Policy that forbids inline scripts.
+    For a reusable dialog opened by a button, construct `Dialog(cl='modal', ...)` with a pane instead;
+    the class supplies styling without automatic display or removal.
     '''
     pane = Div(*args, **kw_attrs)
     if 'tabindex' not in pane.attrs:
@@ -814,7 +816,7 @@ class Dialog(HtmlFlow, HtmlSectioningRoot, HtmlFlowParent):
       #^ This prevents the first element (e.g. a link) in the pane from being focused, which can be visually confusing.
       #^ Tabbing will still work.
     pane.prepend_class('pane')
-    return cls(cl='modal', _=pane)
+    return cls(cl='modal', data_transient_modal=Present(True), _=pane)
 
 
 @_tag
