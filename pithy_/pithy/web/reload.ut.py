@@ -3,12 +3,14 @@
 import sys
 from importlib.machinery import ModuleSpec
 from os import environ
+from os.path import join as path_join, realpath
+from tempfile import gettempdir
 from types import ModuleType
 from unittest.mock import patch
 
 import watchfiles
 from pithy.cmdparse import opt
-from pithy.web.reload import DevServerCmd, serve_with_reload, target_name
+from pithy.web.reload import DevServerCmd, reload_filter, serve_with_reload, target_name
 from pithy.web.server import ServerConfig
 from utest import utest, utest_exc, utest_run, utest_val
 
@@ -52,6 +54,20 @@ def _() -> None:
   'A function defined in a main module without a spec cannot be named.'
   with patch.dict(sys.modules, {'__main__': _patch_main(None)}):
     utest_exc(ValueError, target_name, _run)
+
+
+@utest_run
+def _() -> None:
+  'The reload filter keeps source and asset changes and skips bytecode and isort temporaries.'
+  root = realpath(gettempdir())
+  watch_filter = reload_filter()
+  for path, expected in [
+    ('pkg/app.py', True),
+    ('pkg/static/app.js', True),
+    ('pkg/__pycache__/app.cpython-315.pyc', False),
+    ('pkg/app.py.isorted', False),
+  ]:
+    utest_val(expected, watch_filter(watchfiles.Change.modified, path_join(root, path)), desc=path)
 
 
 @utest_run

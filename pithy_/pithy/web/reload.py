@@ -7,11 +7,14 @@ from os import environ
 from socket import AF_INET, SOCK_STREAM, socket as Socket
 from sys import modules as sys_modules
 from types import ModuleType
-from typing import Any, cast
+from typing import Any, cast, TYPE_CHECKING
 
 from ..cmdparse import Cmd, flag, opt
 from ..io import errL
 from .server import ServerConfig
+
+
+if TYPE_CHECKING: from watchfiles import DefaultFilter
 
 
 _context_keywords_ = ['development server', 'file watching', 'hot reload', 'multiprocessing spawn', 'port selection',
@@ -79,14 +82,14 @@ def serve_with_reload(*, target:str, watch:Iterable[str|ModuleType], config:Serv
   Spawn a subprocess to run the function named by `target` (a dotted path string) using `watchfiles.run_process`.
   `watch` is an iterable of paths or modules to watch.
   If a module is given, its package path is located and watched.
-  The child is restarted whenever a file under any of `watch_paths` changes.
+  The child is restarted whenever a file under any of `watch_paths` changes, except for files excluded by `reload_filter`.
 
   If `config` is None, a localhost ServerConfig is used.
   If the port is 0, a free port is picked and set in the config so that successive child processes reuse it.
   The resolved config is passed to `target` as the `config` keyword argument.
   `$WEB_PORT` is also exported before spawning for the benefit of other tooling.
   '''
-  from watchfiles import Change, run_process
+  from watchfiles import run_process
 
   if config is None: config = ServerConfig(host='localhost')
   if not config.port: config = replace(config, port=_pick_free_port())
@@ -95,17 +98,24 @@ def serve_with_reload(*, target:str, watch:Iterable[str|ModuleType], config:Serv
   watch_paths = [_resolve_watch(w) for w in watch]
   if not quiet: errL(f'Serving port {config.port}; watching {watch_paths!r}.')
 
-  def _watch_filter(change:Change, path:str) -> bool:
-    return not path.endswith('.isorted')
-
   def _watch_callback(changes:set[tuple[Any,str]]) -> None:
     changed_files = sorted(path for _change, path in changes)
     msg = f'Changes detected: {changed_files}'
     errL(msg)
 
   run_process(*watch_paths, target=target, target_type='function', kwargs={'config': config},
-    watch_filter=_watch_filter, callback=_watch_callback)
+    watch_filter=reload_filter(), callback=_watch_callback)
 
+
+def reload_filter() -> DefaultFilter:
+  '''
+  Return the watch filter used by `serve_with_reload`.
+
+  It extends the watchfiles `DefaultFilter`, which skips bytecode, version control and editor files,
+  to also skip isort's `.isorted` temporaries.
+  '''
+  from watchfiles import DefaultFilter
+  return DefaultFilter(ignore_entity_patterns=(*DefaultFilter.ignore_entity_patterns, r'\.isorted$'))
 
 
 def target_name(fn:Callable[...,Any]) -> str:
