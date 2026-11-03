@@ -1,6 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from ..router import RouteTarget
+from .charts import dev_charts_index
+from .charts.bars import dev_charts_bars
 from .color_ramps import dev_color_ramps
 from .colors import dev_colors
 from .dbview import DevDbView
@@ -28,6 +30,8 @@ routes:dict[str,RouteTarget] = {
   '/colors/ramps': dev_color_ramps,
   '/typography': dev_typography,
   '/tables': dev_tables,
+  '/charts': dev_charts_index,
+  '/charts/bars': dev_charts_bars,
   '/dbview': DevDbView,
   '/tests': dev_tests,
   '/html': dev_html_index,

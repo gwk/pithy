@@ -1,5 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from pithy.web.dev.charts import chart_kinds
 from pithy.web.dev.routes import routes
 from pithy.web.dev.tests import fixture_pages
 from pithy.web.request import Request
@@ -37,3 +38,11 @@ def _() -> None:
   router = Router(routes, default_public=True)
   for path, name, _desc in fixture_pages:
     utest_val('text/html;charset=utf-8', _content_type(router, path), desc=name)
+
+
+@utest_run
+def _() -> None:
+  'pithy.web.dev: the chart index and every listed chart kind page render as html.'
+  router = Router(routes, default_public=True)
+  for path in ('/charts', *(path for path, _label, _desc in chart_kinds)):
+    utest_val('text/html;charset=utf-8', _content_type(router, path), desc=path)

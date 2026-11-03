@@ -1,0 +1,17 @@
+/* Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/. */
+
+/* Layout for the chart demo pages. Charts fill their containers, so each grid cell sets the chart size. */
+
+.chart-grid {
+  display: grid;
+  gap: 2em;
+}
+
+.chart-grid.compact {
+  grid-template-columns: repeat(auto-fill, minmax(min(20em, 100%), 1fr));
+}
+
+.chart-grid figure.chart {
+  height: 24em;
+  margin: 0;
+}
