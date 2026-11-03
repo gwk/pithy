@@ -60,11 +60,36 @@ addEventListener('DOMContentLoaded', async () => {
     check(oob.querySelector('thead').hasAttribute('data-dblclick-select-configured'), 'Out-of-band thead is configured');
     checkToggle(oob.querySelector('table'));
 
-    await swap('body', 'beforeend', '<dialog id="test-modal" class="modal"><div class="pane">Modal</div></dialog>');
-    const modal = document.querySelector('#test-modal');
-    check(modal.open && modal.matches(':modal'), 'Swapped-in modal dialog is shown as a modal');
-    modal.close();
-    modal.remove();
+    const modalHtml = '<dialog id="test-modal" class="modal"><div class="pane"><p>Modal</p>' +
+      '<button data-close-modal><span>Close</span></button></div></dialog>';
+    const closeEvent = modal => new Promise(resolve => modal.addEventListener('close', resolve, {once: true}));
+    async function swapModal() {
+      await swap('body', 'beforeend', modalHtml);
+      const modal = document.querySelector('#test-modal');
+      check(modal.open && modal.matches(':modal'), 'Swapped-in modal dialog is shown as a modal');
+      return modal;
+    }
+
+    let modal = await swapModal();
+    modal.querySelector('p').click();
+    check(modal.open && modal.isConnected, 'Pane click leaves the modal open');
+    let closed = closeEvent(modal);
+    modal.click(); // A click targeting the dialog itself is how a ::backdrop click arrives.
+    await closed;
+    check(!modal.isConnected, 'Backdrop click closes and removes the modal');
+
+    modal = await swapModal();
+    closed = closeEvent(modal);
+    modal.querySelector('button span').click();
+    await closed;
+    check(!modal.isConnected, 'Click within a data-close-modal element closes and removes the modal');
+
+    modal = await swapModal();
+    closed = closeEvent(modal);
+    modal.requestClose();
+    await closed;
+    check(!modal.isConnected, 'Close request, as from the escape key, removes the modal');
+    check(document.querySelectorAll('dialog').length === 0, 'No dialogs remain');
 
     document.querySelector('#results').textContent = `PASS: ${results.length} checks\n` + results.join('\n');
   } catch (error) {

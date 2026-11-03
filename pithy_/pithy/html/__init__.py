@@ -803,23 +803,18 @@ class Dialog(HtmlFlow, HtmlSectioningRoot, HtmlFlowParent):
     '''
     Create a dialog with the 'modal' class, and a child div with the 'pane' class.
     All children and attributes are passed to the pane.
-    '''
-    script = Script(
-      "m = document.currentScript.parentElement; ",
-      "m.addEventListener('click', closeTargetModal); ",
-      #^ As of 2025-08 Safari does not support the "closedBy" HTMLDialogElement attribute.
-      #^ If/when it does we could potentially remove the click handler.
-      "m.addEventListener('close', onCloseRemoveTargetModal); ",
-      #^ We use two separate handlers because when the user presses the escape key, the close event is fired.
-    )
 
+    `pithy.js` shows the dialog when htmx swaps it in, and closes and removes it on a backdrop click or the escape key.
+    A click on a descendant with the `data-close-modal` attribute also closes it, e.g. `Button('Close', data_close_modal=Present(True))`.
+    No inline script is emitted, so modals work under a Content Security Policy that forbids inline scripts.
+    '''
     pane = Div(*args, **kw_attrs)
     if 'tabindex' not in pane.attrs:
       pane.attrs['tabindex'] = '-1'
       #^ This prevents the first element (e.g. a link) in the pane from being focused, which can be visually confusing.
       #^ Tabbing will still work.
     pane.prepend_class('pane')
-    return cls(cl='modal', _=[script, pane])
+    return cls(cl='modal', _=pane)
 
 
 @_tag

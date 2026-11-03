@@ -111,7 +111,7 @@ def edit_modal_htmx(request:Request, user_id:int) -> HtmxResponse:
   url = f'/htmx/modals/users/{user.id}/update.htmx'
   modal = Dialog.modal(
     H2('Edit user', id='edit-user-title'),
-    P('Changes save automatically. Click outside this dialog when done.'),
+    P('Changes save automatically. Click Done or outside this dialog when finished.'),
     Div(cl='form_grid', _=[
       Label('Name', for_='edit-user-name'),
       Input(id='edit-user-name', name='name', value=user.name, required=True, maxlength=100,
@@ -133,6 +133,7 @@ def edit_modal_htmx(request:Request, user_id:int) -> HtmxResponse:
           hx_post=url, hx_trigger='change', hx_swap='none'), ui_text(mode))
         for mode in ui_modes]),
     ]),
+    Button('Done', type='button', data_close_modal=Present(True)),
     cl='flow',
   )
   modal['aria-labelledby'] = 'edit-user-title'

@@ -356,9 +356,11 @@ function _configureHtmx() {
  * @param {Element} root - A root element of the processed content.
  */
 function _configureLoadedContent(root) {
-  // Show modal dialogs after they are swapped in.
+  // Configure and show modal dialogs after they are swapped in.
   for (const modal of _queryRootAndDescendants(root, 'dialog.modal')) {
-    if (modal instanceof HTMLDialogElement && !modal.open) {
+    if (!(modal instanceof HTMLDialogElement)) continue;
+    _addModalListeners(modal);
+    if (!modal.open) {
       modal.showModal();
     }
   }
@@ -985,15 +987,36 @@ function closeClosestModal(event) {
 
 
 /**
- * Close and remove the dialog.modal element targeted by this event. Used as a 'click' handler on modal dialogs.
+ * Close the dialog.modal element handling this event. Used as a 'click' handler on modal dialogs.
  * @param {Event} event - The event object.
+ * The modal closes when the click lands on the ::backdrop, or on an element within the modal that has the `data-close-modal` attribute.
+ * Clicks elsewhere on the pane are ignored.
   */
 function closeTargetModal(event) {
   event.stopPropagation(); // Always stop propagation; clicking on a modal should not affect the non-modal content behind.
-  const target = event.target
-  if (target != event.currentTarget) return // Ignore clicks on the pane; we only want to respond to ::backdrop clicks.
-  if (!(target instanceof HTMLDialogElement)) { throw new Error('closeTargetModal: non-dialog target.') }
-  target.close();
+  const modal = event.currentTarget;
+  if (!(modal instanceof HTMLDialogElement)) { throw new Error('closeTargetModal: non-dialog listener.') }
+  const target = event.target;
+  if (target !== modal) {
+    // Because propagation stops here, close buttons are handled by this listener rather than a delegated document listener.
+    if (!(target instanceof Element)) return;
+    const closer = target.closest('[data-close-modal]');
+    if (!closer || !modal.contains(closer)) return;
+  }
+  modal.close();
+}
+
+
+/**
+ * Add the modal 'click' and 'close' listeners to `modal`.
+ * Repeated calls have no effect, because `addEventListener` ignores a listener that is already registered.
+ * @param {HTMLDialogElement} modal
+ */
+function _addModalListeners(modal) {
+  // As of 2025-08, closedBy is not supported by Safari. Therefore we need to implement our own close handler.
+  modal.addEventListener('click', closeTargetModal);
+  modal.addEventListener('close', onCloseRemoveTargetModal);
+  //^ Removal happens on 'close' because the escape key closes the dialog without a click.
 }
 
 
@@ -1019,9 +1042,7 @@ function onCloseRemoveTargetModal(event) {
 function createModal(...contents) {
   const modal = document.createElement('dialog');
   modal.className = 'modal';
-  // As of 2025-08, closedBy is not supported by Safari. Therefore we need to implement our own close handler.
-  modal.addEventListener('click', closeTargetModal);
-  modal.addEventListener('close', onCloseRemoveTargetModal);
+  _addModalListeners(modal);
   /* In order to distinguish between the visible modal and the dialog::backdrop, we need to add the pane. */
   const pane = document.createElement('div');
   modal.appendChild(pane);
