@@ -15,4 +15,5 @@ def dev_html_index(request:Request) -> HtmlResponse:
     main=Main(H1('HTML'), Ul(
       Li(A(href='/html/controls', _='Form Controls'), ': Demonstrates form controls.'),
       Li(A(href='/html/html-to-json', _='HTML to JSON'), ': JSON rendered as nested HTML lists.'),
+      Li(A(href='/html/modals', _='Modals'), ': Reusable modal dialogs and a transient dialog shown on load, without htmx.'),
       Li(A(href='/html/nonportable', _='Nonportable Form Controls'), ': Month and week inputs.'))))

@@ -7,6 +7,7 @@ from .dbview import DevDbView
 from .html import dev_html_index
 from .html.controls import DevControlsForm, DevImageButtonForm
 from .html.html_to_json import dev_html_to_json
+from .html.modals import dev_html_modals
 from .html.nonportable import DevFormNonportable
 from .htmx import dev_htmx_index
 from .htmx.controls import ControlsHtmxUpdate, dev_controls_htmx
@@ -31,6 +32,7 @@ routes:dict[str,RouteTarget] = {
   '/tests': dev_tests,
   '/html': dev_html_index,
   '/html/html-to-json': dev_html_to_json,
+  '/html/modals': dev_html_modals,
   '/html/controls': DevControlsForm,
   '/html/controls/image': DevImageButtonForm,
   '/html/nonportable': DevFormNonportable,
