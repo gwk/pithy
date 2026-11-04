@@ -737,12 +737,12 @@ class Cmd:
   whose fields must each be declared with `pos`, `remainder`, `opt`, `flag`, `sub` or `group`.
 
   Help begins with the class docstring. Set `help_addenda` to a tuple of shared or computed text blocks to append before
-  the argument sections, or `epilog` to a string to append after all argument and subcommand help:
+  the argument sections, or `help_epilog` to a string to append after all argument and subcommand help:
   ```
   class Analyze(Cmd):
     'Analyze Python sources.'
     help_addenda = (shared_resolution_help, analysis_help)
-    epilog = 'Example: analyze ./src'
+    help_epilog = 'Example: analyze ./src'
   ```
   Each block is dedented and stripped, preserving internal line breaks and relative indentation.
   Nonempty blocks are separated by a blank line. These attributes are inherited and read each time help is formatted;
@@ -752,7 +752,7 @@ class Cmd:
   cmd_name:ClassVar[str] = '' # Optional explicit subcommand name; otherwise it is derived from the class name.
   help_doc:ClassVar[str] = 'Show this help.' # Description of the built-in help option.
   help_addenda:ClassVar[tuple[str,...]] = ()
-  epilog:ClassVar[str] = ''
+  help_epilog:ClassVar[str] = ''
 
   _cmd_parent:'Cmd|None' = None # Set on group and subcommand instances during construction. Not a dataclass field.
 
@@ -962,7 +962,7 @@ def format_help(cmd:type[Cmd], prog:str='', *, color:bool=False) -> str:
     lines.extend(f'  {line}' for line in _format_rows(cmd_rows, cmd_labels))
     lines.extend(['', "For help with a specific command, pass '-h' to that command."])
 
-  epilog = dedent(cmd.epilog).strip()
+  epilog = dedent(cmd.help_epilog).strip()
   if epilog: lines.extend(['', epilog])
 
   return '\n'.join(lines)

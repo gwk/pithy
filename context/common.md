@@ -141,7 +141,7 @@ Put details about individual definitions in their own docstrings.
 The docstring of a `Cmd` subclass provides the command description in CLI help.
 Write it for command users, and put argument-specific explanations in the field specifiers' `doc` strings.
 In modules with commands, the module docstring can offer a summary but should not repeat the bulk of the help text.
-`Cmd` also offers `help_addenda` and `epilog` to facilitate factoring out common help text.
+`Cmd` also offers `help_addenda` and `help_epilog` to facilitate factoring out common help text.
 
 ### Definition Docstrings
 

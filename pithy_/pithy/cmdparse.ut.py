@@ -425,7 +425,7 @@ def test_help_addenda_and_epilog() -> None:
       Analysis rules.
         A separate detail.
     ''')
-    epilog = '''
+    help_epilog = '''
       Examples:
         analyze ./src
     '''
@@ -469,7 +469,7 @@ Examples:
 
   class Suite(Cmd):
     'A suite of commands.'
-    epilog = 'Suite examples.'
+    help_epilog = 'Suite examples.'
     cmd:Analyze = sub()
 
   suite_help = format_help(Suite)
@@ -480,7 +480,7 @@ Examples:
   # Empty blocks add no whitespace, and changing text takes effect even after the schema has been cached.
   for addenda, epilog in (((), ''), (('', ' \n  \t\n'), ' \n  \t\n')):
     Analyze.help_addenda = addenda
-    Analyze.epilog = epilog
+    Analyze.help_epilog = epilog
     utest(expected.replace('\n\nShared target rules.\n  Indented detail.\n\nAnother paragraph.', '')
       .replace('\n\nAnalysis rules.\n  A separate detail.', '')
       .removesuffix('\n\nExamples:\n  analyze ./src'), format_help, Analyze)
