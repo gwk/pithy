@@ -238,7 +238,7 @@ code, kbd, pre, samp { font-family: var(--font-mono); }
 
 code:not(pre code) {
   background-color: var(--tint-subtle);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   padding-inline: 0.2em;
 }
 
@@ -302,7 +302,7 @@ dl > dt + dt, dd + dt { margin-block-start: 0.5em; }
 pre {
   background-color: var(--tint-subtle);
   border: 1px solid var(--tint-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   padding: 0.5em 0.75em;
   overflow-x: auto;
 }
@@ -436,7 +436,7 @@ so any of the `.body-child-*` classes above still wins when an application wants
   color: inherit;
   text-decoration: none;
   padding: 0.125rem 0.5ch;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
 }
 
 /* Cancel the first link's padding without shifting or widening the full-width nav itself. */
@@ -691,7 +691,7 @@ select, textarea {
   appearance: none;
   background-color: var(--bg);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   color: var(--fg);
   font: inherit;
   padding: 0.125em 0.375em;
@@ -881,7 +881,7 @@ ol.json-array > li > :is(ul, ol) {
   background-color: var(--bg-distinct);
   color: var(--fg);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4);
 }
 
