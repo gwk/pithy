@@ -89,7 +89,7 @@ a:not([class]) { text-decoration-skip-ink: auto; } /* A elements that do not hav
   --flow-gap-block: calc(1.5 * var(--flow-gap)); /* The vertical space above a large heading or nested section. */
   --flow-gap-heading: calc(0.25 * var(--flow-gap)); /* The vertical space below a heading. */
   --page-width: 64rem;
-  --page-padding: var(--space-2);
+  --page-padding: var(--space-4);
 
   /* Color anchors for opaque neutral surfaces and text; see "Palette" below.
   The schemes are not mirrored: light keeps headroom below white, and dark sits above black to limit halation. */
