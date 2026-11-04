@@ -3,6 +3,7 @@
 from http import HTTPStatus
 from http.client import HTTPConnection
 from io import BufferedReader
+from re import DOTALL, fullmatch
 from sys import argv, executable
 from urllib.parse import urlsplit
 
@@ -14,7 +15,7 @@ from pithy.web.errors import BadRequestError, ResponseError
 from pithy.web.request import Request
 from pithy.web.response import Response
 from pithy.web.server import ServerConfig, WebServer
-from utest import utest, utest_exc, utest_run
+from utest import utest, utest_exc, utest_run, utest_val
 from utest.proctest import TestProcess
 
 
@@ -102,8 +103,9 @@ class ServerExceptionTestApp(WebApp):
 
 
 
-def serve() -> None:
-  server = WebServer(app=ServerExceptionTestApp(), config=ServerConfig(num_threads=1, prevent_client_caching=True))
+def serve(*, debug:bool=False) -> None:
+  config = ServerConfig(num_threads=1, prevent_client_caching=True, debug=debug)
+  server = WebServer(app=ServerExceptionTestApp(), config=config)
   server.serve_forever()
 
 
@@ -127,6 +129,19 @@ def get_error_details(base_url:str, path:str) -> tuple[int,str|None,str,str|None
   resp = requests.get(f'{base_url}{path}', timeout=2)
   return (resp.status_code, resp.headers.get('content-type'), resp.text, resp.headers.get('x-error-hook'),
     resp.headers.get('x-finish-hook'))
+
+
+def utest_internal_error(server_proc:TestProcess, base_url:str, path:str) -> str:
+  '''
+  Expect a 500 whose body begins with an error ID that also appears in the error log record.
+  Return the remainder of the body, which describes the exception only in debug mode.
+  '''
+  status, body = get_status_body(base_url, path)
+  utest_val(500, status, desc=f'{path} status')
+  m = fullmatch(r'Internal Server Error\. Error ID: ([0-9a-f]{12})\.\n(.*)', body, flags=DOTALL)
+  if m is None: raise AssertionError(f'{path}: unexpected 500 body: {body!r}')
+  server_proc.wait_for_pattern(f'"error_id":"{m[1]}"')
+  return m[2]
 
 
 def post_status_body(base_url:str, path:str, data:bytes) -> tuple[int,str]:
@@ -235,7 +250,10 @@ def test_server_exceptions() -> None:
     test_empty_request_connections(base_url)
 
     # An unhandled exception produces a bare 500 that bypasses both hooks.
-    utest((500, 'Internal Server Error'), get_status_body, base_url, '/raise')
+    # Outside of debug mode the body names only the error ID, not the exception.
+    utest_val('', utest_internal_error(server_proc, base_url, '/raise'), desc='/raise details')
+    head_response = requests.head(f'{base_url}/raise', timeout=2)
+    utest_val((500, ''), (head_response.status_code, head_response.text), desc='HEAD /raise')
     utest((500, None, None), get_status_hooks, base_url, '/raise')
     response = requests.get(f'{base_url}/ok', headers={'Connection': 'close'}, timeout=2)
     utest('no-cache, no-store, must-revalidate', response.headers.get, 'cache-control')
@@ -295,14 +313,27 @@ def test_server_exceptions() -> None:
     utest((200, 'replacement'), get_status_body, base_url, '/finish-text')
     count += 1
     utest((200, ','.join(['True'] * count)), get_status_body, base_url, '/file-state')
-    utest((500, 'Internal Server Error'), get_status_body, base_url, '/finish-mutated-failed-file')
+    utest_val('', utest_internal_error(server_proc, base_url, '/finish-mutated-failed-file'), desc='finish failure details')
     count += 2
     utest((200, ','.join(['True'] * count)), get_status_body, base_url, '/file-state')
 
     _ = server_proc.flush_merged()
 
 
+def test_server_exceptions_debug() -> None:
+  'Test that debug mode adds the exception and its traceback to the 500 body.'
+  with TestProcess([executable, __file__, 'serve-debug'], merge_stderr=True) as server_proc:
+    base_url = server_proc.wait_for_pattern(r'"url":"(http://localhost:\d+)"').group(1)
+    details = utest_internal_error(server_proc, base_url, '/raise')
+    utest_val(True, details.startswith('\nTraceback (most recent call last):\n'), desc=f'traceback: {details!r}')
+    utest_val(True, details.endswith('\nRuntimeError: handler failed\n'), desc=f'exception: {details!r}')
+    _ = server_proc.flush_merged()
+
+
 if len(argv) > 1 and argv[1] == 'serve':
   serve()
+elif len(argv) > 1 and argv[1] == 'serve-debug':
+  serve(debug=True)
 else:
   utest_run(test_server_exceptions)
+  utest_run(test_server_exceptions_debug)

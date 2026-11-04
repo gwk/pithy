@@ -10,12 +10,13 @@ from math import inf, isfinite
 from os import _exit as os_exit
 from queue import Empty as QueueEmpty, LifoQueue, SimpleQueue
 from resource import getrlimit, RLIM_INFINITY, RLIMIT_NOFILE, setrlimit
+from secrets import token_hex
 from selectors import DefaultSelector, EVENT_READ, EVENT_WRITE
 from socket import AF_INET, SHUT_WR, SO_REUSEADDR, SOCK_STREAM, socket as Socket, socketpair, SOL_SOCKET
 from sys import _current_frames
 from threading import BoundedSemaphore, current_thread, Event, get_ident, Lock, Thread
 from time import monotonic
-from traceback import clear_frames, format_stack
+from traceback import clear_frames, format_exception, format_stack
 from typing import cast, Literal
 from urllib.parse import urlsplit as url_split
 
@@ -644,6 +645,9 @@ class ServerConfig:
     Client protocol failures and incomplete-request timeouts produce separate protocol_failure records, even when disabled.
   startup_message: an optional info message logged immediately after the serving URL.
   prevent_client_caching: whether to prevent clients from caching responses.
+  debug: whether the 500 response for an unhandled application exception includes the exception and its traceback.
+    Never enable this in production: tracebacks can reveal source code, configuration and secrets.
+    Either way, the response names an error ID that also appears in the error log record.
   thread_name_prefix: the prefix for thread names of worker threads.
 
   Note: to read the actual port, use WebServer.port after initializing the server, since it may be dynamically assigned.
@@ -668,6 +672,7 @@ class ServerConfig:
   log_access:bool = True
   startup_message:str = ''
   prevent_client_caching:bool = False
+  debug:bool = False
   max_streams:int = 32
   stream_max_duration:float = 300.0
 
@@ -1446,8 +1451,10 @@ class WebServer:
       response = self._bare_response(exc.status, method=method).set_connection_close()
     except Exception as exc:
       if response is not None: close_response_body(response.body)
-      logE('Unhandled application exception.', exc=exc, client_addr=conn.client_addr, method=method, path=request.raw_path)
-      response = self._bare_response(HTTPStatus.INTERNAL_SERVER_ERROR, method=method).set_connection_close()
+      error_id = token_hex(6)
+      logE('Unhandled application exception.', exc=exc, error_id=error_id, client_addr=conn.client_addr, method=method,
+        path=request.raw_path)
+      response = self._internal_error_response(exc, error_id=error_id, method=method).set_connection_close()
 
     # Empty requests have a pending EndOfMessage even when the handler has no reason to read a body.
     # Consume it after dispatch rather than before: next_data asserts SEND_BODY, so consuming earlier would break
@@ -1481,6 +1488,19 @@ class WebServer:
   def _bare_response(self, status:HTTPStatus, *, method:str) -> Response:
     'Return a plain text response containing the standard reason phrase, without consulting the app.'
     body = status.phrase if may_send_body(method, status) else None
+    return Response(status, body=body, media_type='text/plain')
+
+
+  def _internal_error_response(self, exc:Exception, *, error_id:str, method:str) -> Response:
+    '''
+    Return the plain text 500 response for an unhandled exception, without consulting the app.
+    The body names `error_id` so that a report can be matched to its log record.
+    Only with `ServerConfig.debug` does it describe the exception.
+    '''
+    status = HTTPStatus.INTERNAL_SERVER_ERROR
+    if not may_send_body(method, status): return Response(status, media_type='text/plain')
+    body = f'{status.phrase}. Error ID: {error_id}.\n'
+    if self.config.debug: body += '\n' + ''.join(format_exception(exc))
     return Response(status, body=body, media_type='text/plain')
 
 

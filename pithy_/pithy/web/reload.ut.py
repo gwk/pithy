@@ -34,7 +34,7 @@ def _patch_main(spec_name:str|None) -> ModuleType:
 utest(DevServerCmd(port=0, watch=True), DevServerCmd.parse, [])
 utest(DevServerCmd(port=8080, watch=False), DevServerCmd.parse, ['-port', '8080', '-no-watch'])
 utest(AppServerCmd(port=0, watch=True, message='goodbye'), AppServerCmd.parse, ['-message', 'goodbye'])
-utest(ServerConfig(host='localhost', port=1234, prevent_client_caching=True),
+utest(ServerConfig(host='localhost', port=1234, prevent_client_caching=True, debug=True),
   lambda: DevServerCmd(port=1234, watch=True).server_config)
 
 utest('pithy.web.reload.serve_with_reload', target_name, serve_with_reload) # A regular module-level function.
@@ -78,7 +78,7 @@ def _() -> None:
   'Disabling watch runs the server directly with the local development config.'
   configs:list[ServerConfig] = []
   DevServerCmd(port=4321, watch=False).serve(configs.append, watch=[])
-  utest_val([ServerConfig(host='localhost', port=4321, prevent_client_caching=True)], configs)
+  utest_val([ServerConfig(host='localhost', port=4321, prevent_client_caching=True, debug=True)], configs)
 
 
 @utest_run
