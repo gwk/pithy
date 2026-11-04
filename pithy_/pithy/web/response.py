@@ -207,16 +207,19 @@ class HtmxResponse(HtmlResponse):
 
 
 class JsonResponse(Response):
-  'A Response subclass for JSON responses. The `body` object is serialized to JSON'
+  '''
+  A Response subclass for JSON responses.
+  The `body` value is serialized with `render_json`, unless `prerendered` is true, in which case it must be a JSON string.
+  '''
 
-  def __init__(self, body:str, *, status:HTTPStatus=HTTPStatus.OK, reason:str='', headers:ResponseHeadersDict|None=None,
+  def __init__(self, body:object, *, status:HTTPStatus=HTTPStatus.OK, reason:str='', headers:ResponseHeadersDict|None=None,
    last_modified:float=0.0, prerendered:bool=False) -> None:
 
     if prerendered:
       if not isinstance(body, str): raise ValueError('prerendered body must be a string.')
       json_body = body
     else:
-        json_body = render_json(body)
+      json_body = render_json(body)
     super().__init__(status=status, reason=reason, headers=headers, body=json_body, media_type='application/json',
      last_modified=last_modified)
 

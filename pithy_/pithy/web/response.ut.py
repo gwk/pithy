@@ -4,8 +4,18 @@ from http import HTTPStatus
 from json import loads
 
 from pithy.html import Div, Span
-from pithy.web.response import CsvResponse, HtmlResponse, HtmxResponse, RedirectResponse, Response
+from pithy.web.response import CsvResponse, HtmlResponse, HtmxResponse, JsonResponse, RedirectResponse, Response
 from utest import utest_exc, utest_run, utest_val
+
+
+@utest_run
+def test_json_response() -> None:
+  r = JsonResponse({'error':{'status':400, 'tags':['a']}}, status=HTTPStatus.BAD_REQUEST)
+  assert isinstance(r.body, bytes)
+  utest_val({'error':{'status':400, 'tags':['a']}}, loads(r.body), desc='JsonResponse body')
+  utest_val('application/json', r.headers['content-type'], desc='JsonResponse content-type')
+  utest_val(b'[1]', JsonResponse('[1]', prerendered=True).body, desc='JsonResponse prerendered body')
+  utest_exc(ValueError, JsonResponse, [1], prerendered=True)
 
 
 @utest_run
