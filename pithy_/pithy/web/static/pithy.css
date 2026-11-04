@@ -569,7 +569,7 @@ details > summary.disclosure-flush::before {
 a.button, button, input[type='button'], input[type='reset'], input[type='submit'] {
   appearance: none;
   background-color: var(--tint-subtle);
-  border: 1px solid var(--tint-border-strong);
+  border: 1px solid var(--tint-border);
   border-radius: var(--radius-md);
   color: inherit;
   display: inline-block;
