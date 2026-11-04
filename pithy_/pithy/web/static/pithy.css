@@ -411,7 +411,7 @@ so any of the `.body-child-*` classes above still wins when an application wants
 }
 
 :where(body.document > nav) {
-  padding-block: var(--space-1);
+  padding-block: var(--space-2);
 }
 
 :where(body.document > footer) {
