@@ -428,19 +428,19 @@ so any of the `.body-child-*` classes above still wins when an application wants
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
-  gap: 1ch;
+  gap: 0.5ch;
   align-items: baseline;
 }
 
 .navbar a {
   color: inherit;
   text-decoration: none;
-  padding: 0.125rem 0.5ch;
+  padding: 0.125em 0.5em;
   border-radius: var(--radius-md);
 }
 
 /* Cancel the first link's padding without shifting or widening the full-width nav itself. */
-.navbar a:first-child { margin-inline-start: -0.5ch; }
+.navbar a:first-child { margin-inline-start: -0.5em; }
 
 .navbar a:hover { background-color: var(--tint-distinct); }
 
