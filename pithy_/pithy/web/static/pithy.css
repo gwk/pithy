@@ -572,6 +572,7 @@ a.button, button, input[type='button'], input[type='reset'], input[type='submit'
   border: 1px solid var(--tint-border);
   border-radius: var(--radius-md);
   color: inherit;
+  cursor: pointer;
   display: inline-block;
   font: inherit;
   line-height: inherit;
@@ -709,6 +710,8 @@ select {
 textarea { padding: 0.125em 0.375em; } /* Grid labels beside textareas match the block padding; see the forms section. */
 
 :is(button, input, select, textarea):disabled { color: color-mix(in oklab, currentColor 60%, transparent); }
+
+:is(a.button, button, input[type='button'], input[type='reset'], input[type='submit']):disabled { cursor: default; }
 
 :is(button, input:not([type='checkbox'], [type='color'], [type='file'], [type='image'], [type='radio'], [type='range']),
   select, textarea):disabled {
