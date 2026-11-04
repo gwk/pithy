@@ -63,6 +63,7 @@ Then start a new shell; if completion does not immediately work, delete compinit
 '''
 
 import re
+from annotationlib import Format, get_annotations
 from dataclasses import dataclass, field, Field, fields, MISSING
 from os import environ
 from os.path import basename
@@ -400,6 +401,24 @@ def _collect_sub_cmds(cmd:'type[Cmd]', f:Any, T:Any) -> tuple[dict[str,'type[Cmd
     sub_cmds[name] = m
   if not sub_cmds: raise CmdDeclError(f'{cmd.__name__}.{f.name}: sub field declares no commands.')
   return sub_cmds, has_default
+
+
+def _check_class_attrs(cmd:'type[Cmd]') -> None:
+  '''
+  Reject public data attributes that a command class assigns without declaring them.
+  An unannotated assignment may only override a non-field name annotated by a base class, such as `help_epilog`.
+  This catches misspelled or obsolete settings, and assignments that try to override a field default without an annotation.
+  '''
+  own_names = get_annotations(cmd, format=Format.FORWARDREF).keys()
+  field_names = {f.name for f in fields(cast(Any, cmd))}
+  base_names = {name for base in cmd.__mro__[1:] for name in get_annotations(base, format=Format.FORWARDREF)}
+  for name, val in cmd.__dict__.items():
+    if name.startswith('_') or name in own_names: continue
+    if name in base_names and name not in field_names: continue
+    if isinstance(val, type) or hasattr(type(val), '__get__'): continue # Methods, properties and nested classes.
+    if name in field_names:
+      raise CmdDeclError(f'{cmd.__name__}.{name}: overriding an inherited field requires an annotated declaration.')
+    raise CmdDeclError(f'{cmd.__name__}.{name}: undeclared class attribute; declare class-level settings as `ClassVar`.')
 
 
 def _cmd_fields(cmd:'type[Cmd]') -> tuple[Field[Any],...]:
@@ -747,6 +766,9 @@ class Cmd:
   Each block is dedented and stripped, preserving internal line breaks and relative indentation.
   Nonempty blocks are separated by a blank line. These attributes are inherited and read each time help is formatted;
   they do not change the docstring or the brief descriptions used in subcommand lists and completion.
+
+  Unannotated public data attributes are rejected when the subclass is defined, because they would otherwise be ignored.
+  To add a class-level setting, declare it as a `ClassVar`; subclasses can then override it without an annotation.
   '''
 
   cmd_name:ClassVar[str] = '' # Optional explicit subcommand name; otherwise it is derived from the class name.
@@ -760,6 +782,7 @@ class Cmd:
   def __init_subclass__(cls, **kwargs:Any) -> None:
     super().__init_subclass__(**kwargs)
     dataclass(cls, kw_only=True)
+    _check_class_attrs(cls)
 
 
   @classmethod

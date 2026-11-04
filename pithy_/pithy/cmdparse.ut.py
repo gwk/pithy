@@ -487,6 +487,38 @@ Examples:
 
 
 @utest_run
+def test_class_attrs() -> None:
+
+  class Fetch(Cmd):
+    url:str = opt(default='')
+    method:ClassVar[str] = ''
+    retries:ClassVar[int] = 3
+    def run(self) -> str: return f'{self.method} {self.url}'
+    @property
+    def label(self) -> str: return self.method.lower()
+    class Detail: pass
+
+  class Get(Fetch):
+    method = 'GET'
+    help_epilog = 'Example: get -url x'
+
+  utest('GET x', lambda: Get.parse(['-url', 'x']).run())
+
+  def obsolete_setting() -> None:
+    class Obsolete(Cmd):
+      epilog = 'Examples.'
+
+  utest_exc(CmdDeclError('Obsolete.epilog: undeclared class attribute; declare class-level settings as `ClassVar`.'),
+    obsolete_setting)
+
+  def field_override() -> None:
+    class Override(Fetch):
+      url = 'x'
+
+  utest_exc(CmdDeclError('Override.url: overriding an inherited field requires an annotated declaration.'), field_override)
+
+
+@utest_run
 def test_colored_help() -> None:
   plain = format_help(Tool, 'tool')
   colored = format_help(Tool, 'tool', color=True)
