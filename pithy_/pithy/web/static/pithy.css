@@ -444,6 +444,10 @@ so any of the `.body-child-*` classes above still wins when an application wants
 
 .navbar a:hover { background-color: var(--tint-distinct); }
 
+/* The current page, marked with aria-current as the breadcrumbs are, shares the hover fill and darkens on hover. */
+.navbar a[aria-current] { background-color: var(--tint-distinct); }
+.navbar a[aria-current]:hover { background-color: var(--tint-active); }
+
 /* Push a nav item to the inline end and keep it visible when wide body content makes the document scroll horizontally. */
 .nav-end {
   margin-inline-start: auto;
