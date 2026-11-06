@@ -801,14 +801,17 @@ class Dialog(HtmlFlow, HtmlSectioningRoot, HtmlFlowParent):
   @classmethod
   def modal(cls, *args:Any, **kw_attrs:Any) -> Self:
     '''
-    Create a dialog with the 'modal' class and `data-transient-modal` attribute, and a child div with the 'pane' class.
-    All children and attributes are passed to the pane.
+    Create a transient modal dialog: a dialog with the 'modal' class and `data-transient-modal` attribute,
+    and a child div with the 'pane' class. All children and attributes are passed to the pane.
 
-    `pithy.js` shows the dialog when the page loads or htmx swaps it in, and closes and removes it on a backdrop click or the escape key.
-    A click on a descendant with the `data-close-modal` attribute also closes it, e.g. `Button('Close', data_close_modal=Present(True))`.
+    `pithy.js` shows the dialog when the page loads or htmx swaps it in, and removes it when it closes.
+    It closes on a backdrop click, the escape key, or a click on a descendant with the `data-close-modal` attribute,
+    e.g. `Button('Close', data_close_modal=Present(True))`.
     No inline script is emitted, so modals work under a Content Security Policy that forbids inline scripts.
-    For a reusable dialog opened by a button, construct `Dialog(cl='modal', ...)` with a pane instead;
-    the class supplies styling without automatic display or removal.
+
+    For a reusable dialog, construct `Dialog(cl='modal', id=...)` containing a 'pane' div instead.
+    It stays hidden until an element with `data_open_modal` set to its id is clicked, and remains in the document after closing.
+    The same close behaviors apply.
     '''
     pane = Div(*args, **kw_attrs)
     if 'tabindex' not in pane.attrs:

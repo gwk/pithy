@@ -350,19 +350,28 @@ function _configureHtmx() {
 
 
 /**
- * Configure the initial document or content that htmx has just processed:
- * show modal dialogs that opt in via the `data-transient-modal` attribute, and set up tables.
+ * Configure the initial document or content that htmx has just processed: set up modal dialogs and tables.
+ * Every modal dialog closes on a backdrop click or a click within a `data-close-modal` element.
+ * Modal dialogs that opt in via the `data-transient-modal` attribute are also shown immediately and removed when closed.
+ * Elements with a `data-open-modal` attribute open the dialog with that id when clicked.
  * This is idempotent, because a morph can process retained elements again.
  * @param {Element} root - A root element of the processed content.
  */
 function _configureLoadedContent(root) {
-  // Only transient modals are shown and removed automatically; the modal class alone supplies styling.
-  for (const modal of _queryRootAndDescendants(root, 'dialog.modal[data-transient-modal]')) {
+  for (const modal of _queryRootAndDescendants(root, 'dialog.modal')) {
     if (!(modal instanceof HTMLDialogElement)) continue;
-    _addModalListeners(modal);
-    if (!modal.open) {
-      modal.showModal();
+    if (modal.hasAttribute('data-transient-modal')) {
+      _addModalListeners(modal);
+      if (!modal.open) {
+        modal.showModal();
+      }
+    } else {
+      _addModalClickListener(modal); // Reusable modals stay in the document after closing.
     }
+  }
+  for (const opener of _queryRootAndDescendants(root, '[data-open-modal]')) {
+    opener.addEventListener('click', _openModalOnClick);
+    //^ A listener on each opener rather than a delegated one, because modals stop the propagation of clicks within them.
   }
 
   // Add double-click handlers to table theads in swapped-in content.
@@ -989,7 +998,8 @@ function closeClosestModal(event) {
 /**
  * Close the dialog.modal element handling this event. Used as a 'click' handler on modal dialogs.
  * @param {Event} event - The event object.
- * The modal closes when the click lands on the ::backdrop, or on an element within the modal that has the `data-close-modal` attribute.
+ * The modal closes when the click lands on the ::backdrop,
+ * or on an element within the modal that has the `data-close-modal` attribute.
  * Clicks elsewhere on the pane are ignored.
   */
 function closeTargetModal(event) {
@@ -1008,15 +1018,38 @@ function closeTargetModal(event) {
 
 
 /**
- * Add the modal 'click' and 'close' listeners to `modal`.
+ * Add the modal 'click' and 'close' listeners to a transient `modal`, so that it is removed when closed.
  * Repeated calls have no effect, because `addEventListener` ignores a listener that is already registered.
  * @param {HTMLDialogElement} modal
  */
 function _addModalListeners(modal) {
-  // As of 2025-08, closedBy is not supported by Safari. Therefore we need to implement our own close handler.
-  modal.addEventListener('click', closeTargetModal);
+  _addModalClickListener(modal);
   modal.addEventListener('close', onCloseRemoveTargetModal);
   //^ Removal happens on 'close' because the escape key closes the dialog without a click.
+}
+
+
+/**
+ * Add the 'click' listener that closes `modal` on a backdrop click or a click within a `data-close-modal` element.
+ * @param {HTMLDialogElement} modal
+ */
+function _addModalClickListener(modal) {
+  // As of 2025-08, closedBy is not supported by Safari. Therefore we need to implement our own close handler.
+  modal.addEventListener('click', closeTargetModal);
+}
+
+
+/**
+ * Open the modal dialog named by the `data-open-modal` attribute of the element handling this click.
+ * @param {Event} event - The event object.
+ */
+function _openModalOnClick(event) {
+  const opener = event.currentTarget;
+  if (!(opener instanceof HTMLElement)) { throw new Error('_openModalOnClick: non-element listener.') }
+  const id = opener.dataset.openModal;
+  const modal = id ? document.getElementById(id) : null;
+  if (!(modal instanceof HTMLDialogElement)) { throw new Error(`No modal dialog found with id: ${id}`); }
+  if (!modal.open) modal.showModal();
 }
 
 

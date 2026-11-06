@@ -14,6 +14,7 @@ from collections.abc import Callable
 
 from ...html import (A, Button, Code, Dialog, Div, H1, H2, H3, HtmlNode, Input, Label, Main, P, Pre, Section, Span, Table, Td,
   Th, Tr)
+from ...markup import Present
 from ..request import Request
 from ..response import HtmlResponse
 from .pages import dev_page
@@ -276,11 +277,11 @@ def overlays_sample(scheme:Scheme) -> list[HtmlNode]:
   return [
     Div(_=[ # The modal shares a wrapper with its button, so that every child of the section is one grid row.
       Div(cl='color-actions', _=[
-        Button('Open modal', type='button', onclick=f"document.getElementById('{modal_id}').showModal()"),
+        Button('Open modal', type='button', data_open_modal=modal_id),
       ]),
       Dialog(id=modal_id, cl='modal', aria_label=f'{scheme.title()} modal', _=[
         Div(cl='pane flow', _=[H3(f'{scheme.title()} modal'), P('Distinct pane, strong border and modal backdrop.'),
-          Button('Close', type='button', onclick=f"document.getElementById('{modal_id}').close()")]),
+          Button('Close', type='button', data_close_modal=Present(True))]),
       ]),
     ]),
   ]
