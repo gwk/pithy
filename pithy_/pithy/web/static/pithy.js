@@ -998,8 +998,8 @@ function closeClosestModal(event) {
 /**
  * Close the dialog.modal element handling this event. Used as a 'click' handler on modal dialogs.
  * @param {Event} event - The event object.
- * The modal closes when the click lands on the ::backdrop,
- * or on an element within the modal that has the `data-close-modal` attribute.
+ * The modal closes when the click lands on an element within the modal that has the `data-close-modal` attribute,
+ * or on the ::backdrop unless the dialog's `closedby` attribute is `closerequest` or `none`.
  * Clicks elsewhere on the pane are ignored.
   */
 function closeTargetModal(event) {
@@ -1007,7 +1007,12 @@ function closeTargetModal(event) {
   const modal = event.currentTarget;
   if (!(modal instanceof HTMLDialogElement)) { throw new Error('closeTargetModal: non-dialog listener.') }
   const target = event.target;
-  if (target !== modal) {
+  if (target === modal) {
+    // A backdrop click. Without a `closedby` attribute, pithy modals close on a backdrop click as with `closedby="any"`.
+    // Browsers that support the attribute handle the explicit values themselves; this also covers those that do not.
+    const closedBy = modal.getAttribute('closedby');
+    if (closedBy !== null && closedBy !== 'any') return;
+  } else {
     // Because propagation stops here, close buttons are handled by this listener rather than a delegated document listener.
     if (!(target instanceof Element)) return;
     const closer = target.closest('[data-close-modal]');
@@ -1034,7 +1039,7 @@ function _addModalListeners(modal) {
  * @param {HTMLDialogElement} modal
  */
 function _addModalClickListener(modal) {
-  // As of 2025-08, closedBy is not supported by Safari. Therefore we need to implement our own close handler.
+  // The browser default for a modal dialog without `closedby` ignores backdrop clicks, so pithy implements its own handler.
   modal.addEventListener('click', closeTargetModal);
 }
 

@@ -76,6 +76,25 @@ addEventListener('DOMContentLoaded', async () => {
       '<button data-close-modal>Close</button></div></dialog>');
     await checkReusableModal(document.querySelector('#swapped-opener'), document.querySelector('#swapped-reusable-modal'));
 
+    for (const closedBy of ['any', 'closerequest', 'none']) {
+      await swap('body', 'beforeend', `<dialog id="closedby-modal" class="modal" closedby="${closedBy}"><div class="pane">` +
+        '<p>Closed by</p><button data-close-modal>Close</button></div></dialog>');
+      const modal = document.querySelector('#closedby-modal');
+      modal.showModal();
+      modal.click();
+      // Native light dismiss may close the dialog asynchronously, so wait a frame before checking.
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      const outcome = closedBy === 'any' ? 'closes' : 'leaves open';
+      check(modal.open === (closedBy !== 'any'), `Backdrop click with closedby="${closedBy}" ${outcome}`);
+      if (modal.open) {
+        const closed = new Promise(resolve => modal.addEventListener('close', resolve, {once: true}));
+        modal.querySelector('[data-close-modal]').click();
+        await closed;
+        check(!modal.open, `Close button closes a modal with closedby="${closedBy}"`);
+      }
+      modal.remove();
+    }
+
     const region = document.querySelector('#region');
     const originalCaption = region.querySelector('caption');
     checkToggle(region.querySelector('table'));
