@@ -24,7 +24,8 @@ def migration_transaction(conn:Conn, *, max_errors:int=100) -> Iterator[Cursor]:
   conn.run_effect('PRAGMA foreign_keys = OFF') # 1. TODO: query and save; only turn off if they are on.
   try:
     with conn: # 2. BEGIN IMMEDIATE; commits on success (11), rolls back if an exception propagates.
-      # 3 is implicit: the schema contains all indexes, triggers, and views associated with the table, so we can rebuild them.
+      # 3 is implicit for indexes: the declared schema contains them, so the generator can rebuild them.
+      # Schemas cannot declare triggers or views yet, so a table rebuild loses its triggers; see `gen.gen_deps_migration`.
       c = conn.cursor()
       yield c # 4-9.
       run_migration_check(c, 'foreign_key_check', max_errors=max_errors) # 10. Check for foreign key errors.

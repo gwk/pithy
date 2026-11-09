@@ -5,6 +5,7 @@ _context_keywords_ = ['alter table', 'column rename', 'database', 'ddl', 'migrat
 from typing import Iterable, Self
 
 from ...iterable import joinR
+from ...logs import logW
 from ...parse import ParseError
 from .. import Conn, Row
 from ..schema import Column, Schema, Table, TableDepStructure
@@ -53,6 +54,10 @@ def gen_migration(*, conn:Conn, schema:Schema) -> list[str]:
 
       stmts.extend(
         gen_deps_migration(schema_name=schema.name, new_deps=new_deps, old_deps=old_deps, needs_rebuild=needs_rebuild))
+      #^ Dependents are emitted per table, interleaved with the table changes. This is sound for indexes,
+      # which reference only their own table. Triggers and views can reference other tables,
+      # and SQLite rejects some ALTER TABLE statements while any trigger or view has an unresolved reference.
+      # Supporting them requires two phases: drop stale dependents before all table changes, and create new ones afterwards.
 
     except Exception as e:
       e.add_note(f'Failed to generate migration for table {qname}.')
@@ -178,6 +183,18 @@ def gen_deps_migration(*, schema_name:str, new_deps:tuple[TableDepStructure,...]
 
   stmts = []
 
+  # Schema cannot declare triggers yet, so every existing trigger is undeclared and says nothing about developer intent.
+  # Report and skip them; never generate a drop.
+  # A table rebuild still drops the table's triggers implicitly, and we cannot recreate them, so that case is reported separately.
+  triggers = sorted(name for name, dep in old_deps.items() if dep.type == 'trigger')
+  for name in triggers:
+    if needs_rebuild:
+      logW('Table rebuild will drop an unmanaged trigger; recreate it by hand in the migration.', trigger=name,
+        schema=schema_name)
+    else:
+      logW('Skipping unmanaged trigger; schemas do not support triggers yet.', trigger=name, schema=schema_name)
+  old_deps = {name: dep for name, dep in old_deps.items() if dep.type != 'trigger'}
+
   new_names = set(dep.name for dep in new_deps)
   for name, dep in old_deps.items():
     if name not in new_names:
@@ -188,6 +205,9 @@ def gen_deps_migration(*, schema_name:str, new_deps:tuple[TableDepStructure,...]
     new_sql = new.sql() # Note: the sql we use for comparison has no schema name.
     if old := old_deps.get(new.name):
       if not needs_rebuild and old.sql == new_sql: continue
+      #^ This comparison requires that the rendered SQL exactly match the text stored in sqlite_schema.
+      # That holds for indexes. Trigger bodies are free-form SQL, so trigger support needs a rendering that round-trips exactly;
+      # otherwise every generation will drop and recreate each trigger.
       stmts.append(f'DROP {old.type.upper()} IF EXISTS {schema_name}.{qea(old.name)}')
     stmts.append(new.sql(schema=schema_name)) # Note: the SQL we execute does have an explicit schema name.
 
