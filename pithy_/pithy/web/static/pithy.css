@@ -913,15 +913,18 @@ dialog.modal {
 
 nav.breadcrumbs {
   display: flex;
-  flex-direction: row;
-  gap: 0.25rem;
+  flex-flow: row wrap;
+  align-items: baseline;
 }
 
 .breadcrumbs a { color: inherit; }
 
+/* The separator margin is the only spacing between items, so the separator stays centered.
+Customize with --breadcrumb-separator and --breadcrumb-space.
+The separator is inside the item span; style the inner link or current item rather than the span to keep it centered. */
 .breadcrumbs span + span::before {
-  content: "›";
-  margin-inline: 0.25rem;
+  content: var(--breadcrumb-separator, "›");
+  margin-inline: var(--breadcrumb-space, 0.375em);
   color: color-mix(in srgb, currentColor 50%, transparent);
 }
 
