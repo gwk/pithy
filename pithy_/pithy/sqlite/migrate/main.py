@@ -26,6 +26,7 @@ from ...argparser import CommandParser
 from ...logs import logI, logW
 from ..database import Database, DbConfig
 from ..schema import Schema
+from .gen import find_undeclared
 from .transaction import MigrationError
 from .versions import check_migrations, generate_migration_file, migrate_database, sync_database
 
@@ -42,8 +43,9 @@ def main_migrate(migrations:types.ModuleType|str, *, config:DbConfig|None=None, 
   * gen: generate the next versioned migration file by diffing the database against the schemas.
   * sync: automigrate the database to the current schemas and update `user_version` to the latest migration version;
     use it to reconcile a drifted database without a formal migration.
+  * undeclared: list the objects in the database that the schemas do not declare, such as tables removed from a schema.
 
-  config defaults to `Database.global_config()` for run, gen, and sync;
+  config defaults to `Database.global_config()` for run, gen, sync, and undeclared;
   check without config only validates files. With config, it opens the database read-only to report its stored version;
   config.user_version is the application's expected version, not the database's current version.
   '''
@@ -87,6 +89,19 @@ def main_migrate(migrations:types.ModuleType|str, *, config:DbConfig|None=None, 
       raise MigrationError('The sync command requires schemas, but none were provided to main_migrate.')
     sync_database(migrations, config=get_config(), schemas=schemas, dry_run=args.dry_run)
 
+  def main_undeclared(args:Namespace) -> None:
+    'List the objects in the database that the schemas do not declare; the database is not modified.'
+    if schemas is None:
+      raise MigrationError('The undeclared command requires schemas, but none were provided to main_migrate.')
+    count = 0
+    with Database.ro(get_config()) as db:
+      for schema in schemas:
+        for type_, name, table in find_undeclared(conn=db.conn, schema=schema):
+          on_table = '' if table == name else f' on {table}'
+          print(f'{type_} {schema.name}.{name}{on_table}')
+          count += 1
+    logI('Listed undeclared names.', count=count)
+
   parser = CommandParser(prog='migrate', description='Database migration tool.')
 
   parser.add_command(main_check)
@@ -103,5 +118,7 @@ def main_migrate(migrations:types.ModuleType|str, *, config:DbConfig|None=None, 
 
   command_sync = parser.add_command(main_sync)
   command_sync.add_argument('-dry-run', action='store_true', help='Print sync statements without applying them.')
+
+  parser.add_command(main_undeclared)
 
   parser.parse_and_run_command(argv)

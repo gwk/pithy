@@ -68,6 +68,10 @@ The script must run in the application's environment, because `.py` migrations c
 * `sync [-dry-run]`: diff the live database against the declared schemas, apply the difference, and update
   `user_version` across the group to the latest migration file version, in a single transaction.
   Sync does not run any migration files. It is useful for reconciling a drifted database or adopting an existing one.
+* `undeclared`: list the objects in the database that the declared schemas do not account for, one per line,
+  as `<type> <schema>.<name>`; an index or trigger also names its table.
+  The other commands never drop a table that was removed from a schema, so such tables remain until a migration drops them.
+  This command finds them. It only reads the database, and it omits SQLite internal objects and the shadow tables of virtual tables.
 
 ## Development workflow
 

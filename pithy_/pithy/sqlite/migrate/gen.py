@@ -68,6 +68,35 @@ def gen_migration(*, conn:Conn, schema:Schema) -> list[str]:
   return stmts
 
 
+def find_undeclared(*, conn:Conn, schema:Schema) -> list[tuple[str,str,str]]:
+  '''
+  List the objects in the attached database that the schema does not declare, as (type, name, table) tuples.
+
+  The type is 'table', 'virtual', 'view', 'index' or 'trigger'. The table is the object that an index or trigger belongs to;
+  for the other types it equals the name. Each undeclared table is followed by its undeclared indexes and triggers.
+  SQLite internal objects and the shadow tables of virtual tables are omitted, because SQLite manages them itself.
+  This function only reads the database.
+  '''
+  if not schema.name.isidentifier(): raise ValueError(f'Invalid schema name: {schema.name!r}')
+
+  c = conn.cursor()
+  if not c.run('SELECT count() FROM pragma_database_list WHERE name = :name', name=schema.name).one_col():
+    raise GenMigrationError(f'Schema {schema.name!r} does not exist; was it attached?')
+
+  table_types:dict[str,str] = dict(c.run('SELECT name, type FROM pragma_table_list WHERE schema = :name', name=schema.name))
+  #^ Distinguishes plain tables from virtual and shadow tables; sqlite_schema reports all three as 'table'.
+
+  declared = schema.structures_dict
+  undeclared = []
+  for type_, name, table in c.run(f'SELECT type, name, tbl_name FROM {schema.name}.sqlite_schema'):
+    if name in declared: continue
+    if name.lower().startswith('sqlite_'): continue # Internal; SQLite reserves this prefix.
+    if table_types.get(table) == 'shadow': continue
+    undeclared.append((table_types.get(name, type_), name, table))
+
+  return sorted(undeclared, key=lambda el: (el[2], el[1] != el[2], el[1]))
+
+
 def gen_table_migration(*, schema_name:str, qname:str, new:Table, old:str|Table|None) -> tuple[bool,list[str]]:
   '''
   Generate a migration from the given SQL statement or previous table to this table.

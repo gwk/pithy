@@ -252,6 +252,26 @@ def _test_sync_without_schemas_raises() -> None:
       utest_exc(MigrationError, main_migrate, pkg, config=config, argv=['sync'])
 
 
+# undeclared: lists the objects that the schemas do not declare, without modifying the database.
+@utest_run
+def _test_undeclared() -> None:
+  schema = Schema('main', structures=[Table('t', columns=(Column('id', int, is_opt=True),))])
+  with tempfile.TemporaryDirectory() as root, migrations_pkg() as (pkg, d):
+    config = make_group_config(root)
+    with Database.rw(config) as db, db.conn:
+      db.conn.execute('CREATE TABLE t (id INTEGER)')
+      db.conn.execute('CREATE TABLE removed (id INTEGER)')
+      db.conn.execute('CREATE INDEX removed_idx ON removed (id)')
+      db.conn.execute('CREATE TABLE aux.other (id INTEGER)')
+    output = StringIO()
+    with redirect_stdout(output), adjust_log_level('warn'):
+      main_migrate(pkg, config=config, schemas=[schema, Schema('aux')], argv=['undeclared'])
+    utest_val(['table main.removed', 'index main.removed_idx on removed', 'table aux.other'], output.getvalue().splitlines())
+    utest_val(['removed', 't'], table_names(config), 'undeclared does not modify the database')
+    with adjust_log_level('warn'):
+      utest_exc(MigrationError, main_migrate, pkg, config=config, argv=['undeclared'])
+
+
 # gen: diffs the live database against the schemas; the database must be at the latest migration version.
 @utest_run
 def _test_gen() -> None:
