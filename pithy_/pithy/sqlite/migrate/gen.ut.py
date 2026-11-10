@@ -60,3 +60,4 @@ def _test_find_undeclared() -> None:
     ], find_undeclared(conn=conn, schema=schema))
     utest_val([('table', 'other', 'other')], find_undeclared(conn=conn, schema=Schema('aux')))
     utest_exc(GenMigrationError, find_undeclared, conn=conn, schema=Schema('missing'))
+    utest_exc(GenMigrationError, gen_migration, conn=conn, schema=Schema('missing'))

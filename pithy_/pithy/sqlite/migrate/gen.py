@@ -7,12 +7,14 @@ from typing import Iterable, Self
 from ...iterable import joinR
 from ...logs import logW
 from ...parse import ParseError
-from .. import Conn, Row
+from .. import Conn, Cursor, Row
 from ..schema import Column, Schema, Table, TableDepStructure
 from ..util import sql_quote_entity as qe, sql_quote_entity_always as qea, sql_quote_qual_entity as qqe
+from .transaction import MigrationError
 
 
-class GenMigrationError(Exception):
+class GenMigrationError(MigrationError):
+  'An expected failure to generate a migration, caused by the schemas or the database state.'
 
   @classmethod
   def confusing_column_changes(cls, *, table_name:str, removed:Iterable[Column], added:Iterable[Column]) -> Self:
@@ -26,9 +28,7 @@ def gen_migration(*, conn:Conn, schema:Schema) -> list[str]:
   if not schema.name.isidentifier(): raise ValueError(f'Invalid schema name: {schema.name!r}')
 
   c = conn.cursor()
-
-  if not c.run("select count() from pragma_database_list WHERE name = :name", name=schema.name):
-    exit(f'Schema {schema.name!r} does not exist; was it attached?')
+  check_schema_attached(c, schema.name)
 
   old_table_sqls:dict[str,str] = dict(
     c.run(f"SELECT name, sql FROM {schema.name}.sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"))
@@ -80,8 +80,7 @@ def find_undeclared(*, conn:Conn, schema:Schema) -> list[tuple[str,str,str]]:
   if not schema.name.isidentifier(): raise ValueError(f'Invalid schema name: {schema.name!r}')
 
   c = conn.cursor()
-  if not c.run('SELECT count() FROM pragma_database_list WHERE name = :name', name=schema.name).one_col():
-    raise GenMigrationError(f'Schema {schema.name!r} does not exist; was it attached?')
+  check_schema_attached(c, schema.name)
 
   table_types:dict[str,str] = dict(c.run('SELECT name, type FROM pragma_table_list WHERE schema = :name', name=schema.name))
   #^ Distinguishes plain tables from virtual and shadow tables; sqlite_schema reports all three as 'table'.
@@ -97,6 +96,12 @@ def find_undeclared(*, conn:Conn, schema:Schema) -> list[tuple[str,str,str]]:
   return sorted(undeclared, key=lambda el: (el[2], el[1] != el[2], el[1]))
 
 
+def check_schema_attached(c:Cursor, schema_name:str) -> None:
+  'Raise GenMigrationError if the connection has no database attached under schema_name.'
+  if not c.run('SELECT count() FROM pragma_database_list WHERE name = :name', name=schema_name).one_col():
+    raise GenMigrationError(f'Schema {schema_name!r} does not exist; was it attached?')
+
+
 def gen_table_migration(*, schema_name:str, qname:str, new:Table, old:str|Table|None) -> tuple[bool,list[str]]:
   '''
   Generate a migration from the given SQL statement or previous table to this table.
@@ -108,7 +113,7 @@ def gen_table_migration(*, schema_name:str, qname:str, new:Table, old:str|Table|
 
   if isinstance(old, str):
     try: old = Table.parse(new.name + '(old)', text=old)
-    except ParseError as e: exit(str(e))
+    except ParseError as e: raise GenMigrationError(str(e)) from e
 
 
   assert new.name == old.name
@@ -214,7 +219,8 @@ def gen_deps_migration(*, schema_name:str, new_deps:tuple[TableDepStructure,...]
 
   # Schema cannot declare triggers yet, so every existing trigger is undeclared and says nothing about developer intent.
   # Report and skip them; never generate a drop.
-  # A table rebuild still drops the table's triggers implicitly, and we cannot recreate them, so that case is reported separately.
+  # A table rebuild still drops the table's triggers implicitly, and we cannot recreate them;
+  # that case is reported separately.
   triggers = sorted(name for name, dep in old_deps.items() if dep.type == 'trigger')
   for name in triggers:
     if needs_rebuild:

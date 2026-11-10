@@ -73,6 +73,9 @@ The script must run in the application's environment, because `.py` migrations c
   The other commands never drop a table that was removed from a schema, so such tables remain until a migration drops them.
   This command finds them. It only reads the database, and it omits SQLite internal objects and the shadow tables of virtual tables.
 
+Expected errors, such as a version mismatch or a schema that cannot be diffed, are reported as a one-line `error:` message
+with a nonzero exit status. Any other exception propagates with its traceback.
+
 ## Development workflow
 
 The dev database is kept in a known state: restored from a backup of production, and therefore matching the

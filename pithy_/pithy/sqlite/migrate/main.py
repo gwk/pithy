@@ -48,6 +48,9 @@ def main_migrate(migrations:types.ModuleType|str, *, config:DbConfig|None=None, 
   config defaults to `Database.global_config()` for run, gen, sync, and undeclared;
   check without config only validates files. With config, it opens the database read-only to report its stored version;
   config.user_version is the application's expected version, not the database's current version.
+
+  A `MigrationError` raised by a command is reported as a one-line error message and a nonzero exit status.
+  Any other exception propagates with its traceback.
   '''
 
   def get_config() -> DbConfig:
@@ -121,4 +124,8 @@ def main_migrate(migrations:types.ModuleType|str, *, config:DbConfig|None=None, 
 
   parser.add_command(main_undeclared)
 
-  parser.parse_and_run_command(argv)
+  try: parser.parse_and_run_command(argv)
+  except MigrationError as e:
+    # These are expected problems with the user's setup, files or database state, so the traceback is not useful.
+    # Other exceptions propagate: they indicate a bug or a failure inside a migration file, where the traceback is needed.
+    exit('\n'.join((f'error: {e}', *getattr(e, '__notes__', ()))))

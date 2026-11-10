@@ -8,6 +8,7 @@ from collections.abc import Generator
 from contextlib import contextmanager, redirect_stdout
 from io import StringIO
 from json import loads
+from typing import Any
 from unittest.mock import patch
 
 from pithy.fs import make_dirs
@@ -15,7 +16,6 @@ from pithy.json import JsonDict
 from pithy.logs import adjust_log_level, render_log_json
 from pithy.sqlite.database import Database, DbConfig
 from pithy.sqlite.migrate.main import main_migrate
-from pithy.sqlite.migrate.transaction import MigrationError
 from pithy.sqlite.schema import Column, Schema, Table
 from utest import utest_exc, utest_run, utest_val
 
@@ -65,6 +65,16 @@ def table_names(config:DbConfig, schema:str='main') -> list[str]:
   with Database.ro(config) as db:
     return [row[0] for row in db.conn.execute(
       f"SELECT name FROM {schema}.sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name")]
+
+
+def utest_migrate_error(exp:str, *args:Any, **kwargs:Any) -> None:
+  'Test that main_migrate exits with a reported error message that contains exp.'
+  try: main_migrate(*args, **kwargs)
+  except SystemExit as e:
+    msg = str(e.code)
+    utest_val(True, msg.startswith('error: ') and exp in msg, f'exit message: {msg!r}')
+  else:
+    utest_val(True, False, f'main_migrate did not exit; expected error: {exp!r}')
 
 
 def check_records(pkg:str, config:DbConfig|None=None) -> list[JsonDict]:
@@ -145,7 +155,7 @@ def _test_check_missing_database() -> None:
 def _test_check_bad_py_raises() -> None:
   with migrations_pkg() as (pkg, d):
     write_migration(d, 'm0001_empty.py', 'x = 1\n')
-    utest_exc(MigrationError, main_migrate, pkg, argv=['check'])
+    utest_migrate_error('must define a function named after the file stem', pkg, argv=['check'])
 
 
 # run: applies pending migrations up to config.user_version.
@@ -202,10 +212,11 @@ def _test_run_rerun_guards() -> None:
     write_migration(d, 'm0001_widgets.sql', 'CREATE TABLE widgets (id INTEGER PRIMARY KEY);')
     write_migration(d, 'm0002_gadgets.sql', 'CREATE TABLE gadgets (id INTEGER PRIMARY KEY);')
     with adjust_log_level('warn'):
-      utest_exc(MigrationError, main_migrate, pkg, config=config, argv=['run', '-rerun']) # Database is behind.
+      utest_migrate_error('does not match the latest migration version', pkg, config=config, argv=['run', '-rerun'])
     with adjust_log_level('error'): # Silences the expected files-beyond-target warning.
       main_migrate(pkg, config=config, argv=['run', '-target', '1'])
-      utest_exc(MigrationError, main_migrate, pkg, config=config, argv=['run', '-rerun', '-target', '1']) # Not the latest.
+      utest_migrate_error('can only rerun the latest migration version', pkg, config=config,
+        argv=['run', '-rerun', '-target', '1'])
 
 
 # sync: automigrates the database to the declared schemas and stamps user_version to the latest migration version.
@@ -249,7 +260,7 @@ def _test_sync_without_schemas_raises() -> None:
   with tempfile.TemporaryDirectory() as root, migrations_pkg() as (pkg, d):
     config = make_group_config(root)
     with adjust_log_level('warn'):
-      utest_exc(MigrationError, main_migrate, pkg, config=config, argv=['sync'])
+      utest_migrate_error('The sync command requires schemas', pkg, config=config, argv=['sync'])
 
 
 # undeclared: lists the objects that the schemas do not declare, without modifying the database.
@@ -269,7 +280,7 @@ def _test_undeclared() -> None:
     utest_val(['table main.removed', 'index main.removed_idx on removed', 'table aux.other'], output.getvalue().splitlines())
     utest_val(['removed', 't'], table_names(config), 'undeclared does not modify the database')
     with adjust_log_level('warn'):
-      utest_exc(MigrationError, main_migrate, pkg, config=config, argv=['undeclared'])
+      utest_migrate_error('The undeclared command requires schemas', pkg, config=config, argv=['undeclared'])
 
 
 # gen: diffs the live database against the schemas; the database must be at the latest migration version.
@@ -289,8 +300,8 @@ def _test_gen() -> None:
       utest_val(True, os.path.exists(path1), 'm0001 generated')
       utest_val([], table_names(config), 'gen does not modify the database')
       # The draft m0001 is now pending: the database is behind the latest migration version, so gen refuses.
-      utest_exc(MigrationError, main_migrate, pkg, config=config, schemas=[Schema('main', structures=[widgets, gadgets])],
-        argv=['gen', 'add_gadgets'])
+      utest_migrate_error('is behind the latest migration version', pkg, config=config,
+        schemas=[Schema('main', structures=[widgets, gadgets])], argv=['gen', 'add_gadgets'])
       # After running the pending migration, gen diffs incrementally: only the new gadgets table.
       main_migrate(pkg, config=config, schemas=[Schema('main', structures=[widgets])], argv=['run', '-target', '1'])
       main_migrate(pkg, config=config, schemas=[Schema('main', structures=[widgets, gadgets])], argv=['gen', 'add_gadgets'])
@@ -313,4 +324,20 @@ def _test_gen_db_ahead_raises() -> None:
         with db.conn:
           c = db.conn.cursor()
           for name in config.names: c.set_user_version(name, 3)
-      utest_exc(MigrationError, main_migrate, pkg, config=config, schemas=[schema], argv=['gen'])
+      utest_migrate_error('is ahead of the latest migration version', pkg, config=config, schemas=[schema], argv=['gen'])
+
+
+# Generation errors are reported as an error message that includes the exception notes, not as a traceback.
+@utest_run
+def _test_gen_error_is_reported() -> None:
+  schema = Schema('main', structures=[Table('t', columns=(Column('c', int, is_opt=True),))])
+  with tempfile.TemporaryDirectory() as root, migrations_pkg() as (pkg, d):
+    config = make_group_config(root)
+    with Database.rw(config) as db, db.conn:
+      db.conn.execute('CREATE TABLE t (a INTEGER, b INTEGER)')
+    with adjust_log_level('warn'):
+      utest_migrate_error('Confusing column changes for table', pkg, config=config, schemas=[schema], argv=['gen'])
+      utest_migrate_error('Failed to generate migration for table main."t".', pkg, config=config, schemas=[schema],
+        argv=['gen'])
+      utest_migrate_error("Schema 'missing' does not exist", pkg, config=config, schemas=[Schema('missing')],
+        argv=['undeclared'])
