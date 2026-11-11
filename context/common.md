@@ -219,7 +219,7 @@ so if unreleated changes are lying around it is often an oversight worth mention
 ## Git Commits
 
 Do not commit unless instructed to do so. Never push or pull work unless explicitly told.
-If you are asked to commit and are currently on `main`, you can make a new branch at your discretion.
+If you are asked to commit and are currently on `main`, and think we should make a branch, ask first.
 Committing is not "shipping"; the commits will be reviewed and possibly reworked or squashed.
 Err on the side of separating work into smaller commits; they should represent one conceptual step forward.
 It is much easier to squash commits together than split them apart, and smaller commits are more amenable to reordering.
