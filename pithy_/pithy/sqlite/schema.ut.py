@@ -18,3 +18,7 @@ utest_seq(['\n', 'CREATE TABLE "t" (\n  a INTEGER NOT NULL\n)', ';', '\n'], name
 # Signed numeric defaults parse back to the declared values.
 utest(Table('t', columns=(Column('i', int, default=-1), Column('f', float, default=-1.5), Column('p', int, default=1))),
   Table.parse, 't', 'CREATE TABLE t (i INTEGER NOT NULL DEFAULT -1, f REAL NOT NULL DEFAULT -1.5, p INTEGER NOT NULL DEFAULT +1)')
+
+# A float default need not contain a decimal point.
+utest(Table('t', columns=(Column('f', float, default=1e-09), Column('g', float, default=1e+16))),
+  Table.parse, 't', 'CREATE TABLE t (f REAL NOT NULL DEFAULT 1e-09, g REAL NOT NULL DEFAULT 1e+16)')

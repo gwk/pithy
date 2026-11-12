@@ -481,7 +481,9 @@ def unrender_column_default(val:str) -> bool|int|float|str|None:
   try: return _bool_repr_to_vals[val.upper()]
   except KeyError: pass
   c = val[0]
-  if c in '0123456789.+-': return float(val) if '.' in val else int(val)
+  if c in '0123456789.+-':
+    try: return int(val)
+    except ValueError: return float(val) # A float need not contain a point, e.g. `1e-09`.
   if c == 'x': raise NotImplementedError('BLOB literals not supported.')
   if c in "'(": return val
   if val.startswith('CURRENT_'): return val
