@@ -198,6 +198,12 @@ def _test_generated_defaults_are_readable() -> None:
       conn.execute('DROP TABLE t')
 
 
+# The reason for an unreadable table names the failing rule by its field when the rule has no name.
+utest_exc(GenMigrationError(
+  "Table main.t has a stored definition that cannot be read: parse error: 'default' structure expects default_expr; received name."),
+  parse_stored_table, 't', 'CREATE TABLE t (a TEXT DEFAULT "dq")', schema_name='main')
+
+
 @utest_run
 def _test_find_undeclared() -> None:
   'Undeclared objects are listed for the named database only; declared, internal and shadow objects are omitted.'

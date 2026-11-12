@@ -359,7 +359,8 @@ class Rule:
 
 
   def __str__(self) -> str:
-    if self.name: return f'{self.name!r} {self.type_desc}'
+    'Describe the rule for diagnostics, by its name or else its field. A rule that has neither is described by its repr.'
+    if label := (self.name or self.field): return f'{label!r} {self.type_desc}'
     else: return repr(self)
 
 
