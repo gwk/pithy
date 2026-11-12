@@ -22,3 +22,7 @@ utest(Table('t', columns=(Column('i', int, default=-1), Column('f', float, defau
 # A float default need not contain a decimal point.
 utest(Table('t', columns=(Column('f', float, default=1e-09), Column('g', float, default=1e+16))),
   Table.parse, 't', 'CREATE TABLE t (f REAL NOT NULL DEFAULT 1e-09, g REAL NOT NULL DEFAULT 1e+16)')
+
+# A hex integer default converts to its value.
+utest(Table('t', columns=(Column('h', int, default=16), Column('n', int, default=-16))),
+  Table.parse, 't', 'CREATE TABLE t (h INTEGER NOT NULL DEFAULT 0x10, n INTEGER NOT NULL DEFAULT -0x10)')

@@ -128,7 +128,7 @@ lexer = Lexer(flags='mxi', # SQL is case-insensitive.
 
     blob = r"x'[0-9a-fA-F]*'", # Must precede `name`.
     float = r'([0-9]+\.[0-9]* | \.[0-9]+) ([eE][+-]?[0-9]+)? | [0-9]+ [eE][+-]?[0-9]+', # Must precede `integer`.
-    integer = r'[0-9]+ | 0x[0-9a-fA-F]+',
+    integer = r'0[xX][0-9a-fA-F]+ | [0-9]+', # Hex must precede decimal, which would match the leading zero alone.
     string = sqlite_string_pattern,
 
     name = r''' # Note: in the SQLite grammar this is called "id" (identifier).

@@ -482,6 +482,7 @@ def unrender_column_default(val:str) -> bool|int|float|str|None:
   except KeyError: pass
   c = val[0]
   if c in '0123456789.+-':
+    if val.lstrip('+-')[:2].lower() == '0x': return int(val, 16)
     try: return int(val)
     except ValueError: return float(val) # A float need not contain a point, e.g. `1e-09`.
   if c == 'x': raise NotImplementedError('BLOB literals not supported.')
