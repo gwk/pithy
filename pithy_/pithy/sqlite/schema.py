@@ -538,7 +538,8 @@ def _parse_column_constraint(constraint:Input, source:Source) -> tuple[str,Any]:
     case 'check':
       raise NotImplementedError(f'column_constraint check: {constraint!r}')
     case 'default':
-      default_val = unrender_column_default(source[val])
+      default_val = unrender_column_default(val if isinstance(val, str) else source[val])
+      #^ The `signed_number` rule yields its text; the other default rules yield syntax that locates the text.
       return lbl, default_val
     case 'collate':
       raise NotImplementedError(f'column_constraint collate: {constraint!r}')
