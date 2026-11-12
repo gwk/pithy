@@ -414,7 +414,7 @@ class Schema:
 
     if comments and (name or self.desc):
       yield '\n'
-      if self.name: yield f'-- Schema: {name}\n'
+      if name: yield f'-- Schema: {name}\n'
       if self.desc: yield '\n'.join(sql_comment_lines(self.desc)) + '\n'
 
     for s in self.structures:
