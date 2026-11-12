@@ -127,7 +127,7 @@ lexer = Lexer(flags='mxi', # SQL is case-insensitive.
     **sqlite_key_phrase_patterns, # Note: order ensures that longer phrases are matched first.
 
     blob = r"x'[0-9a-fA-F]*'", # Must precede `name`.
-    float = r'([0-9]+\.[0-9]* | \.[0-9]+) ([eE][+-]?[0-9]+)?', # Must precede `integer`.
+    float = r'([0-9]+\.[0-9]* | \.[0-9]+) ([eE][+-]?[0-9]+)? | [0-9]+ [eE][+-]?[0-9]+', # Must precede `integer`.
     integer = r'[0-9]+ | 0x[0-9a-fA-F]+',
     string = sqlite_string_pattern,
 
