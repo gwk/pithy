@@ -11,8 +11,8 @@ from tolkien import Source, Token
 
 from ..lex import Lexer
 from ..parse import (Alias, Atom, AtomTransform, Choice, choice_label, choice_syn, choice_val, Infix, Left, OneOrMore, Opt,
-  OrderedChoice, ParseError, Parser, Precedence, Quantity, Rule, RuleName, Struct, struct_text, Suffix, Syn, syn_skeleton,
-  uni_bool, uni_text, ZeroOrMore)
+  OrderedChoice, ParseError, Parser, Precedence, Quantity, Rule, RuleName, Struct, Suffix, Syn, syn_skeleton, uni_bool,
+  uni_text, ZeroOrMore)
 from ..type_utils import req_type
 from .keywords import sqlite_key_phrases, sqlite_keyword_builtin_functions, sqlite_keywords
 
@@ -237,7 +237,9 @@ table_def_rules = dict(
       transform=choice_syn)),
 
   default_expr = Choice('paren_expr', 'literal_value', 'signed_number', 'CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP',
-    transform=choice_val), # https://www.sqlite.org/lang_createtable.html#the_default_clause
+    transform=choice_syn), # https://www.sqlite.org/lang_createtable.html#the_default_clause
+  #^ The label names the matched alternative: 'expr', 'literal_value', 'signed_number' or a keyword token kind.
+  #^ The values of `literal_value` and `signed_number` are themselves labeled with the kind of the literal.
 
   generated_constraint = Struct(
     Opt(Struct('GENERATED', 'ALWAYS'), field=None),
@@ -325,8 +327,9 @@ expr_rules = dict(
 
   signed_number = Struct(
     Choice('plus', 'minus', field='sign', transform=choice_val),
-    Choice('float', 'integer', field='number', transform=choice_val),
-    transform=struct_text),
+    Choice('float', 'integer', field='number', transform=choice_label),
+    transform=lambda source, slc, fields: Syn(slc, lbl=fields[1], val=source[slc])),
+  #^ The label is the kind of the number, 'float' or 'integer'. The value is the text, including the sign.
 
   leading_name = OrderedChoice('call', 'schema_table_column_name', transform=choice_val),
 
@@ -399,7 +402,8 @@ rules:dict[str,Rule] = dict(
 
   siud_stmt = Choice('select_stmt','insert_stmt', 'update_stmt', 'delete_stmt', transform=choice_val),
 
-  literal_value = Choice('blob', 'float', 'integer', 'string', 'FALSE', 'TRUE', 'NULL', transform=choice_val),
+  literal_value = Choice('blob', 'float', 'integer', 'string', 'FALSE', 'TRUE', 'NULL', transform=choice_syn),
+  #^ The label is the kind of the matched token.
   #^ NOTE: This is strict and does not allow entities as strings. See https://www.sqlite.org/lang_keywords.html.
 
   schema_struct_name = Quantity('name', min=1, max=2, sep='dot', sep_at_end=False),

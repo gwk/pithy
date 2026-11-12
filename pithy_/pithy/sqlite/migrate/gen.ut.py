@@ -197,10 +197,18 @@ def _test_generated_defaults_are_readable() -> None:
       utest(table, parse_stored_table, 't', stored_sql, schema_name='main')
       conn.execute('DROP TABLE t')
 
+    # A bool column is stored as INTEGER, so the parsed table is not equal to the declared one.
+    # The generator sees no difference.
+    schema = Schema('main', structures=[Table('t', is_strict=True, columns=(Column('b', bool, default=True),))])
+    with adjust_log_level('silent'): run_migration(conn, gen_migration(conn=conn, schema=schema))
+    utest('CREATE TABLE "t" (\n  b INTEGER NOT NULL DEFAULT TRUE\n) STRICT',
+      conn.execute('SELECT sql FROM sqlite_schema').one_col)
+    utest([], gen_migration, conn=conn, schema=schema)
+
 
 # The reason for an unreadable table names the failing rule by its field when the rule has no name.
-utest_exc(GenMigrationError(
-  "Table main.t has a stored definition that cannot be read: parse error: 'default' structure expects default_expr; received name."),
+utest_exc(GenMigrationError('Table main.t has a stored definition that cannot be read: '
+  "parse error: 'default' structure expects default_expr; received name."),
   parse_stored_table, 't', 'CREATE TABLE t (a TEXT DEFAULT "dq")', schema_name='main')
 
 

@@ -115,20 +115,7 @@ class Column:
     else:
       virtual = ''
 
-    if self.default is not None:
-      d = self.default
-      if isinstance(d, (int, float)):
-        ds = str(self.default)
-      else:
-        assert isinstance(d, str)
-        if d == '': ds = "''" # Special affordance for the empty string as shorthand.
-        elif d.startswith("'") and d.endswith("'"): ds = d # Quoted string value.
-        elif d.startswith('(') and d.endswith(')'): ds = d # SQL expression.
-        elif d in ('CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP'): ds = d # Special value.
-        else: raise ValueError(f'Invalid Column default SQL expression: {d!r}')
-      default = f' DEFAULT {ds}'
-    else:
-      default = ''
+    default = '' if self.default is None else f' DEFAULT {self.default_rendered}'
 
     return f'{name} {type_}{primary_key}{unique}{not_null}{virtual}{default}'
 
@@ -457,6 +444,13 @@ class Schema:
 
 
 def render_column_default(val:bool|int|float|str|None) -> str:
+  '''
+  Render a `Column.default` value as the SQL text of a DEFAULT clause.
+
+  A bool renders as TRUE or FALSE. A string is already SQL text and is returned as is:
+  it must be a quoted string, a parenthesized expression or a `CURRENT_` keyword.
+  The empty string is shorthand for the empty SQL string.
+  '''
   match val:
     case None: return 'NULL'
     case bool(): return str(val).upper()
@@ -471,28 +465,25 @@ def render_column_default(val:bool|int|float|str|None) -> str:
     case _: raise ValueError(f'Invalid Column default: {val!r}')
 
 
-def unrender_column_default(val:str) -> bool|int|float|str|None:
+def parse_column_default(kind:str, text:str) -> bool|int|float|str|None:
   '''
-  Convert the rendered SQL default value back to a python value.
-  This function does not completely validate the rendered string, just converts it back to a python value.
+  Convert a parsed DEFAULT clause to a `Column.default` value. This is the inverse of `render_column_default`.
+
+  `kind` is the alternative that the `default_expr` grammar rule matched: a literal token kind, a `CURRENT_` keyword,
+  or 'expr' for a parenthesized expression. A signed number has the kind of its number. `text` is the source text.
+  Numbers, booleans and NULL become Python values. A string, expression or `CURRENT_` keyword remains SQL text.
   '''
-  if val == 'NULL': return None
-  if val == "''": return '' # Special affordance for the empty string as shorthand.
-  try: return _bool_repr_to_vals[val.upper()]
-  except KeyError: pass
-  c = val[0]
-  if c in '0123456789.+-':
-    if val.lstrip('+-')[:2].lower() == '0x': return int(val, 16)
-    try: return int(val)
-    except ValueError: return float(val) # A float need not contain a point, e.g. `1e-09`.
-  if c == 'x': raise NotImplementedError('BLOB literals not supported.')
-  if c in "'(": return val
-  if val.startswith('CURRENT_'): return val
-  raise ValueError(f'Invalid Column default rendered string: {val!r}')
-
-
-_bool_repr_to_vals = {'TRUE': True, 'FALSE': False}
-
+  match kind:
+    case 'NULL': return None
+    case 'TRUE': return True
+    case 'FALSE': return False
+    case 'integer': return int(text, 16) if text.lstrip('+-')[:2].lower() == '0x' else int(text)
+    case 'float': return float(text)
+    case 'string': return '' if text == "''" else text # Special affordance for the empty string as shorthand.
+    case 'expr': return text
+    case 'CURRENT_DATE'|'CURRENT_TIME'|'CURRENT_TIMESTAMP': return kind # The kind is the keyword in canonical case.
+    case 'blob': raise NotImplementedError('BLOB literals not supported.')
+    case _: raise ValueError(f'Invalid column default kind: {kind!r}')
 
 
 schema_transtructor = Transtructor(strict=False)
@@ -543,9 +534,9 @@ def _parse_column_constraint(constraint:Input, source:Source) -> tuple[str,Any]:
     case 'check':
       raise NotImplementedError('CHECK constraints are not supported.')
     case 'default':
-      default_val = unrender_column_default(val if isinstance(val, str) else source[val])
-      #^ The `signed_number` rule yields its text; the other default rules yield syntax that locates the text.
-      return lbl, default_val
+      matched = val.val if val.lbl in ('literal_value', 'signed_number') else val
+      #^ These two alternatives are nested rules, whose values carry the kind of the literal as their own label.
+      return lbl, parse_column_default(matched.lbl, source[val])
     case 'collate':
       raise NotImplementedError('COLLATE is not supported.')
     case 'generated_constraint':
