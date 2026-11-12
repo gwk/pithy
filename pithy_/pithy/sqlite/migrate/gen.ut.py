@@ -27,7 +27,7 @@ def _test_unmanaged_trigger_is_skipped() -> None:
       Index('keep_idx', table='t', columns=('id',))])
 
     stmts = gen_migration(conn=conn, schema=schema)
-    utest_val(['DROP INDEX IF EXISTS main."stale_idx"', 'CREATE INDEX main."keep_idx"\n  ON "t" (id)'], stmts)
+    utest_val(['DROP INDEX main."stale_idx"', 'CREATE INDEX main."keep_idx"\n  ON "t" (id)'], stmts)
     run_migration(conn, stmts)
     utest_val(['tr'], trigger_names(conn))
     utest_val([], gen_migration(conn=conn, schema=schema))
@@ -106,6 +106,81 @@ def _test_rename_with_table_level_change_is_rejected() -> None:
   with closing(Conn(':memory:', mode='memory')) as conn, adjust_log_level('silent'):
     run_migration(conn, gen_migration(conn=conn, schema=keyed('a', ('a', 'b'))))
     utest_exc(GenMigrationError, gen_migration, conn=conn, schema=keyed('a2', ('b', 'a2')), _utest_label='key reorder')
+
+
+@utest_run
+def _test_drop_constrained_column_rebuilds() -> None:
+  'SQLite cannot drop a column that is unique or part of a primary key, so removing one rebuilds the table.'
+
+  def schema(*columns:Column, **table_args:Any) -> Schema:
+    return Schema('main', structures=[Table('t', columns=(*columns, Column('b', int), Column('c', int)), **table_args)])
+
+  olds = {
+    'primary key column': schema(Column('a', int, is_primary=True, is_unique=True)),
+    'compound primary key': schema(Column('a', int), primary_key=('a', 'b')),
+    'unique column': schema(Column('a', int, is_unique=True)),
+  }
+  for label, old in olds.items():
+    with closing(Conn(':memory:', mode='memory')) as conn, adjust_log_level('silent'):
+      run_migration(conn, gen_migration(conn=conn, schema=old))
+      conn.execute('INSERT INTO t VALUES (1, 2, 3)')
+      stmts = gen_migration(conn=conn, schema=schema())
+      utest_val(True, stmts[0].startswith('-- Rebuilding'), f'rebuild without DROP COLUMN for {label}')
+      run_migration(conn, stmts)
+      utest([], gen_migration, conn=conn, schema=schema(), _utest_label=f'stable for {label}')
+      utest_val([(2, 3)], [tuple(r) for r in conn.execute('SELECT * FROM t')], f'rows for {label}')
+
+
+@utest_run
+def _test_drop_column_with_changed_generated_column_rebuilds() -> None:
+  'A generated column that stops referencing a dropped column changes, so the table is rebuilt without DROP COLUMN.'
+
+  def schema(*columns:Column, virtual:str) -> Schema:
+    return Schema('main', structures=[
+      Table('t', columns=(*columns, Column('b', int), Column('v', int, is_opt=True, virtual=virtual)))])
+
+  with closing(Conn(':memory:', mode='memory')) as conn, adjust_log_level('silent'):
+    run_migration(conn, gen_migration(conn=conn, schema=schema(Column('a', int), virtual='a + b')))
+    conn.execute('INSERT INTO t VALUES (1, 2)')
+    stmts = gen_migration(conn=conn, schema=schema(virtual='b + 1'))
+    utest_val(True, stmts[0].startswith('-- Rebuilding'), 'rebuild without DROP COLUMN')
+    run_migration(conn, stmts)
+    utest([], gen_migration, conn=conn, schema=schema(virtual='b + 1'))
+    utest_val([(2, 3)], [tuple(r) for r in conn.execute('SELECT b, v FROM t')])
+
+
+@utest_run
+def _test_drop_indexed_column() -> None:
+  'Stale and changed indexes are dropped before the column that they reference, and no rebuild is needed.'
+
+  def schema(*columns:Column, indexes:tuple[Index,...]) -> Schema:
+    return Schema('main', structures=[Table('t', columns=(*columns, Column('b', int), Column('c', int))), *indexes])
+
+  old = schema(Column('a', int), indexes=(
+    Index('plain_idx', table='t', columns=('a',)),
+    Index('expr_idx', table='t', columns=('a + 1',)),
+    Index('partial_idx', table='t', columns=('b',), where='a > 0'),
+    Index('changed_idx', table='t', columns=('a', 'b')),
+    Index('kept_idx', table='t', columns=('c',))))
+  new = schema(indexes=(
+    Index('changed_idx', table='t', columns=('b',)),
+    Index('kept_idx', table='t', columns=('c',))))
+
+  with closing(Conn(':memory:', mode='memory')) as conn, adjust_log_level('silent'):
+    run_migration(conn, gen_migration(conn=conn, schema=old))
+    conn.execute('INSERT INTO t VALUES (1, 2, 3)')
+    stmts = gen_migration(conn=conn, schema=new)
+    utest_val([
+      'DROP INDEX main."changed_idx"',
+      'DROP INDEX main."expr_idx"',
+      'DROP INDEX main."partial_idx"',
+      'DROP INDEX main."plain_idx"',
+    ], sorted(stmts[:4]), 'index drops come first')
+    utest_val(['-- Dropping column "a".', 'ALTER TABLE main."t" DROP COLUMN "a"', 'CREATE INDEX main."changed_idx"\n  ON "t" (b)'],
+      stmts[4:])
+    run_migration(conn, stmts)
+    utest([], gen_migration, conn=conn, schema=new)
+    utest_val([(2, 3)], [tuple(r) for r in conn.execute('SELECT * FROM t')])
 
 
 @utest_run

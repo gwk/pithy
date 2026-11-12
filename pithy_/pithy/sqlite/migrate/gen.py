@@ -48,7 +48,6 @@ def gen_migration(*, conn:Conn, schema:Schema) -> list[str]:
     try:
       old_sql = old_table_sqls.get(table.name)
       needs_rebuild, table_stmts = gen_table_migration(schema_name=schema.name, qname=qname, new=table, old=old_sql)
-      stmts.extend(table_stmts)
 
       old_deps = dict((row.name, row) for row in
         c.run(f'''
@@ -58,12 +57,18 @@ def gen_migration(*, conn:Conn, schema:Schema) -> list[str]:
 
       new_deps = schema.table_deps[table.name]
 
-      stmts.extend(
-        gen_deps_migration(schema_name=schema.name, new_deps=new_deps, old_deps=old_deps, needs_rebuild=needs_rebuild))
-      #^ Dependents are emitted per table, interleaved with the table changes. This is sound for indexes,
-      # which reference only their own table. Triggers and views can reference other tables,
-      # and SQLite rejects some ALTER TABLE statements while any trigger or view has an unresolved reference.
-      # Supporting them requires two phases: drop stale dependents before all table changes, and create new ones afterwards.
+      dep_drops, dep_creates = gen_deps_migration(
+        schema_name=schema.name, new_deps=new_deps, old_deps=old_deps, needs_rebuild=needs_rebuild)
+      stmts.extend(dep_drops)
+      stmts.extend(table_stmts)
+      stmts.extend(dep_creates)
+      #^ Dependents are emitted per table, around the table changes.
+      #^ The drops come first because SQLite refuses to drop a column that an index references.
+      #^ The creates come last because they can reference added or renamed columns.
+      #^ This is sound for indexes, which reference only their own table.
+      #^ Triggers and views can reference other tables,
+      #^ and SQLite rejects some ALTER TABLE statements while any trigger or view has an unresolved reference.
+      #^ Supporting them requires two phases: drop stale dependents before all table changes, and create new ones afterwards.
 
     except Exception as e:
       e.add_note(f'Failed to generate migration for table {qname}.')
@@ -141,20 +146,23 @@ def gen_table_migration(*, schema_name:str, qname:str, new:Table, old:str|Table|
         ' separate these into two migration steps.')
     return False, gen_rename_columns(qname=qname, new=new, old=old, matched_cols=matched_cols)
 
-  stmts = []
+  drop_stmts = []
+  add_stmts = []
   rebuild_reasons = []
   cols = list(old.columns)
 
   # Drop columns.
   for col in sorted(removed, key=lambda c: not c.virtual): # Drop virtual columns first in case of dependency.
-    stmts.append(f'-- Dropping column {qea(col.name)}.')
-    stmts.append(f'ALTER TABLE {qname} DROP COLUMN {qea(col.name)}')
+    drop_stmts.append(f'-- Dropping column {qea(col.name)}.')
+    drop_stmts.append(f'ALTER TABLE {qname} DROP COLUMN {qea(col.name)}')
+    if constraint := undroppable_constraint_for(table=old, col=col):
+      rebuild_reasons.append(f'dropped column {qea(col.name)} is {constraint}')
     cols.remove(col)
 
   # Add columns.
   for col in sorted(added, key=lambda c: bool(c.virtual)): # Add virtual columns last in case of dependency.
-    stmts.append(f'-- Adding column {qea(col.name)}.')
-    stmts.append(f'ALTER TABLE {qname} ADD COLUMN {col.sql()}')
+    add_stmts.append(f'-- Adding column {qea(col.name)}.')
+    add_stmts.append(f'ALTER TABLE {qname} ADD COLUMN {col.sql()}')
     if not col.is_opt and col.default is None:
       rebuild_reasons.append(f'Added column {qea(col.name)} is not optional and has no default value.')
     cols.append(col)
@@ -169,6 +177,10 @@ def gen_table_migration(*, schema_name:str, qname:str, new:Table, old:str|Table|
   rebuild_reasons.extend(table_rebuild_reasons(new=new, old=old))
 
   needs_rebuild = bool(rebuild_reasons)
+  stmts = add_stmts if needs_rebuild else drop_stmts + add_stmts
+  #^ A rebuild copies only the new columns, so it drops the removed columns itself.
+  #^ Omitting the DROP COLUMN statements matters when SQLite would refuse them:
+  #^ a column cannot be dropped while a constraint or a generated column references it.
   if needs_rebuild:
     stmts.append(f'-- Rebuilding {qname} due to {", ".join(rebuild_reasons)}.')
     stmts.extend(gen_table_rebuild(schema_name=schema_name, qname=qname, new=new, old=old))
@@ -188,6 +200,17 @@ def table_rebuild_reasons(*, new:Table, old:Table, renames:dict[str,str]|None=No
   if new.without_rowid != old.without_rowid: reasons.append('without_rowid')
   if new.primary_key != tuple(renames.get(n, n) for n in old.primary_key): reasons.append('primary_key')
   return reasons
+
+
+def undroppable_constraint_for(*, table:Table, col:Column) -> str:
+  '''
+  Name the constraint that prevents ALTER TABLE from dropping the column, or return the empty string.
+
+  SQLite refuses to drop a column that is unique or part of a primary key. Removing such a column requires a rebuild.
+  '''
+  if col.is_primary or col.name in table.primary_key: return 'primary key'
+  if col.is_unique: return 'unique'
+  return ''
 
 
 def gen_rename_columns(*, qname:str, new:Table, old:Table, matched_cols:dict[str,Column]) -> list[str]:
@@ -237,12 +260,17 @@ def gen_table_rebuild(*, schema_name:str, qname:str, new:Table, old:Table) -> li
 
 
 def gen_deps_migration(*, schema_name:str, new_deps:tuple[TableDepStructure,...], old_deps:dict[str,Row],
- needs_rebuild:bool) -> list[str]:
+ needs_rebuild:bool) -> tuple[list[str],list[str]]:
   '''
-  Steps 8-9: reconstruct all indexes, triggers, and views associated with the table.
+  Generate the statements that update the indexes of a table, as a tuple of (drops, creates).
+
+  The drops remove indexes that are stale or changed; the creates define indexes that are new or changed.
+  For a rebuild there are no drops and every index is created, because dropping the old table removes its indexes.
+  The caller orders these statements around the table statements; see `gen_migration`.
   '''
 
-  stmts = []
+  drops:list[str] = []
+  creates:list[str] = []
 
   # Schema cannot declare triggers yet, so every existing trigger is undeclared and says nothing about developer intent.
   # Report and skip them; never generate a drop.
@@ -257,20 +285,21 @@ def gen_deps_migration(*, schema_name:str, new_deps:tuple[TableDepStructure,...]
       logW('Skipping unmanaged trigger; schemas do not support triggers yet.', trigger=name, schema=schema_name)
   old_deps = {name: dep for name, dep in old_deps.items() if dep.type != 'trigger'}
 
+  if needs_rebuild: old_deps = {}
+
   new_names = set(dep.name for dep in new_deps)
   for name, dep in old_deps.items():
     if name not in new_names:
-      stmts.append(f'DROP {dep.type.upper()} IF EXISTS {schema_name}.{qea(name)}')
-      #^ Use IF EXISTS because the structure may have been dropped by a table rebuild.
+      drops.append(f'DROP {dep.type.upper()} {schema_name}.{qea(name)}')
 
   for new in new_deps:
     new_sql = new.sql(comments=False) # Note: the sql we use for comparison has no schema name.
     if old := old_deps.get(new.name):
-      if not needs_rebuild and old.sql == new_sql: continue
+      if old.sql == new_sql: continue
       #^ This comparison requires that the rendered SQL exactly match the text stored in sqlite_schema.
       # That holds for indexes. Trigger bodies are free-form SQL, so trigger support needs a rendering that round-trips exactly;
       # otherwise every generation will drop and recreate each trigger.
-      stmts.append(f'DROP {old.type.upper()} IF EXISTS {schema_name}.{qea(old.name)}')
-    stmts.append(new.sql(schema=schema_name, comments=False)) # Note: the SQL we execute does have an explicit schema name.
+      drops.append(f'DROP {old.type.upper()} {schema_name}.{qea(old.name)}')
+    creates.append(new.sql(schema=schema_name, comments=False)) # Note: the SQL we execute does have an explicit schema name.
 
-  return stmts
+  return drops, creates
