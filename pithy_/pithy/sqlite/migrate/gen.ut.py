@@ -5,7 +5,7 @@ from typing import Any
 
 from pithy.logs import adjust_log_level
 from pithy.sqlite.conn import Conn
-from pithy.sqlite.migrate.gen import find_undeclared, gen_migration, GenMigrationError
+from pithy.sqlite.migrate.gen import find_undeclared, gen_migration, GenMigrationError, parse_stored_table
 from pithy.sqlite.migrate.transaction import run_migration
 from pithy.sqlite.schema import Column, Index, Schema, Table
 from utest import utest, utest_exc, utest_run, utest_val
@@ -181,6 +181,21 @@ def _test_drop_indexed_column() -> None:
     run_migration(conn, stmts)
     utest([], gen_migration, conn=conn, schema=new)
     utest_val([(2, 3)], [tuple(r) for r in conn.execute('SELECT * FROM t')])
+
+
+@utest_run
+def _test_generated_defaults_are_readable() -> None:
+  'A table created from generated SQL parses back to the declared table, for each form of default that `gen` renders.'
+  defaults:list[tuple[type,Any]] = [(int, 0), (int, -1), (float, 1.5), (float, -1.5), (float, 1e-09), (float, 1e+16), (str, ''),
+    (str, "'a'"), (str, 'CURRENT_TIMESTAMP'), (str, "('a' || 'b')")]
+  with closing(Conn(':memory:', mode='memory')) as conn:
+    for datatype, default in defaults:
+      table = Table('t', is_strict=True, columns=(
+        Column('id', int, is_primary=True, is_unique=True), Column('v', datatype, default=default)))
+      conn.execute(table.sql(comments=False))
+      stored_sql = conn.execute("SELECT sql FROM sqlite_schema WHERE name = 't'").one_col()
+      utest(table, parse_stored_table, 't', stored_sql, schema_name='main')
+      conn.execute('DROP TABLE t')
 
 
 @utest_run

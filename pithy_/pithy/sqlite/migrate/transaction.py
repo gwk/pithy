@@ -13,13 +13,20 @@ from .. import Conn, Cursor
 class MigrationError(Exception): pass
 
 
+class _TrialRollback(Exception):
+  'Raised inside `migration_transaction` to roll back a trial once its checks have passed.'
+
+
 @contextmanager
-def migration_transaction(conn:Conn, *, max_errors:int=100) -> Iterator[Cursor]:
+def migration_transaction(conn:Conn, *, max_errors:int=100, trial:bool=False) -> Iterator[Cursor]:
   '''
   Scaffolding for the 12-step migration process: https://www.sqlite.org/lang_altertable.html#making_other_kinds_of_table_schema_changes.
   Disables foreign keys (step 1), opens a single immediate transaction (step 2), yields a cursor for steps 4-9,
   runs the foreign_key_check (step 10) just before commit (step 11), and restores foreign keys (step 12).
   The PRAGMA foreign_keys toggle must occur outside any transaction, which is why it brackets the `with conn:` block.
+
+  When `trial` is true, the transaction is rolled back after the foreign_key_check passes, so the database is left unchanged.
+  Effects that a migration has outside the database are not undone.
   '''
   conn.run_effect('PRAGMA foreign_keys = OFF') # 1. TODO: query and save; only turn off if they are on.
   try:
@@ -29,6 +36,8 @@ def migration_transaction(conn:Conn, *, max_errors:int=100) -> Iterator[Cursor]:
       c = conn.cursor()
       yield c # 4-9.
       run_migration_check(c, 'foreign_key_check', max_errors=max_errors) # 10. Check for foreign key errors.
+      if trial: raise _TrialRollback
+  except _TrialRollback: pass
   finally:
     conn.run_effect('PRAGMA foreign_keys = ON') # 12. TODO: only turn on if they were originally on.
 

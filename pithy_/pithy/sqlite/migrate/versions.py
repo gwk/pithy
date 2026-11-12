@@ -17,7 +17,7 @@ from ...path import path_join, split_stem_ext
 from .. import Conn, Cursor
 from ..database import Database, DbConfig, set_all_user_versions
 from ..schema import Schema
-from .gen import gen_migration
+from .gen import find_unreadable_tables, gen_migration, GenMigrationError
 from .transaction import migration_transaction, MigrationError
 
 
@@ -141,7 +141,8 @@ def check_migrations(migrations:types.ModuleType|str) -> list[MigrationFile]:
 
 
 def run_versioned_migrations(conn:Conn, migrations:types.ModuleType|str, *, target_version:int,
- schemas:Iterable[Schema]|None=None, db_names:Iterable[str]=('main',), rerun:bool=False, dry_run:bool=False) -> None:
+ schemas:Iterable[Schema]|None=None, db_names:Iterable[str]=('main',), rerun:bool=False, dry_run:bool=False,
+ trial:bool=False) -> None:
   '''
   Run pending versioned migrations from the migrations package up to target_version.
 
@@ -159,10 +160,20 @@ def run_versioned_migrations(conn:Conn, migrations:types.ModuleType|str, *, targ
 
   Raises MigrationError if the DB is ahead of target_version or if any required version is missing.
 
-  If schemas is provided and the target is the latest migration version, the database is diffed against the schemas
-  after migration and any remaining drift is reported as a warning:
+  Before commit, the stored definition of every table in db_names is checked with `check_tables_readable`.
+  If a table that the schemas declare is unreadable at that point, MigrationError is raised and the run rolls back.
+  This applies whether the run made the table unreadable or it was unreadable beforehand.
+  A batch that repairs such a table passes, because only the state after the batches is checked.
+
+  If schemas is provided and the target is the latest migration version, the database is also diffed against the schemas
+  before commit and any remaining drift is reported as a warning:
   the migration files should produce exactly the declared schemas.
+
+  trial runs the pending batches and all of the checks, prints the statements of any remaining drift, and then rolls back.
+  It is for iterating on a migration without a restore between attempts.
+  Effects that a migration has outside the database are not undone.
   '''
+  if trial and dry_run: raise MigrationError('trial and dry_run are mutually exclusive.')
   pkg_name, mig_dir = resolve_migrations(migrations)
   files = find_migrations(mig_dir)
   c = conn.cursor()
@@ -177,6 +188,11 @@ def run_versioned_migrations(conn:Conn, migrations:types.ModuleType|str, *, targ
   if latest > target_version:
     logW('Migration files exist beyond the target version; should the configured user_version be bumped?',
       latest=latest, target=target_version)
+
+  schemas_list = None if schemas is None else list(schemas)
+  check_schemas = schemas_list if (schemas_list is not None and target_version == latest) else []
+  #^ Drift is only meaningful at the latest version, which is the one that the declared schemas describe.
+  drift:list[str] = []
 
   batches = {v: list(g) for v, g in groupby(files, key=lambda f: f.version)}
   pending:list[tuple[int,list[MigrationFile]]] = []
@@ -210,26 +226,62 @@ def run_versioned_migrations(conn:Conn, migrations:types.ModuleType|str, *, targ
     else:
       logI('Running versioned migrations.', target=target_version)
       try:
-        with migration_transaction(conn) as mc:
+        with migration_transaction(conn, trial=trial) as mc:
           for v, batch in pending:
             for mf in batch:
               logI(f'Running migration {mf.name}.')
               run_migration_file(mc, pkg_name, mf)
             set_all_user_versions(mc, db_names_list, v)
+          check_tables_readable(mc, db_names_list, schemas_list)
+          drift = find_drift(conn, check_schemas)
       except Exception as e:
         logE('Migration failed.', exc=e)
         raise
-      logI('Versioned migrations complete.', version=target_version)
+      if trial: logI('Trial complete; all changes were rolled back.', version=stored_version)
+      else: logI('Versioned migrations complete.', version=target_version)
   else:
     logI('No pending versioned migrations.', version=stored_version)
+    if dry_run: return
+    check_tables_readable(conn.cursor(), db_names_list, schemas_list)
+    drift = find_drift(conn, check_schemas)
 
-  if schemas is None or dry_run or target_version != latest: return
+  if n := sum(not s.startswith('--') for s in drift):
+    if trial:
+      for stmt in drift: print(stmt + ('' if stmt.startswith('--') else ';'))
+      logW(f'Database does not match the declared schemas after migration ({n} statements). '
+        'The migration files are incomplete or the database has drifted; the differences are printed above.')
+    else:
+      logW(f'Database does not match the declared schemas after migration ({n} statements). '
+        'The migration files are incomplete or the database has drifted; run `sync -dry-run` to view the differences.')
 
-  # Drift check: after migrating to the latest version, the database should match the declared schemas exactly.
-  drift = [s for schema in schemas for s in gen_migration(conn=conn, schema=schema) if not s.startswith('--')]
-  if drift:
-    logW(f'Database does not match the declared schemas after migration ({len(drift)} statements). '
-      'The migration files are incomplete or the database has drifted; run `sync -dry-run` to view the differences.')
+
+def check_tables_readable(c:Cursor, db_names:Iterable[str], schemas:Iterable[Schema]|None) -> None:
+  '''
+  Raise MigrationError if the schema parser cannot read a table that the schemas declare; see `find_unreadable_tables`.
+
+  The generator cannot diff an unreadable declared table, so later migrations could not be generated or checked for drift.
+  An unreadable table that no schema declares is reported as a warning, because the generator never reads it.
+  If schemas is None then no table is declared, so every unreadable table is reported as a warning.
+  '''
+  declared = {(schema.name, table.name) for schema in (schemas or ()) for table in schema.tables}
+  errors = []
+  for key, reason in find_unreadable_tables(c, db_names).items():
+    if key in declared: errors.append(reason)
+    else: logW('An undeclared table has a stored definition that the schema parser cannot read.', reason=reason)
+  if errors:
+    raise MigrationError('\n'.join(('The database contains declared tables that the schema parser cannot read.', *errors,
+      'Rewrite each table definition in the form that `gen` produces, or extend the parser.')))
+
+
+def find_drift(conn:Conn, schemas:Iterable[Schema]) -> list[str]:
+  '''
+  Return the statements that would migrate the database to the declared schemas; the database should already match exactly.
+  If the generator cannot express the difference, this is reported as a warning.
+  '''
+  try: return [s for schema in schemas for s in gen_migration(conn=conn, schema=schema)]
+  except GenMigrationError as e:
+    logW('The drift check could not be completed.', error='\n'.join((str(e), *getattr(e, '__notes__', ()))))
+    return []
 
 
 def sync_database(migrations:types.ModuleType|str, *, config:DbConfig|None=None, schemas:Iterable[Schema],
@@ -242,9 +294,14 @@ def sync_database(migrations:types.ModuleType|str, *, config:DbConfig|None=None,
   ported to this system); it is not part of the normal workflow, which authors versioned migrations with gen.
   With an empty migrations package it bootstraps: the database is moved to the declared schemas at version 0.
 
+  Before commit, the stored definition of every table is checked with `check_tables_readable`.
+  Generated definitions should always be readable, so a failure here indicates a bug in the generator or the parser.
+  A declared table that is unreadable beforehand already fails in the generator, before anything is applied.
+
   When dry_run, the statements are printed and nothing is applied.
   '''
   config = config or Database.global_config()
+  schemas = list(schemas)
   _pkg_name, mig_dir = resolve_migrations(migrations)
   version = max((f.version for f in find_migrations(mig_dir)), default=0)
   open_handle = Database.ro if dry_run else Database.rw
@@ -258,11 +315,12 @@ def sync_database(migrations:types.ModuleType|str, *, config:DbConfig|None=None,
     with migration_transaction(db.conn) as c:
       for stmt in stmts: c.execute(stmt)
       set_all_user_versions(c, config.names, version)
+      check_tables_readable(c, config.names, schemas)
   logI('Sync complete.', version=version)
 
 
 def migrate_database(migrations:types.ModuleType|str, *, config:DbConfig|None=None, target_version:int|None=None,
- schemas:Iterable[Schema]|None=None, rerun:bool=False, dry_run:bool=False) -> None:
+ schemas:Iterable[Schema]|None=None, rerun:bool=False, dry_run:bool=False, trial:bool=False) -> None:
   '''
   Open a read-write handle to the database group and run versioned migrations from the migrations package.
 
@@ -275,6 +333,7 @@ def migrate_database(migrations:types.ModuleType|str, *, config:DbConfig|None=No
   so the group stays in sync.
 
   rerun reapplies the latest batch without a restore; see `run_versioned_migrations` for the caveats.
+  trial runs the migrations and checks, then rolls back; see `run_versioned_migrations`.
 
   Locking: the handle takes the group's *shared* advisory lock, and that is sufficient.
   The migration runs inside a single immediate transaction, so SQLite locking serializes it against concurrent writers.
@@ -289,7 +348,7 @@ def migrate_database(migrations:types.ModuleType|str, *, config:DbConfig|None=No
 
   with Database.rw(config) as db: # Shared advisory lock; see the docstring for why exclusive is not required.
     run_versioned_migrations(db.conn, migrations, target_version=target_version, schemas=schemas, db_names=config.names,
-      rerun=rerun, dry_run=dry_run)
+      rerun=rerun, dry_run=dry_run, trial=trial)
 
 
 def generate_migration_file(conn:Conn, migrations:types.ModuleType|str, schemas:Iterable[Schema], *,

@@ -78,9 +78,14 @@ def utest_migrate_error(exp:str, *args:Any, **kwargs:Any) -> None:
 
 
 def check_records(pkg:str, config:DbConfig|None=None) -> list[JsonDict]:
+  return migrate_records(pkg, config=config, argv=['check'])
+
+
+def migrate_records(pkg:str, **kwargs:Any) -> list[JsonDict]:
+  'Run main_migrate and return its log records.'
   output = StringIO()
   with redirect_stdout(output), patch('pithy.logs.render_log_fn', render_log_json), adjust_log_level('info'):
-    main_migrate(pkg, config=config, argv=['check'])
+    main_migrate(pkg, **kwargs)
   return [loads(line) for line in output.getvalue().splitlines()]
 
 
@@ -219,6 +224,94 @@ def _test_run_rerun_guards() -> None:
         argv=['run', '-rerun', '-target', '1'])
 
 
+def user_version(config:DbConfig) -> int:
+  with Database.ro(config) as db: return db.conn.cursor().user_version()
+
+
+# run: a migration that leaves a declared table that the schema parser cannot read is rolled back,
+# along with the batches before it.
+@utest_run
+def _test_run_unreadable_declared_table_rolls_back() -> None:
+  with tempfile.TemporaryDirectory() as root, migrations_pkg() as (pkg, d):
+    config = make_group_config(root, user_version=2)
+    write_migration(d, 'm0001_widgets.sql', 'CREATE TABLE widgets (id INTEGER PRIMARY KEY);')
+    write_migration(d, 'm0002_gadgets.sql', 'CREATE TABLE aux.gadgets (id INTEGER PRIMARY KEY, n INTEGER CHECK (n > 0));')
+    schema = Schema('aux', structures=[
+      Table('gadgets', columns=(Column('id', int, is_primary=True, is_unique=True), Column('n', int, is_opt=True)))])
+    with adjust_log_level('silent'):
+      utest_migrate_error("Table aux.gadgets has a stored definition that cannot be read: Column 'n': CHECK constraints",
+        pkg, config=config, schemas=[schema], argv=['run'])
+      utest_val([], table_names(config, 'main') + table_names(config, 'aux'), 'no tables created')
+      utest_val(0, user_version(config), 'user_version unchanged')
+
+
+# run and check: a declared table that was already unreadable blocks migration until a batch repairs it.
+@utest_run
+def _test_run_preexisting_unreadable_declared_table() -> None:
+  with tempfile.TemporaryDirectory() as root, migrations_pkg() as (pkg, d):
+    config = make_group_config(root, user_version=1)
+    write_migration(d, 'm0001_widgets.sql', 'CREATE TABLE widgets (id INTEGER PRIMARY KEY);')
+    schema = Schema('main', structures=[
+      Table('legacy', columns=(Column('n', int, is_opt=True),)),
+      Table('widgets', columns=(Column('id', int, is_primary=True, is_unique=True),))])
+    with adjust_log_level('silent'):
+      with Database.rw(config) as db: db.conn.execute('CREATE TABLE legacy (n INTEGER CHECK (n > 0))')
+      utest_migrate_error('Table main.legacy has a stored definition that cannot be read',
+        pkg, config=config, schemas=[schema], argv=['run'])
+      utest_val(['legacy'], table_names(config), 'migration rolled back')
+      utest_val(0, user_version(config), 'user_version unchanged')
+      utest_migrate_error('Table main.legacy has a stored definition that cannot be read',
+        pkg, config=config, schemas=[schema], argv=['check'])
+
+      write_migration(d, 'm0001_repair_legacy.sql', 'DROP TABLE legacy; CREATE TABLE legacy (n INTEGER);')
+      main_migrate(pkg, config=config, schemas=[schema], argv=['run'])
+      utest_val(['legacy', 'widgets'], table_names(config), 'repairing batch applied')
+      utest_val(1, user_version(config), 'user_version advanced')
+      main_migrate(pkg, config=config, schemas=[schema], argv=['check'])
+
+
+# run and check: an unreadable table that no schema declares is reported as a warning and does not block migration.
+@utest_run
+def _test_run_unreadable_undeclared_table_warns() -> None:
+  with tempfile.TemporaryDirectory() as root, migrations_pkg() as (pkg, d):
+    config = make_group_config(root, user_version=1)
+    write_migration(d, 'm0001_widgets.sql', 'CREATE TABLE widgets (id INTEGER PRIMARY KEY);')
+    schema = Schema('main', structures=[Table('widgets', columns=(Column('id', int, is_primary=True, is_unique=True),))])
+    reason = "Table main.legacy has a stored definition that cannot be read: Column 'n': CHECK constraints are not supported."
+    with adjust_log_level('silent'), Database.rw(config) as db:
+      db.conn.execute('CREATE TABLE legacy (n INTEGER CHECK (n > 0))')
+    for schemas in ([schema], None): # Without schemas no table is declared.
+      for command in ('run', 'check'):
+        records = migrate_records(pkg, config=config, schemas=schemas, argv=[command])
+        warnings = [r['reason'] for r in records if r['level'] == 'warn' and 'reason' in r]
+        utest_val([reason], warnings, f'{command} warnings; schemas={schemas}')
+    utest_val(['legacy', 'widgets'], table_names(config), 'migration applied')
+    utest_val(1, user_version(config), 'user_version advanced')
+
+
+# run -trial: runs the migrations and checks, prints the remaining drift, and leaves the database unchanged.
+@utest_run
+def _test_run_trial() -> None:
+  with tempfile.TemporaryDirectory() as root, migrations_pkg() as (pkg, d):
+    config = make_group_config(root, user_version=1)
+    write_migration(d, 'm0001_widgets.sql', 'CREATE TABLE widgets (id INTEGER PRIMARY KEY NOT NULL) STRICT;')
+    schema = Schema('main', structures=[
+      Table('widgets', is_strict=True, columns=(Column('id', int, is_primary=True, is_unique=True),)),
+      Table('gadgets', is_strict=True, columns=(Column('id', int, is_primary=True, is_unique=True),))])
+    output = StringIO()
+    with adjust_log_level('silent'):
+      with redirect_stdout(output):
+        main_migrate(pkg, config=config, schemas=[schema], argv=['run', '-trial'])
+      utest_val('CREATE TABLE main."gadgets" (\n  id INTEGER PRIMARY KEY NOT NULL\n) STRICT;\n', output.getvalue())
+      utest_val([], table_names(config), 'trial rolled back')
+      utest_val(0, user_version(config), 'user_version unchanged')
+
+      write_migration(d, 'm0001_widgets.sql', 'CREATE TABLE widgets (id INTEGER PRIMARY KEY AUTOINCREMENT);')
+      utest_migrate_error('AUTOINCREMENT is not supported', pkg, config=config, schemas=[schema], argv=['run', '-trial'])
+      utest_migrate_error('mutually exclusive', pkg, config=config, argv=['run', '-trial', '-dry-run'])
+      utest_val([], table_names(config), 'failed trial rolled back')
+
+
 # sync: automigrates the database to the declared schemas and stamps user_version to the latest migration version.
 @utest_run
 def _test_sync() -> None:
@@ -252,6 +345,31 @@ def _test_sync_bootstrap() -> None:
       utest_val(['t'], table_names(config), 'sync created the table')
       with Database.ro(config) as db:
         utest_val(0, db.conn.cursor().user_version(), 'user_version stays 0 with no migration files')
+
+
+# sync: checks that tables are readable before commit; an undeclared unreadable table is reported as a warning.
+@utest_run
+def _test_sync_checks_tables_readable() -> None:
+  schema = Schema('main', structures=[Table('t', columns=(Column('id', int, is_primary=True, is_unique=True),))])
+  with tempfile.TemporaryDirectory() as root, migrations_pkg() as (pkg, d):
+    config = make_group_config(root)
+    write_migration(d, 'm0001_a.sql', '-- placeholder; sync does not run migration files.\n')
+    with adjust_log_level('silent'), Database.rw(config) as db:
+      db.conn.execute('CREATE TABLE legacy (n INTEGER CHECK (n > 0))')
+
+    # A declared table that is unreadable after the statements are applied fails the sync, which rolls back.
+    unreadable = {('main', 't'): 'Table main.t has a stored definition that cannot be read: simulated.'}
+    with patch('pithy.sqlite.migrate.versions.find_unreadable_tables', return_value=unreadable), adjust_log_level('silent'):
+      utest_migrate_error('Table main.t has a stored definition that cannot be read: simulated.',
+        pkg, config=config, schemas=[schema], argv=['sync'])
+    utest_val(['legacy'], table_names(config), 'failed sync rolled back')
+    utest_val(0, user_version(config), 'user_version unchanged')
+
+    records = migrate_records(pkg, config=config, schemas=[schema], argv=['sync'])
+    utest_val(["Table main.legacy has a stored definition that cannot be read: Column 'n': CHECK constraints are not supported."],
+      [r['reason'] for r in records if r['level'] == 'warn' and 'reason' in r], 'undeclared table warning')
+    utest_val(['legacy', 't'], table_names(config), 'sync created the table')
+    utest_val(1, user_version(config), 'user_version stamped')
 
 
 # sync: without schemas raises.

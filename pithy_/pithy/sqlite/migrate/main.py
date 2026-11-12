@@ -28,7 +28,7 @@ from ..database import Database, DbConfig
 from ..schema import Schema
 from .gen import find_undeclared
 from .transaction import MigrationError
-from .versions import check_migrations, generate_migration_file, migrate_database, sync_database
+from .versions import check_migrations, check_tables_readable, generate_migration_file, migrate_database, sync_database
 
 
 def main_migrate(migrations:types.ModuleType|str, *, config:DbConfig|None=None, schemas:Iterable[Schema]|None=None,
@@ -38,8 +38,10 @@ def main_migrate(migrations:types.ModuleType|str, *, config:DbConfig|None=None, 
 
   Commands:
   * check: validate the migrations package and report the stored and latest migration versions when config is provided.
+    With config, it also fails if the database contains declared tables that the schema parser cannot read.
   * run: run all pending versioned migrations up to the target version, then check the result against the schemas.
     The -rerun flag instead reapplies the latest (presumably idempotent) batch, for quick iteration on its files.
+    The -trial flag runs the migrations and checks, then rolls back.
   * gen: generate the next versioned migration file by diffing the database against the schemas.
   * sync: automigrate the database to the current schemas and update `user_version` to the latest migration version;
     use it to reconcile a drifted database without a formal migration.
@@ -49,7 +51,7 @@ def main_migrate(migrations:types.ModuleType|str, *, config:DbConfig|None=None, 
   check without config only validates files. With config, it opens the database read-only to report its stored version;
   config.user_version is the application's expected version, not the database's current version.
 
-  A `MigrationError` raised by a command is reported as a one-line error message and a nonzero exit status.
+  A `MigrationError` raised by a command is reported as an error message without a traceback and a nonzero exit status.
   Any other exception propagates with its traceback.
   '''
 
@@ -64,16 +66,18 @@ def main_migrate(migrations:types.ModuleType|str, *, config:DbConfig|None=None, 
       logI('Checked migration files.', latest_version=latest)
       return
     with Database.ro(config) as db:
-      current = db.conn.cursor().user_version()
-    logI('Checked migrations.', current_version=current, latest_version=latest)
-    if config.user_version is not None and config.user_version != latest:
-      logW('Latest migration version does not match the configured user_version.', latest_version=latest,
-        configured_version=config.user_version)
+      c = db.conn.cursor()
+      current = c.user_version()
+      logI('Checked migrations.', current_version=current, latest_version=latest)
+      if config.user_version is not None and config.user_version != latest:
+        logW('Latest migration version does not match the configured user_version.', latest_version=latest,
+          configured_version=config.user_version)
+      check_tables_readable(c, config.names, schemas)
 
   def main_run(args:Namespace) -> None:
     'Run all pending versioned migrations, then check the result against the schemas (if provided).'
     migrate_database(migrations, config=get_config(), target_version=args.target, schemas=schemas, rerun=args.rerun,
-      dry_run=args.dry_run)
+      dry_run=args.dry_run, trial=args.trial)
 
   def main_gen(args:Namespace) -> None:
     'Generate the next versioned migration file by diffing the database against the current schemas.'
@@ -114,6 +118,9 @@ def main_migrate(migrations:types.ModuleType|str, *, config:DbConfig|None=None, 
   command_run.add_argument('-rerun', action='store_true',
     help='Reapply the latest (presumably idempotent) batch without a restore; a shortcut for iterating on its files.')
   command_run.add_argument('-dry-run', action='store_true', help='Print pending migrations without applying them.')
+  command_run.add_argument('-trial', action='store_true',
+    help='Run pending migrations and all checks, print any remaining drift, then roll back. '
+      'Effects outside the database are not undone.')
 
   command_gen = parser.add_command(main_gen)
   command_gen.add_argument('description', nargs='?', default='',

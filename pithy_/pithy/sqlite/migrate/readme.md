@@ -56,25 +56,32 @@ The script must run in the application's environment, because `.py` migrations c
   The configured `user_version` is the application's expected version; it is not used as the current database version.
   Existing warnings report attached database version mismatches and differences from the configured version.
   Missing or unreadable databases fail the check; they are not created or reported as version 0.
+  The check also fails if the schema parser cannot read the stored definition of a declared table; see "Readable tables".
   Without config, only validate the files and report `latest_version`.
-* `run [-target N] [-rerun] [-dry-run]`: run all pending versioned migrations; the target defaults to `config.user_version`.
-  After migrating to the latest version, the database is diffed against the declared schemas and any remaining drift
-  is reported as a warning: the migration files should produce exactly the declared schemas.
+* `run [-target N] [-rerun] [-dry-run] [-trial]`: run all pending versioned migrations; the target defaults to `config.user_version`.
+  Before commit, the stored definition of every table is checked; see "Readable tables".
+  If the schema parser cannot read a declared table at that point, the run fails and rolls back.
+  When migrating to the latest version, the database is also diffed against the declared schemas before commit.
+  Any remaining drift is reported as a warning: the migration files should produce exactly the declared schemas.
   `-rerun` instead reapplies the latest batch even though the stored `user_version` already covers it;
   this is a shortcut around the restore-and-run cycle for iterating on edits to the current migration.
   A failed rerun rolls back, but a successful reapply of a non-idempotent batch will corrupt the database.
+  `-trial` runs the pending batches and all of the checks, prints the statements of any remaining drift, and then rolls back.
+  Use it to iterate on a migration without a restore between attempts.
+  Effects that a `.py` migration has outside the database are not undone.
 * `gen [description]`: generate the next numbered migration file by diffing the database against the declared schemas.
   Refuses unless the database `user_version` equals the latest migration file version; see the workflow below.
 * `sync [-dry-run]`: diff the live database against the declared schemas, apply the difference, and update
   `user_version` across the group to the latest migration file version, in a single transaction.
   Sync does not run any migration files. It is useful for reconciling a drifted database or adopting an existing one.
+  Before commit, the stored definition of every table is checked, as `run` does; see "Readable tables".
 * `undeclared`: list the objects in the database that the declared schemas do not account for, one per line,
   as `<type> <schema>.<name>`; an index or trigger also names its table.
   The other commands never drop a table that was removed from a schema, so such tables remain until a migration drops them.
   This command finds them. It only reads the database, and it omits SQLite internal objects and the shadow tables of virtual tables.
 
-Expected errors, such as a version mismatch or a schema that cannot be diffed, are reported as a one-line `error:` message
-with a nonzero exit status. Any other exception propagates with its traceback.
+Expected errors, such as a version mismatch or a schema that cannot be diffed, are reported as an `error:` message
+with a nonzero exit status and no traceback. Any other exception propagates with its traceback.
 
 ## Development workflow
 
@@ -86,16 +93,42 @@ checked-in migration history. All iteration is restore-based.
 2. Edit the schema declarations in application code.
 3. Run `gen <description>`: it diffs the database against the declared schemas and writes `m<N+1>_<description>.sql`.
 4. Review (and edit if needed) the generated file. Bump the application's declared `user_version` to N+1.
-5. Run `run` and inspect the results.
-6. If the migration is wrong: restore again, then either hand-edit the file and run `run` again,
+5. Run `run -trial` until the migration passes its checks and reports no drift. A trial leaves the database unchanged.
+6. Run `run` and inspect the results.
+7. If the migration is wrong: restore again, then either hand-edit the file and run `run` again,
    or delete the file, adjust the schemas, and regenerate.
    If the batch is idempotent, `run -rerun` reapplies it without a restore.
-7. Commit the migration file together with the schema and `user_version` changes.
+8. Commit the migration file together with the schema and `user_version` changes.
 
 `gen` refuses to run unless the database `user_version` equals the latest migration file version.
 This catches the common mistakes: forgetting to restore, generating on top of an unapplied draft
 (which would stack a second pending version), and running against a database left by another branch.
 The intended state is always version N (clean) or N+1 (one draft migration in progress).
+
+### Readable tables
+
+The generator diffs a table by parsing its definition as stored in `sqlite_schema`.
+The parser supports only a subset of SQLite syntax, aimed at the definitions that `gen` produces.
+For example, it rejects CHECK constraints, foreign keys, AUTOINCREMENT, COLLATE and non-strict type names.
+A table that the parser cannot read is called unreadable.
+While a declared table is unreadable, `gen` fails and the drift check cannot be completed.
+
+`run` therefore checks every table in the group before commit, after the pending batches have run.
+The run fails if a table that the schemas declare is unreadable at that point.
+The error names the table and the unsupported syntax, and the whole run rolls back.
+`check` applies the same rule to the database as it stands, and `sync` applies it before commit.
+
+It does not matter whether the run made the table unreadable or it was unreadable beforehand.
+No further migration is applied until the table is readable.
+To repair it, add a migration that rebuilds the table in the form that `gen` produces, or extend the parser first.
+A run whose batches repair the table passes, because only the state after the batches is checked.
+
+An unreadable table that no schema declares is reported as a warning, because the generator never reads it.
+The `undeclared` command lists such tables so that a migration can drop them.
+If the migration script provides no schemas then no table is declared, and every unreadable table is a warning.
+Virtual tables, their shadow tables and SQLite internal tables are not checked.
+
+Indexes are compared as text and are not parsed. A hand-written index in a different form appears as drift.
 
 ### Descriptions
 
@@ -120,7 +153,8 @@ Run `run` during deploy. The target defaults to the application's declared `user
 A deploy that spans multiple versions replays each pending checked-in step in order;
 intermediate schemas are never recomputed, because each step's diff was generated at development time.
 Everything runs in one transaction, so a failed deploy leaves the database untouched.
-The post-run drift check warns if the migrated database does not match the declared schemas.
+The run fails if the schema parser cannot read a declared table after the migrations; see "Readable tables".
+The drift check warns if the migrated database does not match the declared schemas.
 
 `sync` is deliberately not part of the deploy path. For a database with unexpected drift
 (a manual change, or an existing database being ported to this system), reconcile explicitly:

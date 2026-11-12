@@ -7,6 +7,7 @@ from typing import Iterable, Self
 from ...iterable import joinR
 from ...logs import logW
 from ...parse import ParseError
+from ...transtruct import TranstructorError
 from .. import Conn, Cursor, Row
 from ..schema import Column, Schema, Table, TableDepStructure
 from ..util import sql_quote_entity as qe, sql_quote_entity_always as qea, sql_quote_qual_entity as qqe
@@ -107,6 +108,44 @@ def find_undeclared(*, conn:Conn, schema:Schema) -> list[tuple[str,str,str]]:
   return sorted(undeclared, key=lambda el: (el[2], el[1] != el[2], el[1]))
 
 
+def find_unreadable_tables(c:Cursor, db_names:Iterable[str]) -> dict[tuple[str,str],str]:
+  '''
+  Map each table that `parse_stored_table` cannot read to the reason. The keys are (database name, table name) pairs.
+
+  Every plain table in the named databases is checked, whether or not a schema declares it.
+  SQLite internal tables, virtual tables and their shadow tables are omitted.
+  This function only reads the database.
+  '''
+  unreadable = {}
+  for db_name in db_names:
+    if not db_name.isidentifier(): raise ValueError(f'Invalid database name: {db_name!r}')
+    table_types:dict[str,str] = dict(c.run('SELECT name, type FROM pragma_table_list WHERE schema = :name', name=db_name))
+    rows = list(c.run(f"SELECT name, sql FROM {db_name}.sqlite_schema WHERE type = 'table' ORDER BY name"))
+    for name, sql in rows:
+      if name.lower().startswith('sqlite_') or table_types.get(name) != 'table': continue
+      try: parse_stored_table(name, sql, schema_name=db_name)
+      except GenMigrationError as e: unreadable[(db_name, name)] = str(e)
+  return unreadable
+
+
+def parse_stored_table(name:str, sql:str, *, schema_name:str) -> Table:
+  '''
+  Parse a table definition as stored in sqlite_schema.
+
+  Raises GenMigrationError if the definition uses syntax that the parser or `Table` cannot represent.
+  The generator cannot diff such a table.
+  '''
+  try: return Table.parse(name + '(stored)', text=sql)
+  except ParseError as e: reason = f'parse error: {e.msg}'; exc:Exception = e
+  except (TranstructorError, NotImplementedError, ValueError) as e:
+    cause:BaseException = e
+    while cause.__context__ is not None and not isinstance(cause, NotImplementedError): cause = cause.__context__
+    #^ Transtructor errors omit the underlying message; the original exception remains available as the context.
+    # Stop at the outermost NotImplementedError, which names the column.
+    reason = str(cause); exc = e
+  raise GenMigrationError(f'Table {qqe(schema_name, name)} has a stored definition that cannot be read: {reason}') from exc
+
+
 def check_schema_attached(c:Cursor, schema_name:str) -> None:
   'Raise GenMigrationError if the connection has no database attached under schema_name.'
   if not c.run('SELECT count() FROM pragma_database_list WHERE name = :name', name=schema_name).one_col():
@@ -122,10 +161,7 @@ def gen_table_migration(*, schema_name:str, qname:str, new:Table, old:str|Table|
 
   if not old: return False, [new.sql(schema=schema_name, comments=False)]
 
-  if isinstance(old, str):
-    try: old = Table.parse(new.name + '(old)', text=old)
-    except ParseError as e: raise GenMigrationError(str(e)) from e
-
+  if isinstance(old, str): old = parse_stored_table(new.name, old, schema_name=schema_name)
 
   assert new.name == old.name
   if old == new: return False, []

@@ -502,8 +502,10 @@ def prefigure_Column(class_:TypeForm[Any], column:Input, source:Source) -> dict[
   name = sql_parse_entity(source[column.name])
   if column.type_name is None: raise ValueError(f'Column {name!r} has no type.')
   type_name = source[column.type_name]
-  datatype = strict_sqlite_to_types[type_name]
-  constraints = dict(_parse_column_constraint(cc, source) for cc in column.constraints)
+  datatype = strict_sqlite_to_types.get(type_name.upper())
+  if datatype is None: raise NotImplementedError(f'Column {name!r} has unsupported type {type_name!r}.')
+  try: constraints = dict(_parse_column_constraint(cc, source) for cc in column.constraints)
+  except NotImplementedError as e: raise NotImplementedError(f'Column {name!r}: {e}') from None
   is_primary = constraints.get('col_primary_key', False)
   is_opt = not constraints.get('not_null', False)
   is_unique = constraints.get('unique', False) or is_primary
@@ -523,28 +525,28 @@ def prefigure_Column(class_:TypeForm[Any], column:Input, source:Source) -> dict[
 
 
 def _parse_column_constraint(constraint:Input, source:Source) -> tuple[str,Any]:
-  if constraint.constraint_name is not None: raise NotImplementedError(f'column_constraint named constraint: {constraint.constraint_name!r}')
+  if constraint.constraint_name is not None: raise NotImplementedError('named column constraints are not supported.')
   kind = constraint.kind
   lbl = kind.lbl
   val = kind.val
   match lbl:
     case 'col_primary_key':
-      if val.asc_desc is not None: raise NotImplementedError(f'column_constraint primary_key asc_desc: {constraint!r}')
-      if val.on_conflict is not None: raise NotImplementedError(f'column_constraint primary_key on_conflict: {constraint!r}')
-      if val.AUTOINCREMENT is not None: raise NotImplementedError(f'column_constraint primary_key autoincrement: {constraint!r}')
+      if val.asc_desc is not None: raise NotImplementedError('PRIMARY KEY ASC/DESC is not supported.')
+      if val.on_conflict is not None: raise NotImplementedError('PRIMARY KEY ON CONFLICT is not supported.')
+      if val.AUTOINCREMENT is not None: raise NotImplementedError('AUTOINCREMENT is not supported.')
       return lbl, True
     case 'not_null' | 'unique':
       on_conflict = val
-      if on_conflict is not None: raise NotImplementedError(f'column_constraint primary_key on_conflict: {constraint!r}')
+      if on_conflict is not None: raise NotImplementedError(f'{lbl.replace("_", " ").upper()} ON CONFLICT is not supported.')
       return lbl, True
     case 'check':
-      raise NotImplementedError(f'column_constraint check: {constraint!r}')
+      raise NotImplementedError('CHECK constraints are not supported.')
     case 'default':
       default_val = unrender_column_default(val if isinstance(val, str) else source[val])
       #^ The `signed_number` rule yields its text; the other default rules yield syntax that locates the text.
       return lbl, default_val
     case 'collate':
-      raise NotImplementedError(f'column_constraint collate: {constraint!r}')
+      raise NotImplementedError('COLLATE is not supported.')
     case 'generated_constraint':
       stored_or_virtual = val.stored_or_virtual.lower()
       expr_str = source[val.expr]
@@ -553,7 +555,7 @@ def _parse_column_constraint(constraint:Input, source:Source) -> tuple[str,Any]:
       expr_str = expr_str[1:-1]
       return stored_or_virtual, expr_str
     case _:
-      raise NotImplementedError(f'column_constraint: {constraint!r}')
+      raise NotImplementedError(f'column constraint {lbl!r} is not supported.')
 
 
 
@@ -595,14 +597,14 @@ def _parse_table_constraint(constraint:Input, source:Source) -> tuple[str,Any]:
   Parse a table constraint. constraint is a TableConstraint generated struct.
   '''
   if constraint.constraint_name is not None:
-    raise NotImplementedError(f'Cannot parse constraint_name: {constraint.constraint_name!r}')
+    raise NotImplementedError('Named table constraints are not supported.')
   kind:Syn = constraint.kind # A Syn wrapper around the Choice result.
   match kind.lbl:
     case 'table_primary_key':
       indexed_cols = tuple(_parse_indexed_column(c, source) for c in kind.val.indexed_columns)
-      if kind.val.on_conflict is not None: raise NotImplementedError(f'Cannot yet parse on_conflict: {kind.val.on_conflict!r}')
+      if kind.val.on_conflict is not None: raise NotImplementedError('Table PRIMARY KEY ON CONFLICT is not supported.')
       return kind.lbl, indexed_cols
-    case _: raise NotImplementedError(f'Cannot parse table constraint {kind.lbl!r}: {constraint!r}')
+    case _: raise NotImplementedError(f'Table constraint {kind.lbl!r} is not supported.')
 
 
 @dataclass(frozen=True)
