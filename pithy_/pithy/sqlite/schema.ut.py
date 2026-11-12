@@ -1,7 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pithy.sqlite.schema import Column, Schema, Table
-from utest import utest, utest_seq
+from pithy.sqlite import Conn
+from pithy.sqlite.schema import Column, Index, Schema, Table
+from utest import utest, utest_exc, utest_run, utest_seq
 
 
 nameless = Schema('', structures=[Table('t', columns=(Column('a', int),))])
@@ -13,6 +14,22 @@ utest_seq(['\n', '-- Schema: x\n', '\n', 'CREATE TABLE x."t" (\n  a INTEGER NOT 
 utest_seq(['\n', 'CREATE TABLE x."t" (\n  a INTEGER NOT NULL\n)', ';', '\n'], nameless.sql, name='x', comments=False)
 
 utest_seq(['\n', 'CREATE TABLE "t" (\n  a INTEGER NOT NULL\n)', ';', '\n'], nameless.sql, comments=True)
+
+
+@utest_run
+def test_create() -> None:
+  'Create the structures in the main database and, by name, in an attached database.'
+  schema = Schema('x', structures=[Table('t', columns=(Column('a', int),)), Index('t_a', table='t', columns=('a',))])
+  def names(db:str) -> list[str]: return [r[0] for r in conn.run(f'SELECT name FROM {db}.sqlite_schema ORDER BY name')]
+  with Conn(':memory:', mode='memory').closing() as conn:
+    conn.run_effect("ATTACH DATABASE ':memory:' AS x")
+    schema.create(conn)
+    utest(['t', 't_a'], names, 'x')
+    utest([], names, 'main')
+    schema.create(conn, name='main')
+    utest(['t', 't_a'], names, 'main')
+    utest_exc(Exception, schema.create, conn)
+    utest(None, schema.create, conn, if_not_exists=True)
 
 
 # Signed numeric defaults parse back to the declared values.

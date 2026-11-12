@@ -13,6 +13,7 @@ from tolkien import Source
 from ..dict import dict_strict_inverse
 from ..parse import Syn
 from ..transtruct import Input, Transtructor
+from .conn import Conn
 from .keywords import sqlite_keywords
 from .parse import sql_parse_entity, sql_parser
 from .util import (nonstrict_to_strict_types_for_sqlite, sql_comment_inline, sql_comment_lines, sql_quote_entity as qe,
@@ -409,6 +410,18 @@ class Schema:
       yield s.sql(schema=name, if_not_exists=if_not_exists, comments=comments)
       yield ';'
       yield '\n'
+
+
+  def create(self, conn:Conn, *, name:str='', if_not_exists:bool=False) -> None:
+    '''
+    Create the structures in the database attached to `conn` as `name`, which defaults to the schema name.
+
+    Each structure is executed as its own statement. Use `with conn:` to make the creation atomic.
+    '''
+    name = name or self.name
+    if name and not name.isidentifier(): raise ValueError(f'Invalid schema name: {name!r}')
+    for s in self.structures:
+      conn.run_effect(s.sql(schema=name, if_not_exists=if_not_exists, comments=False))
 
 
   def write_module_sql(self, if_not_exists:bool=False, steps:int=1) -> None:
