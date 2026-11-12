@@ -143,6 +143,10 @@ iotest-full:
 
 lint: lint-py lint-rust
 
+# Report `utest_val` calls that wrap a function call. Not part of `lint` until the existing call sites are converted.
+lint-utest:
+  python3 -m utest.lint {{pkg_srcs}}
+
 # pyflakes cannot exclude paths, so the ops sources are enumerated to prune all _build directories.
 lint-py:
   python3 -m pyflakes {{pkg_srcs}} legs_/langs legs_/perf/compile.py legs_/perf/run.py $(find ops -type d -name _build -prune -o -name '*.py' -print) tap_backblaze_/test-integration test-diff tools

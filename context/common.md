@@ -242,6 +242,11 @@ This project targets Python 3.15+ on modern Unix platforms. Windows is not suppo
 ## Unit Tests
 * Write unit tests using our own library `utest`.
 * Read the entirety of `utest/__init__.py` as context for writing tests.
+* Use the appropriate `utest` function for each case:
+  * When the value under test is the result of a single call, use the calling forms like `utest(exp, fn, *args)`;
+    those report arguments on failure and keep an exception in `fn` from aborting the rest of the file.
+  * Reserve `utest_val` for values that are not the result of a single call, such as attributes and state checks.
+  * `python3 -m utest.lint [paths...]` checks for misuse.
 * Unit tests have the compound suffix `.ut.py` and should be placed in the source tree next to the module under test.
 * If there is no sensible place in the source tree they can be placed somewhere reasonable in `test/` instead.
 * Individual unit tests can be executed with `python` directly; use `python -m utest [directories...]` to find and run tests.

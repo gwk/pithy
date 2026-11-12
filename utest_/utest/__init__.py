@@ -23,6 +23,20 @@ but with more flexible expectations and the ability to print out the argument an
 * `utest_val`, `utest_val_ne`, and `utest_val_type` are like `utest`, but with a custom description and no function under test;
   they are intended for cases where a value has already been produced and there is no function to call.
 
+When writing a test of a single call, pass the function and its arguments to `utest` or a sibling.
+The calling forms have two advantages over `utest_val`:
+* A failure report lists every argument next to the expected and returned values.
+  This matters most when the arguments are computed, as in a loop, because the source line does not show them.
+* An exception raised by `fn` is caught and reported as a failure of that one test.
+  In `utest_val(exp, fn(x))` the call runs before `utest_val` does, so the exception aborts the remaining tests in the file.
+
+Use `utest_val` and `utest_val_ne` functions for equality tests, typically to check state after an action.
+Do not wrap the value under test in a lambda only to use `utest`; the report would have no arguments to show.
+Note that attributes, subscripts, and other object details can be tested using the calling forms via "dunder" methods;
+whether this is more appropriate than a utest_val mostly depends on whether it is the dunder implementation itself being tested.
+
+`python3 -m utest.lint` reports `utest_val` calls that wrap a function call.
+
 Most of the test functions accept an optional `_utest_label` keyword argument that labels the test case in failure output.
 This is useful for distinguishing iterations when the same function is tested with many arguments in a loop.
 
