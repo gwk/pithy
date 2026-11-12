@@ -172,6 +172,7 @@ def run_versioned_migrations(conn:Conn, migrations:types.ModuleType|str, *, targ
   trial runs the pending batches and all of the checks, prints the statements of any remaining drift, and then rolls back.
   It is for iterating on a migration without a restore between attempts.
   Effects that a migration has outside the database are not undone.
+  trial combined with rerun rehearses the rerun, without the risk that a non-idempotent batch corrupts the database.
   '''
   if trial and dry_run: raise MigrationError('trial and dry_run are mutually exclusive.')
   pkg_name, mig_dir = resolve_migrations(migrations)

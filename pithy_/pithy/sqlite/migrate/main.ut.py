@@ -312,6 +312,22 @@ def _test_run_trial() -> None:
       utest_val([], table_names(config), 'failed trial rolled back')
 
 
+# run -rerun -trial: reapplies the latest batch and rolls back, so a batch that is not idempotent leaves no trace.
+@utest_run
+def _test_run_rerun_trial() -> None:
+  with tempfile.TemporaryDirectory() as root, migrations_pkg() as (pkg, d):
+    config = make_group_config(root, user_version=2)
+    write_migration(d, 'm0001_widgets.sql', 'CREATE TABLE widgets (id INTEGER PRIMARY KEY);')
+    write_migration(d, 'm0002_seed.sql', 'INSERT INTO widgets DEFAULT VALUES;')
+    with adjust_log_level('silent'): main_migrate(pkg, config=config, argv=['run'])
+    records = migrate_records(pkg, config=config, argv=['run', '-rerun', '-trial'])
+    utest_val(['Running versioned migrations.', 'Running migration m0002_seed.', 'Trial complete; all changes were rolled back.'],
+      [r['_'] for r in records], 'the batch was reapplied')
+    with Database.ro(config) as db:
+      utest_val(1, next(iter(db.conn.execute('SELECT count(*) FROM widgets')))[0], 'rerun trial rolled back')
+    utest_val(2, user_version(config), 'user_version unchanged')
+
+
 # run: an unexpected exception in the drift check is logged and does not roll back the migration.
 @utest_run
 def _test_run_drift_check_failure_does_not_roll_back() -> None:

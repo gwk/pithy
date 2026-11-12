@@ -70,6 +70,9 @@ The script must run in the application's environment, because `.py` migrations c
   `-trial` runs the pending batches and all of the checks, prints the statements of any remaining drift, and then rolls back.
   Use it to iterate on a migration without a restore between attempts.
   Effects that a `.py` migration has outside the database are not undone.
+  `-rerun -trial` rehearses a rerun: it reapplies the latest batch, runs the checks and rolls back,
+  so a batch that is not idempotent cannot corrupt the database.
+  The result describes the batch applied on top of its own earlier result, so it is only meaningful for an idempotent batch.
 * `gen [description]`: generate the next numbered migration file by diffing the database against the declared schemas.
   Refuses unless the database `user_version` equals the latest migration file version; see the workflow below.
 * `sync [-dry-run]`: diff the live database against the declared schemas, apply the difference, and update
@@ -87,18 +90,18 @@ with a nonzero exit status and no traceback. Any other exception propagates with
 ## Development workflow
 
 The dev database is kept in a known state: restored from a backup of production, and therefore matching the
-checked-in migration history. All iteration is restore-based.
+checked-in migration history. `run -trial` iterates without changing it; once a migration is committed, the way back is a restore.
 
 1. Restore the dev database from production (or the cached local copy of it). It is now at version N,
    with migrations m1..mN applied. If teammate migrations are pending after a pull, run `run` first.
 2. Edit the schema declarations in application code.
 3. Run `gen <description>`: it diffs the database against the declared schemas and writes `m<N+1>_<description>.sql`.
 4. Review (and edit if needed) the generated file. Bump the application's declared `user_version` to N+1.
-5. Run `run -trial` until the migration passes its checks and reports no drift. A trial leaves the database unchanged.
+5. Run `run -trial` until the migration passes its checks and reports no drift. A trial leaves the database unchanged,
+   so the file can be edited, or deleted and regenerated, between attempts without a restore.
 6. Run `run` and inspect the results.
-7. If the migration is wrong: restore again, then either hand-edit the file and run `run` again,
-   or delete the file, adjust the schemas, and regenerate.
-   If the batch is idempotent, `run -rerun` reapplies it without a restore.
+7. If the committed results show that the migration is wrong: restore again and return to step 5.
+   If the batch is idempotent, `run -rerun` reapplies it without a restore; rehearse it first with `run -rerun -trial`.
 8. Commit the migration file together with the schema and `user_version` changes.
 
 `gen` refuses to run unless the database `user_version` equals the latest migration file version.
@@ -145,8 +148,9 @@ For migrations that transform existing data, especially semantic fixes written i
 
 1. Author the batch for version N+1: the generated `.sql` for structural changes,
    plus hand-written `.py` files for the data transformations, sharing the same version number.
-2. Run `run` and inspect the results.
-3. To iterate: restore (back to version N) and run again; or, if the batch is idempotent, `run -rerun` skips the restore.
+2. Run `run -trial` until the batch passes its checks. A trial rolls back, so it cannot be used to inspect the transformed data.
+3. Run `run` and inspect the results.
+4. To iterate: restore (back to version N) and run again; or, if the batch is idempotent, `run -rerun` skips the restore.
 
 ## Deployment
 
