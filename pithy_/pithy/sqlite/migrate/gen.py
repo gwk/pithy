@@ -24,6 +24,12 @@ class GenMigrationError(MigrationError):
 
 
 def gen_migration(*, conn:Conn, schema:Schema) -> list[str]:
+  '''
+  Generate the statements that migrate the attached database to the declared schema.
+
+  Descriptions are omitted from the generated statements; see `Structure.sql`.
+  Description changes therefore never produce a migration.
+  '''
 
   if not schema.name.isidentifier(): raise ValueError(f'Invalid schema name: {schema.name!r}')
 
@@ -109,7 +115,7 @@ def gen_table_migration(*, schema_name:str, qname:str, new:Table, old:str|Table|
   This represents steps 4-9 of the recommended 12 step migration process.
   '''
 
-  if not old: return False, [new.sql(schema=schema_name)]
+  if not old: return False, [new.sql(schema=schema_name, comments=False)]
 
   if isinstance(old, str):
     try: old = Table.parse(new.name + '(old)', text=old)
@@ -201,7 +207,8 @@ def gen_table_rebuild(*, schema_name:str, qname:str, new:Table, old:Table) -> li
   selected_columns_str = ', '.join(selected_column_exprs)
 
   stmts = []
-  stmts.append(new.sql(schema=schema_name, name=tmp_name)) # 4. Create a new table with the desired schema and temporary name.
+  # 4. Create a new table with the desired schema and temporary name.
+  stmts.append(new.sql(schema=schema_name, name=tmp_name, comments=False))
   stmts.append(f'INSERT INTO {qname_tmp} SELECT {selected_columns_str} FROM {qname}') # 5. Copy the data.
   stmts.append(f'DROP TABLE {qname}') # 6. Remove the old table.
   stmts.append(f'ALTER TABLE {qname_tmp} RENAME TO {new.quoted_name}') # 7.
@@ -237,13 +244,13 @@ def gen_deps_migration(*, schema_name:str, new_deps:tuple[TableDepStructure,...]
       #^ Use IF EXISTS because the structure may have been dropped by a table rebuild.
 
   for new in new_deps:
-    new_sql = new.sql() # Note: the sql we use for comparison has no schema name.
+    new_sql = new.sql(comments=False) # Note: the sql we use for comparison has no schema name.
     if old := old_deps.get(new.name):
       if not needs_rebuild and old.sql == new_sql: continue
       #^ This comparison requires that the rendered SQL exactly match the text stored in sqlite_schema.
       # That holds for indexes. Trigger bodies are free-form SQL, so trigger support needs a rendering that round-trips exactly;
       # otherwise every generation will drop and recreate each trigger.
       stmts.append(f'DROP {old.type.upper()} IF EXISTS {schema_name}.{qea(old.name)}')
-    stmts.append(new.sql(schema=schema_name)) # Note: the SQL we execute does have an explicit schema name.
+    stmts.append(new.sql(schema=schema_name, comments=False)) # Note: the SQL we execute does have an explicit schema name.
 
   return stmts

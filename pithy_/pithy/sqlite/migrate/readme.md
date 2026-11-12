@@ -97,6 +97,14 @@ This catches the common mistakes: forgetting to restore, generating on top of an
 (which would stack a second pending version), and running against a database left by another branch.
 The intended state is always version N (clean) or N+1 (one draft migration in progress).
 
+### Descriptions
+
+The `desc` text of a schema, table, column or index is documentation for the Python declarations and for standalone schema files.
+Generated migrations omit it, so they do not write descriptions to the database.
+Comments stored by earlier migrations remain until the table is rebuilt.
+SQLite would store comments written inside a table definition, but ALTER TABLE cannot update them, so they would become stale.
+A change that only edits descriptions needs no migration and no version bump.
+
 ### Data migrations
 
 For migrations that transform existing data, especially semantic fixes written in Python:

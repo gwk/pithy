@@ -152,7 +152,15 @@ class Structure:
   def quoted_name(self) -> str: return qea(self.name)
 
 
-  def sql(self, *, schema:str='', name:str='', if_not_exists:bool=False) -> str:
+  def sql(self, *, schema:str='', name:str='', if_not_exists:bool=False, comments:bool) -> str:
+    '''
+    Render the CREATE statement.
+
+    `comments` controls whether `desc` text is rendered as SQL comments.
+    Pass False for statements that run against a database maintained by migrations.
+    SQLite stores comments inside a table definition in `sqlite_schema`.
+    ALTER TABLE cannot update them, so stored comments become stale.
+    '''
     raise NotImplementedError
 
 
@@ -218,14 +226,14 @@ class Table(Structure):
     return None
 
 
-  def sql(self, *, schema:str='', name:str='', if_not_exists:bool=False) -> str:
+  def sql(self, *, schema:str='', name:str='', if_not_exists:bool=False, comments:bool) -> str:
     if schema and not schema.isidentifier(): raise ValueError(f'Invalid schema name: {schema!r}')
 
     qual_name = f'{schema}{schema and "."}{qea(name or self.name)}'
     lines:list[str] = []
     if_not_exists_str = 'IF NOT EXISTS ' if if_not_exists else ''
     lines.append(f'CREATE TABLE {if_not_exists_str}{qual_name} (')
-    if self.desc: lines.extend(sql_comment_lines(self.desc, indent='  '))
+    if comments and self.desc: lines.extend(sql_comment_lines(self.desc, indent='  '))
 
     # Columns are separated by commas, except for the last one.
     # This is complicated by comments following commas,
@@ -233,7 +241,7 @@ class Table(Structure):
     inner_parts = [] # Parts of lines within the parens.
     for c in self.columns:
       column_sql = c.sql()
-      comment = sql_comment_inline(c.desc) if c.desc else ''
+      comment = sql_comment_inline(c.desc) if (comments and c.desc) else ''
       inner_parts.append(['  ', column_sql, ',', comment])
 
     if self.primary_key:
@@ -310,12 +318,12 @@ class Index(TableDepStructure):
       raise TypeError(f'Index.columns must be a tuple; received: {self.columns!r}')
 
 
-  def sql(self, *, schema:str='', name:str='', if_not_exists:bool=False) -> str:
+  def sql(self, *, schema:str='', name:str='', if_not_exists:bool=False, comments:bool) -> str:
     if schema and not schema.isidentifier(): raise ValueError(f'Invalid schema name: {schema!r}')
 
     qual_name = f'{schema}{schema and "."}{qea(name or self.name)}'
     lines = []
-    if self.desc:
+    if comments and self.desc:
       lines.append(f'-- {qual_name}')
       lines.extend(sql_comment_lines(self.desc))
 
@@ -399,18 +407,19 @@ class Schema:
 
 
 
-  def sql(self, *, name:str='', if_not_exists:bool=False) -> Iterable[str]:
+  def sql(self, *, name:str='', if_not_exists:bool=False, comments:bool) -> Iterable[str]:
+    'Yield the text of an SQL script that creates the structures. See `Structure.sql` regarding `comments`.'
     name = name or self.name
     if name and not name.isidentifier(): raise ValueError(f'Invalid schema name: {name!r}')
 
-    if name or self.desc:
+    if comments and (name or self.desc):
       yield '\n'
       if self.name: yield f'-- Schema: {name}\n'
       if self.desc: yield '\n'.join(sql_comment_lines(self.desc)) + '\n'
 
     for s in self.structures:
       yield '\n'
-      yield s.sql(schema=name, if_not_exists=if_not_exists)
+      yield s.sql(schema=name, if_not_exists=if_not_exists, comments=comments)
       yield ';'
       yield '\n'
 
@@ -419,6 +428,7 @@ class Schema:
     '''
     Write an SQL schema file for this schema to the package directory of the caller.
     This is typically called from the main() of a module defining a schema.
+    The file always includes descriptions as SQL comments.
     `steps` can be used to adjust the frame introspection level.
     Be careful: if the step count is wrong, the file may be written into an installed package location,
     which is usually not desirable and potentially destructive to the installation.
@@ -432,7 +442,7 @@ class Schema:
     path = path[:-3] + '.sql'
     print(f'Writing SQL schema to {path!r}.')
     with open(path, 'w') as f:
-      f.write(''.join(self.sql(if_not_exists=if_not_exists)))
+      f.write(''.join(self.sql(if_not_exists=if_not_exists, comments=True)))
 
 
   @classmethod

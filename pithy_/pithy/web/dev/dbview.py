@@ -141,7 +141,7 @@ def starlette_request(request:Request) -> StarletteRequest:
 def open_library_db() -> Conn:
   'Create, populate and return a query-only in-memory library database.'
   conn = Conn('library', mode='memory')
-  conn.executescript(''.join(library_schema.sql()))
+  conn.executescript(''.join(library_schema.sql(comments=False)))
   insert_rows(conn, authors_table, author_rows())
   insert_rows(conn, books_table, book_rows())
   conn.run_effect('PRAGMA query_only = 1')

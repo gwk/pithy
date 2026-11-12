@@ -7,7 +7,7 @@ from pithy.sqlite.conn import Conn
 from pithy.sqlite.migrate.gen import find_undeclared, gen_migration, GenMigrationError
 from pithy.sqlite.migrate.transaction import run_migration
 from pithy.sqlite.schema import Column, Index, Schema, Table
-from utest import utest_exc, utest_run, utest_val
+from utest import utest, utest_exc, utest_run, utest_val
 
 
 def trigger_names(conn:Conn) -> list[str]:
@@ -30,6 +30,23 @@ def _test_unmanaged_trigger_is_skipped() -> None:
     run_migration(conn, stmts)
     utest_val(['tr'], trigger_names(conn))
     utest_val([], gen_migration(conn=conn, schema=schema))
+
+
+@utest_run
+def _test_descriptions_are_omitted() -> None:
+  'Descriptions do not appear in generated statements, and changing them generates nothing.'
+
+  def schema(desc:str) -> Schema:
+    return Schema('main', desc=desc, structures=[
+      Table('t', desc=desc, columns=(Column('id', int, is_opt=True, desc=desc), Column('n', int, is_opt=True, desc=desc))),
+      Index('idx', table='t', columns=('id',), desc=desc)])
+
+  with closing(Conn(':memory:', mode='memory')) as conn, adjust_log_level('silent'):
+    stmts = gen_migration(conn=conn, schema=schema('Original.'))
+    utest_val(['CREATE TABLE main."t" (\n  id INTEGER,\n  n INTEGER\n)', 'CREATE INDEX main."idx"\n  ON "t" (id)'], stmts)
+    run_migration(conn, stmts)
+    utest([], gen_migration, conn=conn, schema=schema('Original.'))
+    utest([], gen_migration, conn=conn, schema=schema('Changed.'))
 
 
 @utest_run

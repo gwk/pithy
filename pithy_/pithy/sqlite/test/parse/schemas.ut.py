@@ -83,7 +83,7 @@ s1 = Schema('s1',
 
 def test_schema_parse(table:Table) -> None:
 
-  sql = table.sql()
+  sql = table.sql(comments=True)
   sql_lines = sql.split('\n')
   source = Source(name=table.name, text=sql)
   ast = sql_parser.parse('create_stmt', source)
