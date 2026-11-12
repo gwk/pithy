@@ -312,6 +312,22 @@ def _test_run_trial() -> None:
       utest_val([], table_names(config), 'failed trial rolled back')
 
 
+# run: an unexpected exception in the drift check is logged and does not roll back the migration.
+@utest_run
+def _test_run_drift_check_failure_does_not_roll_back() -> None:
+  with tempfile.TemporaryDirectory() as root, migrations_pkg() as (pkg, d):
+    config = make_group_config(root, user_version=1)
+    write_migration(d, 'm0001_widgets.sql', 'CREATE TABLE widgets (id INTEGER PRIMARY KEY NOT NULL) STRICT;')
+    schema = Schema('main', structures=[
+      Table('widgets', is_strict=True, columns=(Column('id', int, is_primary=True, is_unique=True),))])
+    with patch('pithy.sqlite.migrate.versions.gen_migration', side_effect=RuntimeError('generator bug')):
+      records = migrate_records(pkg, config=config, schemas=[schema], argv=['run'])
+    utest_val(['The drift check failed unexpectedly; the migration itself is not affected.'],
+      [r['_'] for r in records if r['level'] == 'error'])
+    utest_val(['widgets'], table_names(config), 'migration applied')
+    utest_val(1, user_version(config), 'user_version advanced')
+
+
 # sync: automigrates the database to the declared schemas and stamps user_version to the latest migration version.
 @utest_run
 def _test_sync() -> None:

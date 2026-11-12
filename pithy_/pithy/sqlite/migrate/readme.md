@@ -63,6 +63,7 @@ The script must run in the application's environment, because `.py` migrations c
   If the schema parser cannot read a declared table at that point, the run fails and rolls back.
   When migrating to the latest version, the database is also diffed against the declared schemas before commit.
   Any remaining drift is reported as a warning: the migration files should produce exactly the declared schemas.
+  The drift check is advisory; a failure of the check itself is logged and never rolls back the run.
   `-rerun` instead reapplies the latest batch even though the stored `user_version` already covers it;
   this is a shortcut around the restore-and-run cycle for iterating on edits to the current migration.
   A failed rerun rolls back, but a successful reapply of a non-idempotent batch will corrupt the database.

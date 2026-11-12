@@ -276,12 +276,18 @@ def check_tables_readable(c:Cursor, db_names:Iterable[str], schemas:Iterable[Sch
 def find_drift(conn:Conn, schemas:Iterable[Schema]) -> list[str]:
   '''
   Return the statements that would migrate the database to the declared schemas; the database should already match exactly.
+
+  The drift check is advisory, so this function does not raise and cannot roll back a migration.
   If the generator cannot express the difference, this is reported as a warning.
+  Any other exception is a bug in the generator; it is logged as an error with its traceback.
+  In both cases the result is empty.
   '''
   try: return [s for schema in schemas for s in gen_migration(conn=conn, schema=schema)]
   except GenMigrationError as e:
     logW('The drift check could not be completed.', error='\n'.join((str(e), *getattr(e, '__notes__', ()))))
-    return []
+  except Exception as e:
+    logE('The drift check failed unexpectedly; the migration itself is not affected.', exc=e)
+  return []
 
 
 def sync_database(migrations:types.ModuleType|str, *, config:DbConfig|None=None, schemas:Iterable[Schema],
