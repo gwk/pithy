@@ -135,6 +135,10 @@ def gen_table_migration(*, schema_name:str, qname:str, new:Table, old:str|Table|
   if removed and added: # Assume this is a rename.
     if len(new.columns) != len(old.columns):
       raise GenMigrationError.confusing_column_changes(table_name=qqe(schema_name, new.name), removed=removed, added=added)
+    renames = {oc.name: nc.name for oc, nc in zip(old.columns, new.columns)}
+    if table_reasons := table_rebuild_reasons(new=new, old=old, renames=renames):
+      raise GenMigrationError(f'Table {qqe(schema_name, new.name)} renames columns and also changes {", ".join(table_reasons)};'
+        ' separate these into two migration steps.')
     return False, gen_rename_columns(qname=qname, new=new, old=old, matched_cols=matched_cols)
 
   stmts = []
@@ -162,12 +166,28 @@ def gen_table_migration(*, schema_name:str, qname:str, new:Table, old:str|Table|
       rebuild_reasons.append(f'{qea(nc.name)} {dh}')
       if dh.endswith('order'): break
 
+  rebuild_reasons.extend(table_rebuild_reasons(new=new, old=old))
+
   needs_rebuild = bool(rebuild_reasons)
   if needs_rebuild:
     stmts.append(f'-- Rebuilding {qname} due to {", ".join(rebuild_reasons)}.')
     stmts.extend(gen_table_rebuild(schema_name=schema_name, qname=qname, new=new, old=old))
 
   return needs_rebuild, stmts
+
+
+def table_rebuild_reasons(*, new:Table, old:Table, renames:dict[str,str]|None=None) -> list[str]:
+  '''
+  Name the table-level attributes that differ. SQLite cannot alter these, so any difference requires a rebuild.
+
+  `renames` maps old column names to new ones, so that renaming a primary key column does not register as a key change.
+  '''
+  renames = renames or {}
+  reasons = []
+  if new.is_strict != old.is_strict: reasons.append('is_strict')
+  if new.without_rowid != old.without_rowid: reasons.append('without_rowid')
+  if new.primary_key != tuple(renames.get(n, n) for n in old.primary_key): reasons.append('primary_key')
+  return reasons
 
 
 def gen_rename_columns(*, qname:str, new:Table, old:Table, matched_cols:dict[str,Column]) -> list[str]:

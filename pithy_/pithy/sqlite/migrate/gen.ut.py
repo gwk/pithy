@@ -1,6 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from contextlib import closing
+from typing import Any
 
 from pithy.logs import adjust_log_level
 from pithy.sqlite.conn import Conn
@@ -47,6 +48,64 @@ def _test_descriptions_are_omitted() -> None:
     run_migration(conn, stmts)
     utest([], gen_migration, conn=conn, schema=schema('Original.'))
     utest([], gen_migration, conn=conn, schema=schema('Changed.'))
+
+
+@utest_run
+def _test_table_level_changes_rebuild() -> None:
+  'Changes to strictness, rowid use and the compound primary key rebuild the table, and the result is stable.'
+
+  def schema(**table_args:Any) -> Schema:
+    return Schema('main', structures=[
+      Table('t', columns=(Column('a', int), Column('b', int)), **table_args),
+      Index('idx', table='t', columns=('b',))])
+
+  variants:list[dict[str,Any]] = [
+    dict(is_strict=True),
+    dict(is_strict=True, primary_key=('a', 'b')),
+    dict(is_strict=True, primary_key=('b', 'a')),
+    dict(is_strict=True, primary_key=('b', 'a'), without_rowid=True),
+    dict(),
+  ]
+  with closing(Conn(':memory:', mode='memory')) as conn, adjust_log_level('silent'):
+    run_migration(conn, gen_migration(conn=conn, schema=schema()))
+    conn.execute('INSERT INTO t VALUES (1, 2)')
+    for table_args in variants:
+      stmts = gen_migration(conn=conn, schema=schema(**table_args))
+      utest_val(True, any(s.startswith('-- Rebuilding') for s in stmts), f'rebuild for {table_args}')
+      run_migration(conn, stmts)
+      utest([], gen_migration, conn=conn, schema=schema(**table_args), _utest_label=f'stable for {table_args}')
+    utest_val([(1, 2)], [tuple(r) for r in conn.execute('SELECT a, b FROM t')])
+    utest_val(['idx'], [r[0] for r in conn.execute("SELECT name FROM sqlite_schema WHERE type = 'index' AND name = 'idx'")])
+
+
+@utest_run
+def _test_renamed_primary_key_column_is_stable() -> None:
+  'SQLite quotes a renamed column in the stored primary key; this does not register as a primary key change.'
+
+  def schema(name:str) -> Schema:
+    return Schema('main', structures=[Table('t', primary_key=(name, 'b'), columns=(Column(name, int), Column('b', int)))])
+
+  with closing(Conn(':memory:', mode='memory')) as conn, adjust_log_level('silent'):
+    run_migration(conn, gen_migration(conn=conn, schema=schema('a')))
+    stmts = gen_migration(conn=conn, schema=schema('a2'))
+    utest_val(['-- Renaming columns.', 'ALTER TABLE main."t" RENAME COLUMN "a" TO "a2"'], stmts)
+    run_migration(conn, stmts)
+    utest([], gen_migration, conn=conn, schema=schema('a2'))
+
+
+@utest_run
+def _test_rename_with_table_level_change_is_rejected() -> None:
+  with closing(Conn(':memory:', mode='memory')) as conn, adjust_log_level('silent'):
+    run_migration(conn, gen_migration(conn=conn, schema=Schema('main', structures=[Table('t', columns=(Column('a', int),))])))
+    changed = Schema('main', structures=[Table('t', is_strict=True, columns=(Column('a2', int),))])
+    utest_exc(GenMigrationError, gen_migration, conn=conn, schema=changed)
+
+  def keyed(name:str, primary_key:tuple[str,...]) -> Schema:
+    return Schema('main', structures=[Table('t', primary_key=primary_key, columns=(Column(name, int), Column('b', int)))])
+
+  with closing(Conn(':memory:', mode='memory')) as conn, adjust_log_level('silent'):
+    run_migration(conn, gen_migration(conn=conn, schema=keyed('a', ('a', 'b'))))
+    utest_exc(GenMigrationError, gen_migration, conn=conn, schema=keyed('a2', ('b', 'a2')), _utest_label='key reorder')
 
 
 @utest_run

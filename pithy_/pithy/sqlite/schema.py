@@ -566,7 +566,8 @@ def prefigure_Table(class_:TypeForm[Any], create_temporary:Input, source:Source)
   table_options = def_.table_options # type: ignore[attr-defined]
   constraints = dict(_parse_table_constraint(tc, source) for tc in def_.table_constraints) # type: ignore[attr-defined]
   if primary_key := constraints.get('table_primary_key'):
-    primary_key_names = tuple(c.expr for c in primary_key)
+    primary_key_names = tuple(_unquote_if_entity(c.expr) for c in primary_key)
+    #^ Unquote so that the names compare equal to declared names; SQLite quotes a name when it renames the column.
   else:
     primary_key_names = ()
 
@@ -579,6 +580,11 @@ def prefigure_Table(class_:TypeForm[Any], create_temporary:Input, source:Source)
     primary_key=primary_key_names,
     columns=column_defs,
   )
+
+
+def _unquote_if_entity(expr:str) -> str:
+  try: return sql_parse_entity(expr)
+  except ValueError: return expr
 
 
 def _parse_table_constraint(constraint:Input, source:Source) -> tuple[str,Any]:
