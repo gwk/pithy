@@ -22,8 +22,8 @@ creds = mk_creds()
 utest_val('0022ab34cd56', creds.key_id, 'key_id')
 utest_exc(ValueError, mk_creds, key_id='not hex!')
 utest_exc(ValueError, mk_creds, key_id='')
-utest_exc(ValueError, mk_creds, key_secret=SecretStr('bad secret with spaces'))
-utest_exc(ValueError, mk_creds, key_secret=SecretStr(''))
+utest_exc(ValueError('Invalid key secret (not base64).'), mk_creds, key_secret=SecretStr('bad secret with spaces'))
+utest_exc(ValueError('Invalid key secret (not base64).'), mk_creds, key_secret=SecretStr(''))
 
 
 # as_dict, save and load round trip.

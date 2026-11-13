@@ -36,7 +36,7 @@ class B2Creds:
     if not hex_re.fullmatch(self.key_id):
       raise ValueError(f'Invalid key ID (not hex): {self.key_id!r}.')
     if not b64_re.fullmatch(self.key_secret.val):
-      raise ValueError(f'Invalid key secret (not base64): {self.key_secret.val!r}.')
+      raise ValueError('Invalid key secret (not base64).') # Do not include the secret: the message can reach logs.
 
 
   @classmethod
