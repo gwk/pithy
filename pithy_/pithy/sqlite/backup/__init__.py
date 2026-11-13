@@ -4,7 +4,7 @@
 Backup and restore for a pithy.sqlite Database group.
 
 The engine is storage-vendor-neutral: cloud object storage is injected via the `BackupStore` protocol.
-See `inish.backblaze` for a Backblaze B2 implementation.
+See `tap_backblaze.store` for a Backblaze B2 implementation.
 
 Application policy is injected via `BackupConfig` callables, so each hook can run arbitrary application code.
 These include credential and bucket resolution, post-restore data mutations, file ownership normalization.
