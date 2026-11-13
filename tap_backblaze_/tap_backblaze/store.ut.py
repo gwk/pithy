@@ -1,16 +1,21 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from tempfile import TemporaryDirectory
 from typing import Any, cast, Iterator
+from unittest.mock import patch
 
 from pithy.date import DateTime
+from pithy.logs import adjust_log_level
 from pithy.secrets import SecretStr
-from pithy.sqlite.backup import StoredVersion
+from pithy.sqlite import Conn
+from pithy.sqlite.backup import BackupConfig, BackupFileConfig, restore_all, StoredVersion
+from pithy.sqlite.database import DbConfig
 from pithy.tz import tz_utc
 from tap_backblaze.api import B2Bucket, B2Client, B2FileVersion, B2NotFound
 from tap_backblaze.api.client import Progress
 from tap_backblaze.creds import B2Creds
 from tap_backblaze.store import B2BackupStore, stored_version_for_b2
-from utest import utest, utest_exc, utest_val
+from utest import utest, utest_exc, utest_run, utest_val
 
 
 def mk_version(*, file_id:str='4_fid', size:int=1024, sha:str|None='a'*40, ts:int=1_755_000_000_000) -> B2FileVersion:
@@ -57,6 +62,59 @@ def mk_creds(buckets:dict[str,str]|None=None) -> B2Creds:
 
 def mk_store(fake:FakeB2Client, *, bucket_name:str='known-bucket', buckets:dict[str,str]|None=None) -> B2BackupStore:
   return B2BackupStore(mk_creds(buckets), bucket_name, client=cast(B2Client, fake), quiet=True)
+
+
+@utest_run
+def test_lazy_credentials() -> None:
+  creds = mk_creds({'known-bucket': 'creds-id'})
+  version = stored_version_for_b2(mk_version(), obj_key='main.db')
+  for operation in ('upload', 'list_versions', 'download'):
+    fake = FakeB2Client()
+    with patch.object(B2Creds, 'load', return_value=creds) as load, \
+     patch('tap_backblaze.store.B2Client', return_value=fake) as client:
+      store = B2BackupStore.from_creds_path('creds.json', 'known-bucket')
+      utest_val('known-bucket', store.name, 'name is available without credentials')
+      utest_val(0, load.call_count, 'construction does not load credentials')
+      utest_val(0, client.call_count, 'construction does not create a client')
+      for _ in range(2):
+        if operation == 'upload': utest(True, store.upload, '/tmp/main.db', 'main.db')
+        elif operation == 'list_versions': utest([], store.list_versions, 'main.db')
+        else: utest(True, store.download, version, '/tmp/restored.db')
+      load.assert_called_once_with('creds.json')
+      client.assert_called_once_with(creds.key_id, creds.key_secret)
+      utest(1, fake.calls.count, ('authorize',))
+      utest(0, [call[0] for call in fake.calls].count, 'get_bucket_by_name')
+      if operation != 'download':
+        utest_val('creds-id', fake.calls[-1][1], 'remote operations use the bucket id from loaded credentials')
+
+
+@utest_run
+def test_local_restore_without_credentials() -> None:
+  with TemporaryDirectory() as data_dir, adjust_log_level('warn'):
+    db_config = DbConfig(names=('main',), data_dir=data_dir)
+    db_path = db_config.path('main')
+    cached_path = f'{db_path}.known-bucket_2026-01-01_00_00.downloaded'
+    for path, value in ((db_path, 'current'), (cached_path, 'backup')):
+      with Conn(path, mode='rwc').closing() as conn:
+        conn.run('CREATE TABLE T (x TEXT)')
+        conn.run('INSERT INTO T VALUES (:value)', value=value)
+
+    def make_restore_store(label:str|None) -> B2BackupStore:
+      if label not in (None, 'prod'): raise ValueError('Restore forbidden by configuration.')
+      return B2BackupStore.from_creds_path(f'{data_dir}/missing-creds.json', 'known-bucket')
+
+    config = BackupConfig(db_config=db_config, backups_dir=data_dir,
+      files=dict(_=BackupFileConfig(sync_interval=0, upload_interval=None)), make_restore_store=make_restore_store)
+    with patch('tap_backblaze.store.B2Client', side_effect=AssertionError('Must not construct a client.')):
+      for label in ('prod', None):
+        utest(None, restore_all, config, ['main'], local=True, store_name=label)
+      for local in (True, False):
+        utest_exc(ValueError('Restore forbidden by configuration.'), restore_all, config, ['main'],
+          local=local, store_name='forbidden')
+      utest_exc(FileNotFoundError, restore_all, config, ['main'], store_name='prod')
+    for path in (db_path, cached_path):
+      with Conn(path, mode='ro').closing() as conn:
+        utest('backup', conn.run('SELECT x FROM T').one_col)
 
 
 # Bucket id resolution: from the creds mapping when present, making no listBuckets round trip.

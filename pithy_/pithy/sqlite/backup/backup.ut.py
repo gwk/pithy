@@ -2,9 +2,9 @@
 
 from dataclasses import replace
 from hashlib import sha1
-from os import environ
+from os import chmod, environ, geteuid
 from shutil import copyfile, which
-from tempfile import mkdtemp
+from tempfile import mkdtemp, TemporaryDirectory
 from time import sleep, tzset
 from unittest.mock import patch
 
@@ -13,9 +13,9 @@ from pithy.fs import file_stat, is_file, path_exists, remove_file_if_exists
 from pithy.logs import adjust_log_level
 from pithy.sqlite import Conn
 from pithy.sqlite.backup import (backup_and_upload, BackupConfig, BackupFileConfig, clear_trigger_file, create_local_backup,
-  downloaded_suffix, interval_slot, main_entry, maybe_create_local_backup, maybe_upload, parse_db_names, restore_all,
-  restore_db, stat_trigger_file, StoredVersion, sync_interval_for, syncts_suffix, upload_interval_for, uploadts_suffix,
-  write_trigger_file)
+  downloaded_suffix, interval_slot, main_entry, maybe_create_local_backup, maybe_upload, parse_db_names, require_backups_dir,
+  restore_all, restore_db, stat_trigger_file, StoredVersion, sync_interval_for, syncts_suffix, upload_interval_for,
+  uploadts_suffix, write_trigger_file)
 from pithy.sqlite.database import Database, DbConfig
 from pithy.tz import now_utc
 from utest import utest, utest_exc, utest_val, utest_val_ne
@@ -432,6 +432,37 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
   utest_exc(SystemExit(1), restore_all, local_config, ['main'], local=True, store_name='missing')
   utest_exc(SystemExit(1), restore_all, local_config, ['main'], local=True, store_name='pro')
   utest_val(['mutated', 'original'], read_rows(db_config.path('main')), 'failed selection leaves database intact')
+
+  # Only save and trigger use the backups dir; restore works without it.
+  # This comes last in the section because the restore replaces the database contents.
+  no_backups_config = replace(local_config, backups_dir=f'{backups_dir}/missing')
+  no_backups_error = SystemExit(
+    f"error: backups dir is not accessible: '{backups_dir}/missing'; No such file or directory.")
+  utest_exc(no_backups_error, backup_and_upload, no_backups_config, ['main'], method='vacuum')
+  utest_exc(no_backups_error, write_trigger_file, no_backups_config, 'main')
+  file_path = db_config.path('main')
+  utest_exc(SystemExit(f'error: backups dir is not a directory: {file_path!r}.'), require_backups_dir,
+    replace(local_config, backups_dir=file_path))
+  utest_exc(SystemExit(f"error: backups dir is not accessible: '{file_path}/sub'; Not a directory."), require_backups_dir,
+    replace(local_config, backups_dir=f'{file_path}/sub'))
+  with TemporaryDirectory() as perms_dir:
+    perms_config = replace(local_config, backups_dir=perms_dir)
+    perms_error = SystemExit(f'error: backups dir requires write and search permissions: {perms_dir!r}.')
+    try:
+      for mode in (0o700, 0o300): # Directory read permission is not required.
+        chmod(perms_dir, mode)
+        utest(None, require_backups_dir, perms_config)
+      if geteuid() != 0: # Root can bypass directory permissions.
+        for mode in (0o000, 0o500, 0o600): # Neither permission, no write permission, no search permission.
+          chmod(perms_dir, mode)
+          utest_exc(perms_error, require_backups_dir, perms_config)
+          utest_exc(perms_error, backup_and_upload, perms_config, ['main'], method='vacuum')
+          utest_exc(perms_error, write_trigger_file, perms_config, 'main')
+    finally:
+      chmod(perms_dir, 0o700)
+  utest(None, restore_all, no_backups_config, ['main'], local=True, store_name='prod')
+  utest_val(['mutated', 'newer', 'original'], read_rows(db_config.path('main')), 'restore without a backups dir')
+
   remove_file_if_exists(newer_path)
   remove_file_if_exists(older_path)
 

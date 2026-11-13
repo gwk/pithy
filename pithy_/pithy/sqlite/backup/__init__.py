@@ -25,6 +25,7 @@ This results in at most one operation per elapsed interval, including across day
 
 Local files are written to `BackupConfig.backups_dir`.
 This can be a different volume than the data dir, so a local copy survives loss of the data mount.
+Only the `save` and `trigger` commands use the backups dir; they require a directory with write and search permissions.
 Backup files:
 * `{name}.db`: vacuum backup copy; a preexisting copy is first moved to `{name}.db.prev`.
 * `{name}.sync.db`: sqlite3_rsync replica.
@@ -33,7 +34,8 @@ Backup files:
 * `{name}.backuptrigger`: request that the next run sync and upload, whatever its intervals.
 
 Restore artifacts are colocated with the canonical database files.
-They are plain files, not coordinated by the Database advisory lock;
+The `restore` and `cleanup` commands work only in the data dir.
+The artifacts are plain files, not coordinated by the Database advisory lock;
 only the active database files are covered by the advisory lock logic.
 * `{db_path}.{store_name}_{timestamp}.downloaded`: verified download of a cloud backup version, cached for reuse.
 * `{db_path}.restoring`: working copy that is mutated and then moved into place.
@@ -50,13 +52,13 @@ import time
 from dataclasses import dataclass, field
 from glob import escape, glob
 from hashlib import sha1
-from os import getpid
+from os import access, getpid, W_OK, X_OK
 from typing import Callable, get_args, Literal, Mapping, Protocol, Sequence
 
 from ...cmdparse import Cmd, flag, opt, pos, sub
 from ...date import DateTime, dt_Ymd_HMS, dt_Ymd_HMS_Z
 from ...filestatus import StatResult
-from ...fs import copy_path, file_size, file_stat, is_file, move_file, path_exists, remove_file_if_exists
+from ...fs import copy_path, file_size, file_stat, is_dir, is_file, move_file, path_exists, remove_file_if_exists
 from ...logs import logI
 from ...signals import HoldSignals
 from ...sqlite import Conn
@@ -101,7 +103,11 @@ class BackupStore(Protocol):
   `upload` and `download` return False if the operation was deliberately interrupted (e.g. by the user);
   they raise for unexpected errors.
 
-  * `name`: store name for logging, e.g. the bucket name.
+  Constructing a store must not require credentials or access the network.
+  Local restores construct a store only to read its `name`, and must work on a host that has no credentials.
+  Implementations should load credentials when the first remote operation needs them.
+
+  * `name`: store name, e.g. the bucket name. It appears in logs and in the filenames of cached downloads.
   '''
 
   name:str
@@ -130,7 +136,8 @@ class BackupConfig:
   * `make_save_store`: read-write store factory for uploads; `None` disables uploads.
   * `make_restore_store`: read-only store factory for restores. The optional `store_name` is app-defined
     (e.g. a deployment stage); the factory validates it, including any safety guards on which stores a host may restore from.
-    The factory must not access the network; local restores also invoke it to resolve the store name and validate access.
+    Local restores also invoke the factory, to resolve the store name and validate access.
+    The factory must therefore not require credentials or access the network; see `BackupStore`.
   * `mutate_restored`: hook `(restoring_path, name)` applied to the `.restoring` copy before it is moved into place,
     e.g. to clear queued actions that a restored copy must not replay against live systems.
     The engine checkpoints the WAL and removes sidecar files after the hook runs; the hook need not do so.
@@ -215,6 +222,16 @@ def resolve_backup_config(source:ConfigSource) -> BackupConfig:
     exit(f'error: backup config source {source!r} returned {type(config).__name__}, not a BackupConfig.')
   exit(f'error: backup config source {source!r} resolved to {type(obj).__name__}, '
     'which is not a BackupConfig or a callable returning one.')
+
+
+def require_backups_dir(config:BackupConfig) -> None:
+  'Require an existing directory with write and search permissions for the effective user.'
+  path = config.backups_dir
+  try: is_directory = is_dir(path, follow=True, raises=True)
+  except OSError as e: exit(f'error: backups dir is not accessible: {path!r}; {e.strerror}.')
+  if not is_directory: exit(f'error: backups dir is not a directory: {path!r}.')
+  if not access(path, W_OK | X_OK, effective_ids=True):
+    exit(f'error: backups dir requires write and search permissions: {path!r}.')
 
 
 def local_backup_path(config:BackupConfig, name:str, *, method:BackupMethod) -> str:
@@ -350,6 +367,7 @@ def write_trigger_file(config:BackupConfig, name:str) -> str:
   Note that the writer need not be the user that the backup service runs as, because creating and removing the marker requires
   write permission on the backups dir, not on the marker itself.
   '''
+  require_backups_dir(config)
   path = trigger_file_path(config, name)
   tmp_path = f'{path}.{getpid()}.tmp' # Distinct per process, so that concurrent writers cannot share a temporary file.
   with open(tmp_path, 'w') as f:
@@ -396,6 +414,7 @@ def backup_and_upload(config:BackupConfig, names:Sequence[str], *, method:Backup
   `should_stop` is polled before each database is processed,
   so that a stop request takes effect between databases instead of interrupting a sync or upload.
   '''
+  require_backups_dir(config)
   file_configs = {name: file_config_for(config, name) for name in names}
   # Test for the markers up front, because a database whose interval is None still needs the store if it has been triggered.
   # This is only a test; each marker is claimed in the loop below, so that a request arriving during the run is not missed.
@@ -695,7 +714,8 @@ class Restore(BackupArgs):
   'Restore databases from cloud backups or local downloads, replacing the canonical database files.'
 
   local:bool = flag(
-    doc='Restore the latest cached download for the configured store without network access; fail if none is present.')
+    doc='Restore the latest cached download for the configured store without network access or store credentials; '
+      'fail if none is present.')
   store:str|None = opt(default=None,
     doc='Backup store label passed to the restore store factory; app-defined, e.g. a deployment stage.')
   names:list[str] = pos(doc='Names of databases to restore, or "all".')

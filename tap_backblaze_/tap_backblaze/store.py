@@ -1,6 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from functools import cached_property
+from typing import Callable, Self
 
 from pithy.logs import logI
 from pithy.sqlite.backup import StoredVersion
@@ -20,20 +21,37 @@ class B2BackupStore:
   Version history is provided by B2 file versioning: uploads to the same object key accumulate versions.
   '''
 
-  def __init__(self, creds:B2Creds, bucket_name:str, *, creds_desc:str='', client:B2Client|None=None,
+  def __init__(self, creds:B2Creds|Callable[[],B2Creds], bucket_name:str, *, creds_desc:str='', client:B2Client|None=None,
    quiet:bool=False) -> None:
     '''
+    Construct a store without loading credentials or accessing the network.
+
+    `creds` may be loaded credentials or a loader called on first use and cached after success.
+    Pass a loader when credentials might be unavailable during local restores.
     `creds_desc` names the credential origin (e.g. a file path) for error messages.
-    `client` is injectable for tests; the default constructs one from `creds`.
+    `client` is injectable for tests; the default constructs one lazily from `creds`.
     If `quiet` is true then user-interruption messages are suppressed.
     The bucket id is resolved from `creds.buckets` when recorded there, so a least-privilege key
-    without `listBuckets` works. Construction does not access the network.
+    without `listBuckets` works.
     '''
     self.name = bucket_name
     self.quiet = quiet
-    self.client = client if client is not None else B2Client(creds.key_id, creds.key_secret)
+    self._client = client
+    self._creds_source = creds
     self._creds_desc = creds_desc
-    self._configured_bucket_id = creds.buckets.get(bucket_name) or None
+
+
+  @cached_property
+  def client(self) -> B2Client:
+    'The injected client, or a client constructed lazily from the credentials.'
+    if self._client is not None: return self._client
+    creds = self._creds
+    return B2Client(creds.key_id, creds.key_secret)
+
+
+  @cached_property
+  def _creds(self) -> B2Creds:
+    return self._creds_source() if callable(self._creds_source) else self._creds_source
 
 
   @cached_property
@@ -48,12 +66,13 @@ class B2BackupStore:
   @cached_property
   def bucket_id(self) -> str:
     client = self._authorized_client
-    return self._configured_bucket_id or client.get_bucket_by_name(self.name).id
+    return self._creds.buckets.get(self.name) or client.get_bucket_by_name(self.name).id
 
 
   @classmethod
-  def from_creds_path(cls, creds_path:str, bucket_name:str) -> 'B2BackupStore':
-    return cls(B2Creds.load(creds_path), bucket_name, creds_desc=creds_path)
+  def from_creds_path(cls, creds_path:str, bucket_name:str) -> Self:
+    'Construct a store that loads the credential file only when a remote operation needs it.'
+    return cls(lambda: B2Creds.load(creds_path), bucket_name, creds_desc=creds_path)
 
 
   def upload(self, path:str, obj_key:str) -> bool:
