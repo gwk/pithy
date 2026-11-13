@@ -184,10 +184,10 @@ check-typecheck-collisions:
   python3 build/check-typecheck-collisions.py {{pkg_srcs}} {{typecheck_other_srcs}}
 
 typecheck-py-packages:
-  python3 -m mypy {{pkg_srcs}}
+  python3 -m mypy --num-workers auto {{pkg_srcs}}
 
 typecheck-other:
-  python3 -m mypy {{typecheck_other_srcs}}
+  python3 -m mypy --num-workers auto {{typecheck_other_srcs}}
 
 typecheck-js:
   tsc
@@ -206,4 +206,3 @@ update-uv-lock:
 
 utest:
   python3 -m utest {{pkg_srcs}}
-
