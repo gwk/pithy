@@ -75,7 +75,7 @@ utest_val([], fake.calls, 'construction without a configured bucket id does not 
 utest_val('looked-up-id', store.bucket_id, 'bucket id from lookup')
 utest_val([('authorize',), ('get_bucket_by_name', 'known-bucket')], fake.calls, 'lookup call')
 utest_val('looked-up-id', store.bucket_id, 'resolved bucket id is cached')
-utest_val(2, len(fake.calls), 'cached bucket id requires no additional network calls')
+utest(2, len, fake.calls, _utest_label='cached bucket id requires no additional network calls')
 utest_val('known-bucket', store.name, 'store name')
 
 
