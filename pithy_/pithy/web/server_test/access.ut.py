@@ -17,7 +17,7 @@ from pithy.web.request import Request
 from pithy.web.requestconn import ClientProtocolError
 from pithy.web.response import Response
 from pithy.web.server_test.testsocket import handle_connection, TestSocket
-from utest import utest_run, utest_val
+from utest import utest, utest_run, utest_val
 
 
 class TestApp(WebApp):
@@ -72,7 +72,7 @@ def test_errors() -> None:
     (raw_request(b'http://[broken/?x=1'), 400),
   ]:
     records = access_logs(data)
-    utest_val(1, len(records))
+    utest(1, len, records)
     utest_val(status, records[0]['s'])
   utest_val('CUSTOM', access_logs(raw_request(method=b'CUSTOM'))[0]['m'])
   record = access_logs(raw_request(b'http://[broken/?x=1'))[0] # Rejected targets are logged verbatim, with an empty query.
@@ -84,13 +84,13 @@ def test_send_failure() -> None:
   'Log even when sending fails: 0 when the headers were not sent, the sent status when only the body fails.'
   for fail_send, status in [(1, 0), (2, 200)]:
     records = access_logs(raw_request(), fail_send=fail_send)
-    utest_val(1, len(records))
+    utest(1, len, records)
     utest_val(status, records[0]['s'])
 
 
 @utest_run
 def test_disabled() -> None:
-  utest_val([], access_logs(raw_request(), enabled=False))
+  utest([], access_logs, raw_request(), enabled=False)
 
 
 malformed_body = b'POST / HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\nzz\r\n'
@@ -123,9 +123,10 @@ def test_protocol_failures() -> None:
       records, response = connection_logs(data, enabled=enabled)
       utest_val(False, secret.decode() in repr(records))
       utest_val(False, secret in response)
-      utest_val(True, response.startswith(b'HTTP/1.1 400 '), response) # Malformed headers are answered too, with a bare 400.
+      utest(True, response.startswith, b'HTTP/1.1 400 ', _utest_label=repr(response))
+      # Malformed headers are answered too, with a bare 400.
       failures = [r for r in records if r['_'] == 'protocol_failure']
-      utest_val(1, len(failures))
+      utest(1, len, failures)
       record = failures[0]
       utest_val(400, record['status'])
       utest_val(stage, record['stage'])
@@ -151,9 +152,10 @@ def test_incomplete_timeout() -> None:
         data = prefix + partial
         records, response = connection_logs(data, enabled=enabled, timeout=True)
         utest_val(False, 'SECRET_SENTINEL' in repr(records))
-        utest_val(bool(partial), response.endswith(b'Request Timeout'), response) # A bare 408; an idle timeout gets nothing.
+        utest(bool(partial), response.endswith, b'Request Timeout', _utest_label=repr(response))
+        # A bare 408; an idle timeout gets nothing.
         failures = [r for r in records if r['_'] == 'protocol_failure']
-        utest_val(1 if partial else 0, len(failures))
+        utest(1 if partial else 0, len, failures)
         if partial:
           record = failures[0]
           utest_val(408, record['status'])
@@ -181,8 +183,8 @@ def test_chained_protocol_failure() -> None:
     records, response = connection_logs(data, enabled=enabled, app=ChainedApp())
     utest_val(False, 'SECRET_SENTINEL' in repr(records))
     utest_val(False, b'SECRET_SENTINEL' in response)
-    utest_val(True, response.startswith(b'HTTP/1.1 500 '), response)
-    utest_val(1, len([r for r in records if r['_'] == 'protocol_failure']))
+    utest(True, response.startswith, b'HTTP/1.1 500 ', _utest_label=repr(response))
+    utest(1, len, [r for r in records if r['_'] == 'protocol_failure'])
     errors = [r for r in records if r['_'] == 'Unhandled application exception.']
     utest_val([True], [('Wrapped body failure.' in str(r['exc']) and '400 Bad Request.' in str(r['exc'])) for r in errors])
 
@@ -202,8 +204,8 @@ def test_client_protocol_error_contract() -> None:
   for data, timeout, expected in [
    (malformed_body, False, b'400: 400 Bad Request.'), (incomplete_body, True, b'408: 408 Request Timeout.')]:
     records, response = connection_logs(data, enabled=False, timeout=timeout, app=CatchApp())
-    utest_val(True, response.startswith(b'HTTP/1.1 400 '), response)
-    utest_val(True, response.endswith(expected), response)
+    utest(True, response.startswith, b'HTTP/1.1 400 ', _utest_label=repr(response))
+    utest(True, response.endswith, expected, _utest_label=repr(response))
     utest_val([400 if timeout is False else 408], [r['status'] for r in records if r['_'] == 'protocol_failure'])
 
 
@@ -221,8 +223,8 @@ def test_context_protocol_failure() -> None:
   'Log a server bug raised while handling a protocol failure with its traceback; implicit context must not mask it.'
   data = b'POST / HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\nzz\r\n'
   records, response = connection_logs(data, enabled=False, app=ContextApp())
-  utest_val(True, response.startswith(b'HTTP/1.1 500 '), response)
-  utest_val(1, len([r for r in records if r['_'] == 'protocol_failure']))
+  utest(True, response.startswith, b'HTTP/1.1 500 ', _utest_label=repr(response))
+  utest(1, len, [r for r in records if r['_'] == 'protocol_failure'])
   errors = [r for r in records if r['_'] == 'Unhandled application exception.']
   utest_val([('error', 'POST', '/', True)],
     [(r['level'], r['method'], r['path'], 'Bug in the failure handler.' in str(r['exc'])) for r in errors])
@@ -233,7 +235,7 @@ def test_close_error_level() -> None:
   'Log a socket error while draining an unread body at info level: the response was sent and the client left early.'
   data = b'POST /reject HTTP/1.1\r\nHost: localhost\r\nContent-Length: 100\r\n\r\nbody'
   records, response = connection_logs(data, enabled=False, reset=True)
-  utest_val(True, response.startswith(b'HTTP/1.1 400 '), response)
+  utest(True, response.startswith, b'HTTP/1.1 400 ', _utest_label=repr(response))
   utest_val([('Connection close error.', 'info', True)], [(r['_'], r['level'], 'ConnectionResetError' in str(r['exc']))
     for r in records])
 
@@ -249,7 +251,7 @@ def test_body_timeout_and_eof() -> None:
         utest_val(False, 'SECRET_SENTINEL' in repr(records))
         utest_val(False, b'SECRET_SENTINEL' in response)
         failures = [r for r in records if r['_'] == 'protocol_failure']
-        utest_val(1, len(failures))
+        utest(1, len, failures)
         utest_val(408 if timeout else 400, failures[0]['status'])
         utest_val(stage, failures[0]['stage'])
         utest_val(status, failures[0]['response_status'])
@@ -268,10 +270,10 @@ def test_local_protocol_error() -> None:
   for enabled in (False, True):
     with patch.object(Connection, 'send', send):
       records, response = connection_logs(raw_request(), enabled=enabled)
-    utest_val(True, response.startswith(b'HTTP/1.1 200 '), response)
+    utest(True, response.startswith, b'HTTP/1.1 200 ', _utest_label=repr(response))
     utest_val([], [r for r in records if r['_'] == 'protocol_failure'])
     errors = [r for r in records if r['_'] == 'Connection handling error.']
-    utest_val(1, len(errors))
+    utest(1, len, errors)
     exc_text = str(errors[0]['exc'])
     utest_val((True, True), ('LocalProtocolError' in exc_text, 'Invalid body.' in exc_text))
 
@@ -291,7 +293,7 @@ def test_body_failure_responses() -> None:
   for data, timeout, status in [(malformed_body, False, 400), (incomplete_body, True, 408), (incomplete_body, False, None)]:
     records, response = connection_logs(data, enabled=True, timeout=timeout)
     if status is None: utest_val(b'', response)
-    else: utest_val(True, response.startswith(f'HTTP/1.1 {status} '.encode()), response)
+    else: utest(True, response.startswith, f'HTTP/1.1 {status} '.encode(), _utest_label=repr(response))
     utest_val([status or 0], [r['s'] for r in records if r['_'] == 'access'])
 
 
@@ -300,7 +302,7 @@ def test_swallowed_body_failure() -> None:
   'Log a body read failure in the stage where it is detected, even when the handler swallows it and responds normally.'
   for data, timeout, status in [(malformed_body, False, 400), (incomplete_body, True, 408)]:
     records, response = connection_logs(data, enabled=False, timeout=timeout, app=SwallowApp())
-    utest_val(True, response.startswith(b'HTTP/1.1 200 '), response)
+    utest(True, response.startswith, b'HTTP/1.1 200 ', _utest_label=repr(response))
     failures = [(r['status'], r['stage'], r['response_status']) for r in records if r['_'] == 'protocol_failure']
     utest_val([(status, 'request_body', None)], failures)
 
@@ -318,6 +320,6 @@ def test_expect_continue_rejection() -> None:
   'Log at info level when a client rejected before sending its body closes the connection, as it should.'
   data = b'POST /reject HTTP/1.1\r\nHost: localhost\r\nContent-Length: 100\r\nExpect: 100-continue\r\n\r\n'
   records, response = connection_logs(data, enabled=False)
-  utest_val(True, response.startswith(b'HTTP/1.1 400 '), response)
+  utest(True, response.startswith, b'HTTP/1.1 400 ', _utest_label=repr(response))
   utest_val([('protocol_failure', 'info', 'drain_body', 400)], [(r['_'], r['level'], r.get('stage'), r.get('response_status'))
     for r in records])

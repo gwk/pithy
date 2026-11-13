@@ -292,12 +292,12 @@ utest('test:1:3-4: MSG\n| \u4e2d\u6587b\u23ce\u0353\n    ~\n', Source(name='test
 
 
 # The structured pieces.
-utest_val([
-  Diagnostic(prefix='PRE', name='test', line_idx=0, msg='MSG', before='a ', within='\u00a9 bc', after='',
-    newline_symbol='\u23ce', is_newline_within=True),
-  Diagnostic(prefix='PRE', name='test', line_idx=1, msg='ending here.', before='', within='d\t\u00e9', after=' f',
-    newline_symbol='\u23ce\u0353', is_newline_within=False),
-], bytes_source.diagnostics((token(2, 12), 'MSG'), None, prefix='PRE'))
+utest([
+  Diagnostic(prefix='PRE', name='test', line_idx=0, msg='MSG', before='a ', within='© bc', after='', newline_symbol='⏎',
+    is_newline_within=True),
+  Diagnostic(prefix='PRE', name='test', line_idx=1, msg='ending here.', before='', within='d\té', after=' f',
+    newline_symbol='⏎͓', is_newline_within=False)],
+  bytes_source.diagnostics, (token(2, 12), 'MSG'), None, prefix='PRE')
 
 d_range, d_end = bytes_source.diagnostics((token(2, 12), 'MSG'), prefix='PRE')
 utest_val('PRE: test:1:3-8:', d_range.location)

@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 from pithy.web.app import WebApp
 from pithy.web.server import ServerConfig, WebServer
-from utest import utest_run, utest_val
+from utest import utest, utest_run, utest_val
 
 
 @utest_run
@@ -46,13 +46,13 @@ def test_shutdown_wakes_listener() -> None:
             for _ in range(100_000): server.shutdown()
           proceed.set()
           thread.join(timeout=0.5)
-          utest_val(False, thread.is_alive())
+          utest(False, thread.is_alive)
         finally:
           proceed.set()
           try: server.shutdown()
           finally: thread.join(timeout=3)
         utest_val([], errors)
-        utest_val(-1, server._socket.fileno())
+        utest(-1, server._socket.fileno)
 
 
 @utest_run
@@ -60,7 +60,7 @@ def test_shutdown_before_start() -> None:
   server = WebServer(app=WebApp(), config=ServerConfig(host='127.0.0.1', num_threads=1))
   server.shutdown()
   server.shutdown()
-  utest_val(-1, server._socket.fileno())  # Shutdown before serving closes the listener immediately.
+  utest(-1, server._socket.fileno)  # Shutdown before serving closes the listener immediately.
   with patch('pithy.web.server.logI'): server.serve_forever()
   server.shutdown()
-  utest_val(-1, server._socket.fileno())
+  utest(-1, server._socket.fileno)

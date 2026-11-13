@@ -68,7 +68,7 @@ def test_literal_strings() -> None:
   utest_exc(CmdError("{build,test}: invalid value: 'deploy'; expected one of: build, test"), Choose.parse, ['deploy'])
   utest_exc(CmdError("--color: invalid value: 'sometimes'; expected one of: auto, always, never"),
     Choose.parse, ['--color=sometimes', 'build'])
-  utest_val('usage: choose [options] {build,test}...', format_usage(Choose))
+  utest('usage: choose [options] {build,test}...', format_usage, Choose)
   assert '  {build,test}...  Actions to perform.' in format_help(Choose)
   assert '  -color {auto,always,never}\n                            When to use color.' in format_help(Choose)
 
@@ -100,19 +100,18 @@ def test_split_options() -> None:
 
   plain = format_help(Split)
   assert '-langs LANG[,LANG...]' in plain
-  utest_val(plain, ansi.strip_ctrl_seq(format_help(Split, color=True)))
-  utest_val(CompletionResult((Completion('python,swift'),)), Split.complete(['-langs', 'python,sw']))
-  utest_val(CompletionResult((Completion('-langs=python,swift'),)), Split.complete(['-langs=python,sw']))
-  utest_val(CompletionResult((Completion('python,python'), Completion('python,swift'))),
-    Split.complete(['-langs', 'python,']))
-  utest_val(CompletionResult((Completion('swift'),)), Split.complete(['-langs', 'sw']))
+  utest(plain, ansi.strip_ctrl_seq, format_help(Split, color=True))
+  utest(CompletionResult((Completion('python,swift'),)), Split.complete, ['-langs', 'python,sw'])
+  utest(CompletionResult((Completion('-langs=python,swift'),)), Split.complete, ['-langs=python,sw'])
+  utest(CompletionResult((Completion('python,python'), Completion('python,swift'))), Split.complete, ['-langs', 'python,'])
+  utest(CompletionResult((Completion('swift'),)), Split.complete, ['-langs', 'sw'])
   assert '-langs=' in {c.value for c in Split.complete(['-langs=python,swift', '']).candidates}
 
   class Paths(Cmd):
     dirs:list[Path] = opt(split=':', complete='dirs')
 
-  utest_val(CompletionResult(path_prefix='-dirs=src:', path_kind='dirs'), Paths.complete(['-dirs=src:te']))
-  utest_val(CompletionResult(path_prefix='src:', path_kind='dirs'), Paths.complete(['-dirs', 'src:te']))
+  utest(CompletionResult(path_prefix='-dirs=src:', path_kind='dirs'), Paths.complete, ['-dirs=src:te'])
+  utest(CompletionResult(path_prefix='src:', path_kind='dirs'), Paths.complete, ['-dirs', 'src:te'])
 
 
 @utest_run
@@ -150,9 +149,9 @@ utest_exc(CmdError("unexpected argument: 'extra'"), Build.parse, ['all', 'extra'
 
 @utest_run
 def test_completion() -> None:
-  utest_val(CompletionResult((Completion('--jobs=', 'Number of parallel jobs.', group='options'),)), Build.complete(['--j']))
-  utest_val(CompletionResult((Completion('build', 'Build the project.', group='commands'),)), Tool.complete(['bu']))
-  utest_val(CompletionResult((Completion('build'),)), CompletePositional.complete(['bu']))
+  utest(CompletionResult((Completion('--jobs=', 'Number of parallel jobs.', group='options'),)), Build.complete, ['--j'])
+  utest(CompletionResult((Completion('build', 'Build the project.', group='commands'),)), Tool.complete, ['bu'])
+  utest(CompletionResult((Completion('build'),)), CompletePositional.complete, ['bu'])
   utest_val('', CompletePositional.complete(['build', '']).path_prefix)
 
   # A lone `-` is a bare token, so it completes as the positional, and it is also the prefix of every option.
@@ -165,7 +164,7 @@ def test_completion() -> None:
 
   # Path fields request path completion.
   utest_val('', AddUser.complete(['--home', '']).path_prefix)
-  utest_val(CompletionResult(path_prefix='--home='), AddUser.complete(['--home=src']))
+  utest(CompletionResult(path_prefix='--home='), AddUser.complete, ['--home=src'])
 
   # Non-list options are omitted once seen; list options remain repeatable.
   jobs_values = {c.value for c in Build.complete(['--jobs=2', 'all', '']).candidates}
@@ -177,13 +176,14 @@ def test_completion() -> None:
     workspace:Literal['dev','prod'] = pos()
     cmd:Build = sub()
 
-  utest_val(CompletionResult((Completion('build', 'Build the project.', group='commands'),)), ParentPositional.complete(['dev', 'bu']))
+  utest(CompletionResult((Completion('build', 'Build the project.', group='commands'),)), ParentPositional.complete,
+    ['dev', 'bu'])
 
   class ForwardPaths(Cmd):
     tool:str = pos()
     paths:list[Path] = remainder()
 
-  utest_val(CompletionResult(path_prefix=''), ForwardPaths.complete(['cc', 'input.c', '']))
+  utest(CompletionResult(path_prefix=''), ForwardPaths.complete, ['cc', 'input.c', ''])
 
   # `complete='dirs'` completes directories only; parsing is unaffected.
   class Dirs(Cmd):
@@ -191,9 +191,9 @@ def test_completion() -> None:
     src:Path = pos(complete='files')
 
   utest(Dirs(out=Path('build'), src=Path('a.c')), Dirs.parse, ['-out', 'build/', 'a.c'])
-  utest_val(CompletionResult(path_prefix='-out=', path_kind='dirs'), Dirs.complete(['-out=']))
-  utest_val(CompletionResult(path_prefix='', path_kind='dirs'), Dirs.complete(['-out', '']))
-  utest_val(('', 'files'), (lambda r: (r.path_prefix, r.path_kind))(Dirs.complete(['-out=x', ''])))
+  utest(CompletionResult(path_prefix='-out=', path_kind='dirs'), Dirs.complete, ['-out='])
+  utest(CompletionResult(path_prefix='', path_kind='dirs'), Dirs.complete, ['-out', ''])
+  utest(('', 'files'), lambda r: (r.path_prefix, r.path_kind), Dirs.complete(['-out=x', '']))
 
 
 @utest_run
@@ -213,23 +213,23 @@ def test_remainder() -> None:
     tool:str = pos()
     args:list[str] = remainder(doc='Arguments passed to the tool.')
 
-  utest_val(Forward(verbose=True, tool='cc', args=[]), Forward.parse(['-verbose', 'cc']))
-  utest_val(Forward(verbose=False, tool='cc', args=['-O2', '--', 'a.c']), Forward.parse(['cc', '-O2', '--', 'a.c']))
+  utest(Forward(verbose=True, tool='cc', args=[]), Forward.parse, ['-verbose', 'cc'])
+  utest(Forward(verbose=False, tool='cc', args=['-O2', '--', 'a.c']), Forward.parse, ['cc', '-O2', '--', 'a.c'])
 
   # A `--` that begins the remainder is the separator and is consumed; writing it twice passes one through.
-  utest_val(Forward(verbose=False, tool='cc', args=['-O2']), Forward.parse(['cc', '--', '-O2']))
-  utest_val(Forward(verbose=False, tool='cc', args=['--', '-O2']), Forward.parse(['cc', '--', '--', '-O2']))
+  utest(Forward(verbose=False, tool='cc', args=['-O2']), Forward.parse, ['cc', '--', '-O2'])
+  utest(Forward(verbose=False, tool='cc', args=['--', '-O2']), Forward.parse, ['cc', '--', '--', '-O2'])
 
   # Once preceding positionals are filled, even recognized options belong to the remainder.
-  utest_val(Forward(verbose=False, tool='cc', args=['-verbose', 'input']), Forward.parse(['cc', '-verbose', 'input']))
+  utest(Forward(verbose=False, tool='cc', args=['-verbose', 'input']), Forward.parse, ['cc', '-verbose', 'input'])
 
   class OnlyRemainder(Cmd):
     args:list[str] = remainder()
 
-  utest_val(OnlyRemainder(args=[]), OnlyRemainder.parse([]))
-  utest_val(OnlyRemainder(args=[]), OnlyRemainder.parse(['--']))
-  utest_val(OnlyRemainder(args=['-x']), OnlyRemainder.parse(['--', '-x']))
-  utest_val(OnlyRemainder(args=['--', '-x']), OnlyRemainder.parse(['--', '--', '-x']))
+  utest(OnlyRemainder(args=[]), OnlyRemainder.parse, [])
+  utest(OnlyRemainder(args=[]), OnlyRemainder.parse, ['--'])
+  utest(OnlyRemainder(args=['-x']), OnlyRemainder.parse, ['--', '-x'])
+  utest(OnlyRemainder(args=['--', '-x']), OnlyRemainder.parse, ['--', '--', '-x'])
   utest_exc(CmdError('unrecognized option: -x'), OnlyRemainder.parse, ['-x'])
 
 
@@ -271,8 +271,8 @@ def test_optional_fields_without_explicit_defaults() -> None:
     name:str|None = opt()
     cmd:AddUser|None = sub()
 
-  utest_val(Opt(name=None, cmd=None), Opt.parse([]))
-  utest_val(Opt(name='x', cmd=AddUser(names=['a'], home=None)), Opt.parse(['--name=x', 'add-user', 'a']))
+  utest(Opt(name=None, cmd=None), Opt.parse, [])
+  utest(Opt(name='x', cmd=AddUser(names=['a'], home=None)), Opt.parse, ['--name=x', 'add-user', 'a'])
 
 
 @utest_run
@@ -353,7 +353,7 @@ def test_decl_errors() -> None:
 
 @utest_run
 def test_validate() -> None:
-  utest_val(None, Build.validate())
+  utest(None, Build.validate)
 
   class Bad(Cmd):
     value:int = 0
@@ -372,14 +372,14 @@ def test_prefixed_groups() -> None:
     listen:Endpoint = group(prefix='listen')
     upstream:Endpoint = group(prefix='upstream')
 
-  utest_val(Proxy(listen=Endpoint(host='localhost', port=8443), upstream=Endpoint(host='example.com', port=443)),
-    Proxy.parse(['-listen-host=localhost', '--listen-port=8443', '-upstream-host', 'example.com']))
+  utest(Proxy(listen=Endpoint(host='localhost', port=8443), upstream=Endpoint(host='example.com', port=443)), Proxy.parse,
+    ['-listen-host=localhost', '--listen-port=8443', '-upstream-host', 'example.com'])
 
   class UnderscorePrefix(Cmd):
     endpoint:Endpoint = group(prefix='remote_endpoint')
 
-  utest_val(UnderscorePrefix(endpoint=Endpoint(host='example.com', port=443)),
-    UnderscorePrefix.parse(['-remote-endpoint-host=example.com']))
+  utest(UnderscorePrefix(endpoint=Endpoint(host='example.com', port=443)), UnderscorePrefix.parse,
+    ['-remote-endpoint-host=example.com'])
 
   def invalid_prefix() -> None:
     class InvalidPrefix(Cmd):
@@ -391,7 +391,7 @@ def test_prefixed_groups() -> None:
     "'remote endpoint'"), invalid_prefix)
 
 
-utest_val('''\
+utest('''\
 usage: tool [options] {build,add-user} ...
 
 An example tool.
@@ -406,8 +406,7 @@ commands:
     build     Build the project.
     add-user  Add a user.
 
-For help with a specific command, pass '-h' to that command.''',
-  format_help(Tool, 'tool'), desc='help text')
+For help with a specific command, pass '-h' to that command.''', format_help, Tool, 'tool', _utest_label='help text')
 
 
 @utest_run
@@ -455,7 +454,7 @@ options:
 Examples:
   analyze ./src'''
   utest(expected, format_help, Analyze)
-  utest_val(expected, ansi.strip_ctrl_seq(format_help(Analyze, color=True)))
+  utest(expected, ansi.strip_ctrl_seq, format_help(Analyze, color=True))
   utest_val('Analyze sources.', Analyze.__doc__)
   try: Analyze.parse(['-help'])
   except CmdHelp as help: utest_val(expected, help.text)
@@ -475,7 +474,7 @@ Examples:
   suite_help = format_help(Suite)
   assert suite_help.endswith("For help with a specific command, pass '-h' to that command.\n\nSuite examples.")
   assert 'Shared target rules.' not in suite_help
-  utest_val(CompletionResult((Completion('analyze', 'Analyze sources.', group='commands'),)), Suite.complete(['ana']))
+  utest(CompletionResult((Completion('analyze', 'Analyze sources.', group='commands'),)), Suite.complete, ['ana'])
 
   # Empty blocks add no whitespace, and changing text takes effect even after the schema has been cached.
   for addenda, epilog in (((), ''), (('', ' \n  \t\n'), ' \n  \t\n')):
@@ -522,7 +521,7 @@ def test_class_attrs() -> None:
 def test_colored_help() -> None:
   plain = format_help(Tool, 'tool')
   colored = format_help(Tool, 'tool', color=True)
-  utest_val(plain, ansi.strip_ctrl_seq(colored), desc='color does not alter text or alignment')
+  utest(plain, ansi.strip_ctrl_seq, colored, _utest_label='color does not alter text or alignment')
   assert f'{ansi.sgr(ansi.cBOLD, ansi.cTXT_B)}usage:{ansi.RST}' in colored
   assert f'{ansi.sgr(ansi.cBOLD, ansi.cTXT_M)}tool{ansi.RST}' in colored
   assert f'{ansi.sgr(ansi.cBOLD, ansi.cTXT_G)}-v{ansi.RST}' in colored
@@ -548,7 +547,7 @@ class CustomHelp(Cmd):
   ''')
 
 
-utest_val('''\
+utest('''\
 usage: custom-help [options]
 
 A custom-help command.
@@ -559,4 +558,4 @@ Its description preserves paragraphs
 options:
   -value <value>  A value with multiple lines.
                     The second line is indented.
-  -h, -help       Explain this command.''', format_help(CustomHelp), desc='custom help description')
+  -h, -help       Explain this command.''', format_help, CustomHelp, _utest_label='custom help description')

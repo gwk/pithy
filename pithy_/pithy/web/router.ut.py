@@ -247,7 +247,7 @@ def _() -> None:
   match = app.router.endpoint_for_path('/users/7')
   assert match is not None
   handler_cls, params = match
-  utest_val(True, issubclass(handler_cls, Endpoint))
+  utest(True, issubclass, handler_cls, Endpoint)
   utest_val({'id': 7}, params)
 
   def dispatch(method:str, path:str, query_str:str='') -> bytes|bytearray|None:

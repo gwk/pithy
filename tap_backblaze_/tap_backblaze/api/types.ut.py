@@ -5,7 +5,7 @@ from pithy.json import JsonDict
 from pithy.tz import tz_utc
 from tap_backblaze.api.types import (B2AllowedBucket, B2ApplicationKey, B2Auth, B2Bucket, B2CreatedApplicationKey,
   B2FileVersion, B2ParseError, B2UploadUrl)
-from utest import utest_exc, utest_val
+from utest import utest, utest_exc, utest_val
 
 
 # A recorded (anonymized) v4 b2_authorize_account response.
@@ -131,7 +131,7 @@ utest_val((), key.bucket_ids, 'unrestricted bucket_ids')
 created = B2CreatedApplicationKey.from_json({'applicationKeyId': 'kid', 'keyName': 'kn', 'accountId': 'a',
   'capabilities': ['listFiles'], 'bucketIds': ['b1'], 'applicationKey': 'SECRET'})
 utest_val('SECRET', created.application_key.val, 'created key secret')
-utest_val('SecretStr(*)', repr(created.application_key), 'created key secret repr')
+utest('SecretStr(*)', repr, created.application_key, _utest_label='created key secret repr')
 
 utest_exc(B2ParseError, B2CreatedApplicationKey.from_json, {'applicationKeyId': 'kid', 'keyName': 'kn', 'accountId': 'a',
   'capabilities': []}) # Missing applicationKey raises.

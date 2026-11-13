@@ -10,7 +10,7 @@ from pithy.io import write_to_path
 from pithy.loader import load, LoaderException
 from pithy.path import Path
 from pithy.svg import Svg
-from utest import utest_exc, utest_run, utest_val, utest_val_type
+from utest import utest, utest_exc, utest_run, utest_type, utest_val, utest_val_type
 
 
 source = '<div>before<!-- note -->between<p>inside</p>after</div>'
@@ -38,20 +38,20 @@ def _() -> None:
   dirty = '<p onclick="alert(1)">hello<script>alert(2)</script><a href="javascript:alert(3)">link</a></p>'
   clean = Html.parse(dirty, sanitize=True)
   raw = Html.parse(dirty, sanitize=False)
-  utest_val(None, clean.find_opt('script'))
-  utest_val(None, clean.find('p').get('onclick'))
-  utest_val(None, clean.find('a').get('href'))
+  utest(None, clean.find_opt, 'script')
+  utest(None, clean.find('p').get, 'onclick')
+  utest(None, clean.find('a').get, 'href')
   utest_val('alert(2)', raw.find('script').text)
-  utest_val('alert(1)', raw.find('p').get('onclick'))
-  utest_val('javascript:alert(3)', raw.find('a').get('href'))
+  utest('alert(1)', raw.find('p').get, 'onclick')
+  utest('javascript:alert(3)', raw.find('a').get, 'href')
   with TemporaryDirectory() as directory:
     path = Path(directory) / 'sample.html'
     write_to_path(path, dirty)
     for file in (path, str(path), fsencode(path)):
-      utest_val(clean, Html.parse_file(file, sanitize=True))
-      utest_val(raw, Html.parse_file(file, sanitize=False))
-    utest_val(clean, load_html(str(path), sanitize=True))
-    utest_val(raw, load(str(path), sanitize=False))
+      utest(clean, Html.parse_file, file, sanitize=True)
+      utest(raw, Html.parse_file, file, sanitize=False)
+    utest(clean, load_html, str(path), sanitize=True)
+    utest(raw, load, str(path), sanitize=False)
     utest_exc(LoaderException, load, str(path))
 
 
@@ -66,5 +66,5 @@ def _() -> None:
   utest_val('caf\u00e9\n\n', Html.parse(b'<meta charset="utf-8"><p>caf\xc3\xa9</p>', sanitize=False).body.text)
   svg = Html.parse('<svg viewBox="0 0 1 1"><foreignObject><div>HTML</div></foreignObject></svg>',
     sanitize=False).body.pick(Svg)
-  utest_val('0 0 1 1', svg.get('viewBox'))
-  utest_val_type(Div, svg.pick('foreignObject').pick('div'))
+  utest('0 0 1 1', svg.get, 'viewBox')
+  utest_type(Div, svg.pick('foreignObject').pick, 'div')

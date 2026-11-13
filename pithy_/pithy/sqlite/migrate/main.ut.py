@@ -17,7 +17,7 @@ from pithy.logs import adjust_log_level, render_log_json
 from pithy.sqlite.database import Database, DbConfig
 from pithy.sqlite.migrate.main import main_migrate
 from pithy.sqlite.schema import Column, Schema, Table
-from utest import utest_exc, utest_run, utest_val
+from utest import utest, utest_exc, utest_run, utest_val
 
 
 def write_migration(d:str, name:str, content:str) -> None:
@@ -101,7 +101,7 @@ def m0002_gadgets(c:Cursor) -> None:
   with migrations_pkg() as (pkg, d):
     write_migration(d, 'm0001_widgets.sql', 'CREATE TABLE widgets (id INTEGER PRIMARY KEY);')
     write_migration(d, 'm0002_gadgets.py', py)
-    utest_val([{'level': 'info', '_': 'Checked migration files.', 'latest_version': 2}], check_records(pkg))
+    utest([{'level': 'info', '_': 'Checked migration files.', 'latest_version': 2}], check_records, pkg)
 
 
 # check: report stored versions independently of the configured version and the number of migration files.
@@ -120,14 +120,14 @@ def _test_check_versions() -> None:
         records = check_records(pkg, config)
         status = [r for r in records if r['_'] == 'Checked migrations.']
         utest_val([{'level': 'info', '_': 'Checked migrations.', 'current_version': current, 'latest_version': 2}], status)
-        utest_val(False, any('count' in r for r in records))
+        utest(False, any, (('count' in r for r in records)))
         mismatch = [r for r in records if 'configured_version' in r]
         utest_val([{'level': 'warn', '_': 'Latest migration version does not match the configured user_version.',
           'latest_version': 2, 'configured_version': 4}] if configured == 4 else [], mismatch)
         with adjust_log_level('error'), Database.ro(config) as db:
           utest_val([current, current], [db.conn.cursor().user_version(name) for name in config.names])
         with adjust_log_level('error'):
-          utest_val([], table_names(config), 'check did not apply migrations')
+          utest([], table_names, config, _utest_label='check did not apply migrations')
 
 
 # check: an empty package has latest version 0; attached database mismatches are still reported.
@@ -135,12 +135,12 @@ def _test_check_versions() -> None:
 def _test_check_empty_and_attached_mismatch() -> None:
   with tempfile.TemporaryDirectory() as root, migrations_pkg() as (pkg, _d):
     config = make_group_config(root)
-    utest_val([{'level': 'info', '_': 'Checked migrations.', 'current_version': 0, 'latest_version': 0}],
-      check_records(pkg, config))
+    utest([{'level': 'info', '_': 'Checked migrations.', 'current_version': 0, 'latest_version': 0}], check_records, pkg,
+      config)
     with Database.rw(config) as db:
       with db.conn: db.conn.cursor().set_user_version('aux', 1)
     records = check_records(pkg, config)
-    utest_val(True, any(r['level'] == 'warn' and 'Attached user_version is out of sync' in str(r['_']) for r in records))
+    utest(True, any, ((r['level'] == 'warn' and 'Attached user_version is out of sync' in str(r['_']) for r in records)))
 
 
 # check: a configured but missing database fails without creating database files or reporting a current version.
@@ -151,8 +151,8 @@ def _test_check_missing_database() -> None:
     output = StringIO()
     with redirect_stdout(output):
       utest_exc(SystemExit, main_migrate, pkg, config=config, argv=['check'])
-    utest_val('', output.getvalue())
-    utest_val(False, os.path.exists(config.path('main')))
+    utest('', output.getvalue)
+    utest(False, os.path.exists, config.path('main'))
 
 
 # check: a .py migration missing its stem-named function raises.
@@ -172,10 +172,10 @@ def _test_run() -> None:
     write_migration(d, 'm0002_gadgets.sql', 'CREATE TABLE aux.gadgets (id INTEGER PRIMARY KEY);')
     with adjust_log_level('warn'):
       main_migrate(pkg, config=config, argv=['run'])
-      utest_val(['widgets'], table_names(config, 'main'), 'main table created')
-      utest_val(['gadgets'], table_names(config, 'aux'), 'aux table created')
+      utest(['widgets'], table_names, config, 'main', _utest_label='main table created')
+      utest(['gadgets'], table_names, config, 'aux', _utest_label='aux table created')
       with Database.ro(config) as db:
-        utest_val(2, db.conn.cursor().user_version(), 'user_version advanced to 2')
+        utest(2, db.conn.cursor().user_version, _utest_label='user_version advanced to 2')
 
 
 # run -target: stops at the given version.
@@ -187,9 +187,9 @@ def _test_run_target() -> None:
     write_migration(d, 'm0002_gadgets.sql', 'CREATE TABLE gadgets (id INTEGER PRIMARY KEY);')
     with adjust_log_level('error'): # Silences the expected files-beyond-target warning.
       main_migrate(pkg, config=config, argv=['run', '-target', '1'])
-      utest_val(['widgets'], table_names(config), 'only version 1 applied')
+      utest(['widgets'], table_names, config, _utest_label='only version 1 applied')
       with Database.ro(config) as db:
-        utest_val(1, db.conn.cursor().user_version(), 'user_version stopped at 1')
+        utest(1, db.conn.cursor().user_version, _utest_label='user_version stopped at 1')
 
 
 # run -rerun: reapplies the latest batch without lowering or raising user_version.
@@ -206,7 +206,7 @@ def _test_run_rerun() -> None:
       main_migrate(pkg, config=config, argv=['run', '-rerun'])
       with Database.ro(config) as db:
         utest_val(2, next(iter(db.conn.execute('SELECT count(*) FROM widgets')))[0], 'rerun reapplied the latest batch')
-        utest_val(2, db.conn.cursor().user_version(), 'user_version unchanged by rerun')
+        utest(2, db.conn.cursor().user_version, _utest_label='user_version unchanged by rerun')
 
 
 # run -rerun: refuses when pending migrations exist or the target is not the latest version.
@@ -242,7 +242,7 @@ def _test_run_unreadable_declared_table_rolls_back() -> None:
       utest_migrate_error("Table aux.gadgets has a stored definition that cannot be read: Column 'n': CHECK constraints",
         pkg, config=config, schemas=[schema], argv=['run'])
       utest_val([], table_names(config, 'main') + table_names(config, 'aux'), 'no tables created')
-      utest_val(0, user_version(config), 'user_version unchanged')
+      utest(0, user_version, config, _utest_label='user_version unchanged')
 
 
 # run and check: a declared table that was already unreadable blocks migration until a batch repairs it.
@@ -258,15 +258,15 @@ def _test_run_preexisting_unreadable_declared_table() -> None:
       with Database.rw(config) as db: db.conn.execute('CREATE TABLE legacy (n INTEGER CHECK (n > 0))')
       utest_migrate_error('Table main.legacy has a stored definition that cannot be read',
         pkg, config=config, schemas=[schema], argv=['run'])
-      utest_val(['legacy'], table_names(config), 'migration rolled back')
-      utest_val(0, user_version(config), 'user_version unchanged')
+      utest(['legacy'], table_names, config, _utest_label='migration rolled back')
+      utest(0, user_version, config, _utest_label='user_version unchanged')
       utest_migrate_error('Table main.legacy has a stored definition that cannot be read',
         pkg, config=config, schemas=[schema], argv=['check'])
 
       write_migration(d, 'm0001_repair_legacy.sql', 'DROP TABLE legacy; CREATE TABLE legacy (n INTEGER);')
       main_migrate(pkg, config=config, schemas=[schema], argv=['run'])
-      utest_val(['legacy', 'widgets'], table_names(config), 'repairing batch applied')
-      utest_val(1, user_version(config), 'user_version advanced')
+      utest(['legacy', 'widgets'], table_names, config, _utest_label='repairing batch applied')
+      utest(1, user_version, config, _utest_label='user_version advanced')
       main_migrate(pkg, config=config, schemas=[schema], argv=['check'])
 
 
@@ -285,8 +285,8 @@ def _test_run_unreadable_undeclared_table_warns() -> None:
         records = migrate_records(pkg, config=config, schemas=schemas, argv=[command])
         warnings = [r['reason'] for r in records if r['level'] == 'warn' and 'reason' in r]
         utest_val([reason], warnings, f'{command} warnings; schemas={schemas}')
-    utest_val(['legacy', 'widgets'], table_names(config), 'migration applied')
-    utest_val(1, user_version(config), 'user_version advanced')
+    utest(['legacy', 'widgets'], table_names, config, _utest_label='migration applied')
+    utest(1, user_version, config, _utest_label='user_version advanced')
 
 
 # run -trial: runs the migrations and checks, prints the remaining drift, and leaves the database unchanged.
@@ -302,14 +302,14 @@ def _test_run_trial() -> None:
     with adjust_log_level('silent'):
       with redirect_stdout(output):
         main_migrate(pkg, config=config, schemas=[schema], argv=['run', '-trial'])
-      utest_val('CREATE TABLE main."gadgets" (\n  id INTEGER PRIMARY KEY NOT NULL\n) STRICT;\n', output.getvalue())
-      utest_val([], table_names(config), 'trial rolled back')
-      utest_val(0, user_version(config), 'user_version unchanged')
+      utest('CREATE TABLE main."gadgets" (\n  id INTEGER PRIMARY KEY NOT NULL\n) STRICT;\n', output.getvalue)
+      utest([], table_names, config, _utest_label='trial rolled back')
+      utest(0, user_version, config, _utest_label='user_version unchanged')
 
       write_migration(d, 'm0001_widgets.sql', 'CREATE TABLE widgets (id INTEGER PRIMARY KEY AUTOINCREMENT);')
       utest_migrate_error('AUTOINCREMENT is not supported', pkg, config=config, schemas=[schema], argv=['run', '-trial'])
       utest_migrate_error('mutually exclusive', pkg, config=config, argv=['run', '-trial', '-dry-run'])
-      utest_val([], table_names(config), 'failed trial rolled back')
+      utest([], table_names, config, _utest_label='failed trial rolled back')
 
 
 # run -rerun -trial: reapplies the latest batch and rolls back, so a batch that is not idempotent leaves no trace.
@@ -325,7 +325,7 @@ def _test_run_rerun_trial() -> None:
       [r['_'] for r in records], 'the batch was reapplied')
     with Database.ro(config) as db:
       utest_val(1, next(iter(db.conn.execute('SELECT count(*) FROM widgets')))[0], 'rerun trial rolled back')
-    utest_val(2, user_version(config), 'user_version unchanged')
+    utest(2, user_version, config, _utest_label='user_version unchanged')
 
 
 # run: an unexpected exception in the drift check is logged and does not roll back the migration.
@@ -340,8 +340,8 @@ def _test_run_drift_check_failure_does_not_roll_back() -> None:
       records = migrate_records(pkg, config=config, schemas=[schema], argv=['run'])
     utest_val(['The drift check failed unexpectedly; the migration itself is not affected.'],
       [r['_'] for r in records if r['level'] == 'error'])
-    utest_val(['widgets'], table_names(config), 'migration applied')
-    utest_val(1, user_version(config), 'user_version advanced')
+    utest(['widgets'], table_names, config, _utest_label='migration applied')
+    utest(1, user_version, config, _utest_label='user_version advanced')
 
 
 # sync: automigrates the database to the declared schemas and stamps user_version to the latest migration version.
@@ -359,11 +359,11 @@ def _test_sync() -> None:
     write_migration(d, 'm0002_b.sql', '-- placeholder; sync does not run migration files.\n')
     with adjust_log_level('warn'):
       main_migrate(pkg, config=config, schemas=[schema], argv=['sync'])
-      utest_val(['widgets'], table_names(config), 'sync created the table')
+      utest(['widgets'], table_names, config, _utest_label='sync created the table')
       with Database.ro(config) as db:
         c = db.conn.cursor()
-        utest_val(2, c.user_version('main'), 'main stamped to latest migration version')
-        utest_val(2, c.user_version('aux'), 'aux stamped to latest migration version')
+        utest(2, c.user_version, 'main', _utest_label='main stamped to latest migration version')
+        utest(2, c.user_version, 'aux', _utest_label='aux stamped to latest migration version')
 
 
 # sync: with no migration files, bootstraps the schemas at version 0.
@@ -374,9 +374,9 @@ def _test_sync_bootstrap() -> None:
     config = make_group_config(root)
     with adjust_log_level('warn'):
       main_migrate(pkg, config=config, schemas=[schema], argv=['sync'])
-      utest_val(['t'], table_names(config), 'sync created the table')
+      utest(['t'], table_names, config, _utest_label='sync created the table')
       with Database.ro(config) as db:
-        utest_val(0, db.conn.cursor().user_version(), 'user_version stays 0 with no migration files')
+        utest(0, db.conn.cursor().user_version, _utest_label='user_version stays 0 with no migration files')
 
 
 # sync: checks that tables are readable before commit; an undeclared unreadable table is reported as a warning.
@@ -394,14 +394,14 @@ def _test_sync_checks_tables_readable() -> None:
     with patch('pithy.sqlite.migrate.versions.find_unreadable_tables', return_value=unreadable), adjust_log_level('silent'):
       utest_migrate_error('Table main.t has a stored definition that cannot be read: simulated.',
         pkg, config=config, schemas=[schema], argv=['sync'])
-    utest_val(['legacy'], table_names(config), 'failed sync rolled back')
-    utest_val(0, user_version(config), 'user_version unchanged')
+    utest(['legacy'], table_names, config, _utest_label='failed sync rolled back')
+    utest(0, user_version, config, _utest_label='user_version unchanged')
 
     records = migrate_records(pkg, config=config, schemas=[schema], argv=['sync'])
     utest_val(["Table main.legacy has a stored definition that cannot be read: Column 'n': CHECK constraints are not supported."],
       [r['reason'] for r in records if r['level'] == 'warn' and 'reason' in r], 'undeclared table warning')
-    utest_val(['legacy', 't'], table_names(config), 'sync created the table')
-    utest_val(1, user_version(config), 'user_version stamped')
+    utest(['legacy', 't'], table_names, config, _utest_label='sync created the table')
+    utest(1, user_version, config, _utest_label='user_version stamped')
 
 
 # sync: without schemas raises.
@@ -427,8 +427,8 @@ def _test_undeclared() -> None:
     output = StringIO()
     with redirect_stdout(output), adjust_log_level('warn'):
       main_migrate(pkg, config=config, schemas=[schema, Schema('aux')], argv=['undeclared'])
-    utest_val(['table main.removed', 'index main.removed_idx on removed', 'table aux.other'], output.getvalue().splitlines())
-    utest_val(['removed', 't'], table_names(config), 'undeclared does not modify the database')
+    utest(['table main.removed', 'index main.removed_idx on removed', 'table aux.other'], output.getvalue().splitlines)
+    utest(['removed', 't'], table_names, config, _utest_label='undeclared does not modify the database')
     with adjust_log_level('warn'):
       utest_migrate_error('The undeclared command requires schemas', pkg, config=config, argv=['undeclared'])
 
@@ -447,8 +447,8 @@ def _test_gen() -> None:
       # First generation: the database is empty at version 0 with no migration files; the diff is the initial widgets table.
       main_migrate(pkg, config=config, schemas=[Schema('main', structures=[widgets])], argv=['gen', 'initial'])
       path1 = os.path.join(d, 'm0001_initial.sql')
-      utest_val(True, os.path.exists(path1), 'm0001 generated')
-      utest_val([], table_names(config), 'gen does not modify the database')
+      utest(True, os.path.exists, path1, _utest_label='m0001 generated')
+      utest([], table_names, config, _utest_label='gen does not modify the database')
       # The draft m0001 is now pending: the database is behind the latest migration version, so gen refuses.
       utest_migrate_error('is behind the latest migration version', pkg, config=config,
         schemas=[Schema('main', structures=[widgets, gadgets])], argv=['gen', 'add_gadgets'])
@@ -456,7 +456,7 @@ def _test_gen() -> None:
       main_migrate(pkg, config=config, schemas=[Schema('main', structures=[widgets])], argv=['run', '-target', '1'])
       main_migrate(pkg, config=config, schemas=[Schema('main', structures=[widgets, gadgets])], argv=['gen', 'add_gadgets'])
       path2 = os.path.join(d, 'm0002_add_gadgets.sql')
-      utest_val(True, os.path.exists(path2), 'm0002 generated')
+      utest(True, os.path.exists, path2, _utest_label='m0002 generated')
       with open(path2) as f:
         content = f.read()
       utest_val(True, 'gadgets' in content, 'diff contains the new table')

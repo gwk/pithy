@@ -237,7 +237,7 @@ def test_actions_and_changed_assignments() -> None:
     describe, component, values, upstream, '3.53.4')
   lines = describe(component, values, upstream, '3.53.3')
   utest_val('SQLite: installed 3.53.3; approved 3.53.4; latest 3.53.4; update installation to 3.53.4.', lines[0])
-  utest_val(1, len(lines))
+  utest(1, len, lines)
   lines = describe(component, {**values, 'sqlite_sha3': sha_b}, upstream, '3.53.4')
   utest_val(['SQLite: installed 3.53.4; approved 3.53.4; latest 3.53.4; update versions.sh.',
     '  Updated values for versions.sh:', f"  sqlite_sha3='{sha_a}'"], lines)

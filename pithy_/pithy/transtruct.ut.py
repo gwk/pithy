@@ -135,22 +135,23 @@ def _locus_notes(desired:Any, val:Any) -> list[str]:
     return notes
   return ['<no exception>']
 
-utest_val(['note: element 1 of list[int]'], _locus_notes(list[int], ['0', 'x']), desc='list element note')
-utest_val(['note: element 0 of set[int]'], _locus_notes(set[int], ['x']), desc='set element note')
-utest_val(['note: element 2 of tuple[int, ...]'], _locus_notes(tuple[int,...], ('0', '1', 'x')), desc='seq tuple element note')
-utest_val(['note: element 1 of tuple[int, str]'], _locus_notes(tuple[int,str], ('0', 1)), desc='fixed tuple element note')
+utest(['note: element 1 of list[int]'], _locus_notes, list[int], ['0', 'x'], _utest_label='list element note')
+utest(['note: element 0 of set[int]'], _locus_notes, set[int], ['x'], _utest_label='set element note')
+utest(['note: element 2 of tuple[int, ...]'], _locus_notes, tuple[int,...], ('0', '1', 'x'),
+  _utest_label='seq tuple element note')
+utest(['note: element 1 of tuple[int, str]'], _locus_notes, tuple[int,str], ('0', 1), _utest_label='fixed tuple element note')
 
 # Nested containers accumulate notes from innermost to outermost.
-utest_val(['note: element 1 of list[int]', 'note: element 2 of list[list[int]]'],
-  _locus_notes(list[list[int]], [['0'], ['1'], ['2', 'x']]), desc='nested list element notes')
+utest(['note: element 1 of list[int]', 'note: element 2 of list[list[int]]'], _locus_notes, list[list[int]],
+  [['0'], ['1'], ['2', 'x']], _utest_label='nested list element notes')
 
 # Dict failures identify the entry index and whether the key or value failed.
-utest_val(['note: key at entry 0 of dict[str, int]'], _locus_notes(dict[str,int], {0: 1}), desc='dict key note')
-utest_val(['note: value at entry 0 of dict[str, int]'], _locus_notes(dict[str,int], {'a': 'x'}), desc='dict value note')
+utest(['note: key at entry 0 of dict[str, int]'], _locus_notes, dict[str,int], {0: 1}, _utest_label='dict key note')
+utest(['note: value at entry 0 of dict[str, int]'], _locus_notes, dict[str,int], {'a': 'x'}, _utest_label='dict value note')
 
 # Annotated class fields note the field name for mapping input, or the argument index and field name for positional input.
-utest_val([f"note: field 'a' of {DC1}"], _locus_notes(DC1, {'a': 'x', 'b': 'b'}), desc='class mapping field note')
-utest_val([f"note: argument 0 (field 'a') of {DC1}"], _locus_notes(DC1, ['x', 'b']), desc='class positional field note')
+utest([f"note: field 'a' of {DC1}"], _locus_notes, DC1, {'a': 'x', 'b': 'b'}, _utest_label='class mapping field note')
+utest([f"note: argument 0 (field 'a') of {DC1}"], _locus_notes, DC1, ['x', 'b'], _utest_label='class positional field note')
 
 
 @dataclass

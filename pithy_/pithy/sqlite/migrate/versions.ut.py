@@ -15,7 +15,7 @@ from pithy.sqlite.migrate.transaction import MigrationError
 from pithy.sqlite.migrate.versions import (check_migrations, find_migrations, generate_migration_file, migrate_database,
   MigrationFile, run_versioned_migrations)
 from pithy.sqlite.schema import Column, Schema, Table
-from utest import utest_exc, utest_run, utest_val
+from utest import utest, utest_exc, utest_run, utest_val
 
 
 def make_conn() -> Conn:
@@ -64,7 +64,7 @@ def table_names(conn:Conn, schema:str='main') -> list[str]:
 @utest_run
 def _test_find_empty() -> None:
   with tempfile.TemporaryDirectory() as d:
-    utest_val([], find_migrations(d), 'empty dir')
+    utest([], find_migrations, d, _utest_label='empty dir')
 
 
 # find_migrations: valid sequence with a mixed .py/.sql batch, non-migration files ignored.
@@ -74,7 +74,7 @@ def _test_find_valid_sequence() -> None:
     for name in ['m0001_a.sql', 'm0001_b.py', 'm0002_c.sql', '__init__.py', 'helpers.py']:
       open(os.path.join(d, name), 'w').close()
     files = find_migrations(d)
-    utest_val(3, len(files), 'ignores non-migration files')
+    utest(3, len, files, _utest_label='ignores non-migration files')
     utest_val(MigrationFile(1, 'm0001_a', os.path.join(d, 'm0001_a.sql'), '.sql'), files[0], 'file 1a (sql)')
     utest_val(MigrationFile(1, 'm0001_b', os.path.join(d, 'm0001_b.py'), '.py'), files[1], 'file 1b (py)')
     utest_val(MigrationFile(2, 'm0002_c', os.path.join(d, 'm0002_c.sql'), '.sql'), files[2], 'file 2c (sql)')
@@ -131,11 +131,11 @@ def _test_run_sql_sequence() -> None:
 
     with closing(make_conn()) as conn, adjust_log_level('warn'):
       c = conn.cursor()
-      utest_val(0, c.user_version(), 'initial version is 0')
+      utest(0, c.user_version, _utest_label='initial version is 0')
 
       run_versioned_migrations(conn, pkg, target_version=2)
 
-      utest_val(2, c.user_version(), 'version updated to 2')
+      utest(2, c.user_version, _utest_label='version updated to 2')
       col_names = [row[1] for row in conn.execute("PRAGMA table_info('widgets')")]
       utest_val(True, 'color' in col_names, 'color column added by m0002')
 
@@ -154,7 +154,7 @@ def m0001_gadgets(c:Cursor) -> None:
     write_migration(d, 'm0001_gadgets.py', py)
     with closing(make_conn()) as conn, adjust_log_level('warn'):
       run_versioned_migrations(conn, pkg, target_version=1)
-      utest_val(1, conn.cursor().user_version(), 'version updated to 1')
+      utest(1, conn.cursor().user_version, _utest_label='version updated to 1')
       count = next(iter(conn.execute('SELECT count(*) FROM gadgets')))[0]
       utest_val(2, count, 'migration function inserted rows')
 
@@ -181,7 +181,7 @@ def m0001_widgets(c:Cursor) -> None:
     write_migration(d, 'm0001_widgets.py', mig)
     with closing(make_conn()) as conn, adjust_log_level('warn'):
       run_versioned_migrations(conn, pkg, target_version=1)
-      utest_val(['widgets'], table_names(conn), 'relative import to sibling helper worked')
+      utest(['widgets'], table_names, conn, _utest_label='relative import to sibling helper worked')
 
 
 # run_versioned_migrations: files sharing a version form a batch and bump the version once.
@@ -198,8 +198,8 @@ def m0001_b(c:Cursor) -> None:
     write_migration(d, 'm0001_b.py', py)
     with closing(make_conn()) as conn, adjust_log_level('warn'):
       run_versioned_migrations(conn, pkg, target_version=1)
-      utest_val(1, conn.cursor().user_version(), 'batch bumps version once to 1')
-      utest_val(['a', 'b'], table_names(conn), 'both batch files applied')
+      utest(1, conn.cursor().user_version, _utest_label='batch bumps version once to 1')
+      utest(['a', 'b'], table_names, conn, _utest_label='both batch files applied')
 
 
 # run_versioned_migrations: a failure mid-run rolls the whole transaction back.
@@ -218,8 +218,8 @@ def m0002_boom(c:Cursor) -> None:
     with closing(make_conn()) as conn, adjust_log_level('silent'): # Silences the expected migration-failure error log.
       c = conn.cursor()
       utest_exc(RuntimeError, run_versioned_migrations, conn, pkg, target_version=2)
-      utest_val(0, c.user_version(), 'user_version unchanged after rollback')
-      utest_val([], table_names(conn), 'earlier migration rolled back too')
+      utest(0, c.user_version, _utest_label='user_version unchanged after rollback')
+      utest([], table_names, conn, _utest_label='earlier migration rolled back too')
 
 
 # run_versioned_migrations: a .py file without its stem-named migration function raises.
@@ -278,9 +278,9 @@ def _test_already_up_to_date() -> None:
     with closing(make_conn()) as conn, adjust_log_level('warn'):
       run_versioned_migrations(conn, pkg, target_version=1)
       c = conn.cursor()
-      utest_val(1, c.user_version(), 'at version 1 after first run')
+      utest(1, c.user_version, _utest_label='at version 1 after first run')
       run_versioned_migrations(conn, pkg, target_version=1)
-      utest_val(1, c.user_version(), 'still at version 1')
+      utest(1, c.user_version, _utest_label='still at version 1')
 
 
 # run_versioned_migrations: DB ahead of target raises.
@@ -316,7 +316,7 @@ def _test_generate_with_changes() -> None:
     path = generate_migration_file(conn, pkg, [schema])
     utest_val(True, path is not None, 'file is generated')
     assert path is not None
-    utest_val(True, path.endswith('m0001_migration.sql'), 'file named with default description and .sql suffix')
+    utest(True, path.endswith, 'm0001_migration.sql', _utest_label='file named with default description and .sql suffix')
     with open(path) as f:
       content = f.read()
     utest_val(True, 'CREATE TABLE' in content, 'contains CREATE TABLE')
@@ -365,7 +365,7 @@ def _test_generate_with_description() -> None:
     path = generate_migration_file(conn, pkg, [schema], description='add_events')
     utest_val(True, path is not None, 'file generated')
     assert path is not None
-    utest_val(True, path.endswith('m0001_add_events.sql'), 'description in filename')
+    utest(True, path.endswith, 'm0001_add_events.sql', _utest_label='description in filename')
 
 
 def make_group_config(root:str, *, user_version:int|None=None) -> DbConfig:
@@ -389,10 +389,10 @@ def _test_migrate_database_group() -> None:
 
     with Database.ro(config) as db:
       c = db.conn.cursor()
-      utest_val(2, c.user_version('main'), 'main user_version advanced to 2')
-      utest_val(2, c.user_version('aux'), 'aux user_version advanced to 2')
-      utest_val(['widgets'], table_names(db.conn, 'main'), 'main table created')
-      utest_val(['gadgets'], table_names(db.conn, 'aux'), 'aux table created')
+      utest(2, c.user_version, 'main', _utest_label='main user_version advanced to 2')
+      utest(2, c.user_version, 'aux', _utest_label='aux user_version advanced to 2')
+      utest(['widgets'], table_names, db.conn, 'main', _utest_label='main table created')
+      utest(['gadgets'], table_names, db.conn, 'aux', _utest_label='aux table created')
 
 
 # migrate_database: a failure mid-run rolls back schema and user_version across the whole group.
@@ -408,10 +408,10 @@ def _test_migrate_database_group_rollback() -> None:
 
     with Database.ro(config) as db:
       c = db.conn.cursor()
-      utest_val(0, c.user_version('main'), 'main user_version unchanged after rollback')
-      utest_val(0, c.user_version('aux'), 'aux user_version unchanged after rollback')
-      utest_val([], table_names(db.conn, 'main'), 'main change rolled back')
-      utest_val([], table_names(db.conn, 'aux'), 'aux change rolled back')
+      utest(0, c.user_version, 'main', _utest_label='main user_version unchanged after rollback')
+      utest(0, c.user_version, 'aux', _utest_label='aux user_version unchanged after rollback')
+      utest([], table_names, db.conn, 'main', _utest_label='main change rolled back')
+      utest([], table_names, db.conn, 'aux', _utest_label='aux change rolled back')
 
 
 # migrate_database: no target_version and no config.user_version is an error.

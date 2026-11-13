@@ -17,7 +17,7 @@ from pithy.lex import Lexer
 from pithy.parse import ParseError
 from pithy.sectsyn import parse_entries, parse_sections
 from tolkien import Source
-from utest import utest, utest_exc, utest_seq_exc, utest_val
+from utest import utest, utest_exc, utest_seq_exc
 
 
 repo_dir = dirname(dirname(dirname(dirname(__file__))))
@@ -106,7 +106,7 @@ grammar_paths = [grammar_path, f'{repo_dir}/legs_/langs/ascii/ascii.legs', f'{re
 for path in grammar_paths:
   with open(path) as f: text = f.read()
   ranges = list(framed_ranges(Source(path, text)))
-  utest_val(True, bool(ranges), f'has ranges: {path}')
+  utest(True, bool, ranges, _utest_label=f'has ranges: {path}')
   for mode, slc in ranges:
     utest(handwritten_tokens(text, mode, slc), legs_tokens, text, mode, slc, _utest_label=path)
     if mode == 'pattern':

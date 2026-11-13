@@ -15,7 +15,7 @@ from pithy.filestatus import file_stat, is_dir, is_link, path_exists
 from pithy.fs import list_dir, make_dir, make_dirs, remove_empty_dir
 from pithy.io import read_bytes_from_path, read_from_path, write_to_path
 from pithy.path import Path
-from utest import utest, utest_exc, utest_val
+from utest import utest, utest_exc
 
 
 # Nested assignments must not override module metadata, and a standalone annotation is not a value assignment.
@@ -458,7 +458,8 @@ with TemporaryDirectory() as tmp:
   for i in range(1, 4): write_to_path(root / f'{i}.md', f'@{i+1}.md\n')
   write_to_path(root / '4.md', 'Four.\n')
   with patch('crafts.bin.craft_context.outL'): process_path(src)
-  utest_val(True, read_from_path(root / 'AGENTS.md').endswith('Contents of 4.md:\n\nFour.\n'), 'four hops are expanded')
+  utest(True, read_from_path(root / 'AGENTS.md').endswith, 'Contents of 4.md:\n\nFour.\n',
+    _utest_label='four hops are expanded')
   write_to_path(root / '4.md', '@5.md\n')
   write_to_path(root / '5.md', 'Five.\n')
 

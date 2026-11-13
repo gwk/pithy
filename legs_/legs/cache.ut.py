@@ -30,7 +30,7 @@ with TemporaryDirectory() as tmp:
   write_grammar('word: $Ascii_Letter+\nspace: \\s+\n')
   utest(['word', 'space', 'word'], kinds, cached_lexer_class(grammar_path, out_path), b'ab cd')
   with open(out_path) as f: generated = f.read()
-  utest_val(True, generated.splitlines()[-1].startswith('# legs-hash: '), 'hash is the last line')
+  utest(True, generated.splitlines()[-1].startswith, '# legs-hash: ', _utest_label='hash is the last line')
 
   # A current output is not rewritten.
   old_mtime = set_old_mtime()

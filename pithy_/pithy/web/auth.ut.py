@@ -76,8 +76,8 @@ def _() -> None:
   'Authentication results and access requirements validate their immutable fields and reject inconsistent states.'
   for cls, flag in ((AuthenticationResult, 'is_authenticated'), (Access, 'requires_authentication')):
     utest_val(frozenset(), cls().privileges)
-    utest_val(False, getattr(cls(), flag))
-    utest_val(True, getattr(cls(True), flag))
+    utest(False, getattr, cls(), flag)
+    utest(True, getattr, cls(True), flag)
     utest_val(frozenset({'read'}), cls(True, frozenset({'read'})).privileges)
     utest_exc(ValueError, cls, False, frozenset({'read'}))
     for invalid_flag in (None, 0, 1, 'yes'):
@@ -117,10 +117,10 @@ def _() -> None:
 def _() -> None:
   'Declarations preserve functions and reject ambiguous or malformed policies.'
   def fn(n:int) -> int: return n + 1
-  utest_val(None, declared_access(fn))
+  utest(None, declared_access, fn)
   utest_val(True, requires_privileges('read')(fn) is fn)
   utest(3, fn, 2) # Direct calls do not authorize.
-  utest_val(Access(True, frozenset({'read'})), declared_access(fn))
+  utest(Access(True, frozenset({'read'})), declared_access, fn)
   utest_exc(TypeError, allow_public, fn)
   utest_exc(TypeError, requires_privileges('write'), fn)
   utest_exc(ValueError, requires_privileges)
@@ -129,12 +129,12 @@ def _() -> None:
 
   @allow_public
   def public_fn() -> None: pass
-  utest_val(Access(), declared_access(public_fn))
+  utest(Access(), declared_access, public_fn)
   utest_exc(TypeError, requires_privileges('read'), public_fn)
 
   @requires_authenticated
   def authenticated_fn() -> None: pass
-  utest_val(Access(True), declared_access(authenticated_fn))
+  utest(Access(True), declared_access, authenticated_fn)
   utest_exc(TypeError, allow_public, authenticated_fn)
   utest_exc(TypeError, requires_authenticated, authenticated_fn)
   utest_exc(TypeError, declare_access, lambda: None, AuthenticationResult())
@@ -148,8 +148,8 @@ def _() -> None:
   @requires_privileges('read')
   class Base(RoutableHandler): pass
   class Child(Base): pass
-  utest_val(Access(True, frozenset({'read'})), declared_access(Child))
-  utest_val(Access(), declared_access(allow_public(Child)))
+  utest(Access(True, frozenset({'read'})), declared_access, Child)
+  utest(Access(), declared_access, allow_public(Child))
   utest_exc(TypeError, requires_privileges('write'), Base)
   utest_exc(TypeError, allow_public, Child)
 

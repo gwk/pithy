@@ -141,11 +141,11 @@ iotest:
 iotest-full:
   iotest {{pkg_tests_full}}
 
-lint: lint-py lint-rust
+lint: lint-py lint-utest lint-rust
 
-# Report `utest_val` calls that wrap a function call. Not part of `lint` until the existing call sites are converted.
+# Report value tests that should use a calling test function.
 lint-utest:
-  python3 -m utest.lint {{pkg_srcs}}
+  python3 -m utest.lint {{pkg_srcs}} legs_/langs
 
 # pyflakes cannot exclude paths, so the ops sources are enumerated to prune all _build directories.
 lint-py:

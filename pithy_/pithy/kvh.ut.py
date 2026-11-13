@@ -82,7 +82,7 @@ def test_round_trip() -> None:
   exp = KvhHeader(format_name='my fmt', format_version=12, items=sample_items, unrecognized_reserved_items={},
     body_size=None, header_size=len(data))
   utest(exp, parse, data)
-  utest_val(list(sample_items), list(parse(data).items), 'item order')
+  utest(list(sample_items), list, parse(data).items, _utest_label='item order')
   # The body does not affect parsing, even when it begins with NUL bytes.
   body = b'\0\0payload\n'
   utest_val(body, (data + body)[parse(data + body).header_size:])
@@ -100,7 +100,7 @@ def test_read() -> None:
   file.seek(len(prefix))
   header = read_kvh_header(file, max_size=1024)
   utest_val(len(data), header.header_size)
-  utest_val(body, file.read())
+  utest(body, file.read)
 
 
 @utest_run
@@ -187,7 +187,7 @@ def test_concatenation() -> None:
     utest(body, lambda: bytes(slice_kvh_body(view, header)))
     assert header.record_size is not None
     offset += header.record_size
-  utest_val(b'', file.read())
+  utest(b'', file.read)
   utest_val(len(data), offset)
 
 
@@ -236,7 +236,7 @@ def test_body() -> None:
   # Reading leaves the file positioned after the record.
   file = BytesIO(record + b'following data')
   utest(b'payload', lambda: read_kvh_body(file, read_kvh_header(file, max_size=1024), max_size=1024))
-  utest_val(b'following data', file.read())
+  utest(b'following data', file.read)
 
 
 @utest_run
@@ -246,7 +246,7 @@ def test_header_size() -> None:
     render_kvh_header, 'fmt', 1, {'k': 'v'}, header_size=192, body_size=5)
   for header_size in (64, 128, 4096):
     data = render_kvh_header('fmt', 1, {'k': 'v'}, header_size=header_size)
-    utest_val(header_size, len(data))
+    utest(header_size, len, data)
     header = parse(data + b'payload', max_size=header_size)
     utest_val(header_size, header.header_size)
     utest_val(({'k': 'v'}, {}), (header.items, header.unrecognized_reserved_items))
@@ -283,7 +283,7 @@ def test_item_size() -> None:
    ('?SUM', 'abc')):
     utest(len(item_text(key, value)), kvh_item_size, key, value)
   utest_val([4, 2, 10, 6], [kvh_item_size(k, v) for k, v in (('k', 'v'), ('k', ''), ('k', 'a\n\n b'), ('k', '\n\n'))])
-  utest_val(27, kvh_item_size(kvh_body_size_key, str(kvh_max_int)))
+  utest(27, kvh_item_size, kvh_body_size_key, str(kvh_max_int))
   utest_exc(KvhHeaderError("invalid key: 'a b'."), kvh_item_size, 'a b', 'v')
   utest_exc(KvhHeaderError("value for key 'k' contains invalid character: '\\x00'."), kvh_item_size, 'k', '\0')
   utest_exc(KvhHeaderError, kvh_item_size, 'k', '\ud800')
@@ -306,7 +306,7 @@ def test_reserve_size() -> None:
     header = parse(reserved)
     utest_val((None, len(reserved), items), (header.body_size, header.header_size, header.items))
     filled = render_kvh_header('fmt', 1, items | late_items, body_size=kvh_max_int, header_size=len(reserved))
-    utest_val(len(reserved), len(filled))
+    utest(len(reserved), len, filled)
     utest_val((kvh_max_int, items | late_items), (parse(filled).body_size, parse(filled).items))
     # The reservation is exact: the terminator and padding of the filled header fit in one block.
     assert len(filled) - len(filled.rstrip(b'\0')) <= kvh_alignment, (value_len, len(filled))
@@ -314,7 +314,7 @@ def test_reserve_size() -> None:
   for reserve_size in range(4, kvh_alignment * 2):
     reserved = render_kvh_header('fmt', 1, {}, reserve_size=reserve_size)
     late_items = {'k': 'v' * (reserve_size - 3)}
-    utest_val(reserve_size, kvh_item_size('k', late_items['k']))
+    utest(reserve_size, kvh_item_size, 'k', late_items['k'])
     utest(len(reserved), lambda: len(render_kvh_header('fmt', 1, late_items, header_size=len(reserved))))
 
   # A body size that is already known can be combined with a reservation.
@@ -345,7 +345,7 @@ def test_reserve_size() -> None:
 @utest_run
 def test_limits() -> None:
   data = render_kvh_header('fmt', 1, {'a': '1', 'b': '2\n3'})
-  utest_val(kvh_alignment, len(data))
+  utest(kvh_alignment, len, data)
   utest(kvh_alignment, lambda: parse(data, max_size=kvh_alignment).header_size)
   for max_size in range(kvh_alignment):
     utest_exc(KvhHeaderError(f'header exceeds max_size: {max_size}.'), parse, data, max_size=max_size)

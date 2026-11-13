@@ -12,7 +12,7 @@ from pithy.web.request import Request
 from pithy.web.requestconn import BytesConn
 from pithy.web.response import Response
 from pithy.web.router import Router
-from utest import utest_exc, utest_run, utest_val
+from utest import utest, utest_exc, utest_run, utest_val
 
 
 router = Router(routes, default_public=True)
@@ -44,19 +44,19 @@ def _() -> None:
   page = router.resolve_route(req).get_handler(req).handle_request(req).body
   assert isinstance(page, bytes)
   document = JustHTML(page, sanitize=False)
-  utest_val(1, len(document.query('form#markdown-settings')))
+  utest(1, len, document.query('form#markdown-settings'))
   form = document.query_one('form#markdown-form')
   assert form is not None and form.attrs is not None
   utest_val(('post', 'multipart/form-data'), (form.attrs.get('method'), form.attrs.get('enctype')),
     desc='Attachments require a multipart post')
   textarea = document.query_one('form#markdown-form > markdown-editor#markdown-editor > textarea#markdown-text')
   assert textarea is not None and textarea.attrs is not None
-  utest_val('markdown', textarea.attrs.get('name'), desc='The textarea submits as an ordinary form control')
+  utest('markdown', textarea.attrs.get, 'name', _utest_label=repr('The textarea submits as an ordinary form control'))
   markdown = r'literal \n or \t <script> &amp;'
   rendered = JustHTML(''.join(markdown_editor(markdown=markdown).render()), sanitize=False)
   rendered_textarea = rendered.query_one('markdown-editor > textarea#markdown-text')
   assert rendered_textarea is not None
-  utest_val(markdown, rendered_textarea.to_text(strip=False), desc='The editor preserves textarea content')
+  utest(markdown, rendered_textarea.to_text, strip=False, _utest_label=repr('The editor preserves textarea content'))
   srcs = [src for el in document.query('script') if (src := (el.attrs or {}).get('src'))]
   utest_val(True, '/static/pithy/markdown.js' in srcs)
   hrefs = [(el.attrs or {}).get('href') for el in document.query('link')]
@@ -65,7 +65,7 @@ def _() -> None:
   for el in document.query('main *'):
     for name, value in (el.attrs or {}).items():
       utest_val(False, name.startswith('hx-on') or name == 'style', desc=f'No inline handler or style: {name}')
-      utest_val(False, str(value).startswith(('js:', 'javascript:')), desc=f'No evaluated attribute value: {name}')
+      utest(False, str(value).startswith, ('js:', 'javascript:'), _utest_label=repr(f'No evaluated attribute value: {name}'))
   for enabled in (False, True):
     flag = str(enabled).lower() # Bool checkboxes always send 'true' or 'false'; see `Input.bool_checkbox`.
     body = post('/markdown/settings.htmx', {'auto_resize': flag}).body
@@ -74,9 +74,9 @@ def _() -> None:
     editor = response.query_one('markdown-editor#markdown-editor')
     assert editor is not None and editor.attrs is not None
     utest_val(enabled, 'auto-resize' in editor.attrs)
-    utest_val('attachments', editor.attrs.get('attachments'), desc='The morph must keep the attachments field name')
+    utest('attachments', editor.attrs.get, 'attachments', _utest_label=repr('The morph must keep the attachments field name'))
     utest_val(True, 'hx-morph-skip-children' in editor.attrs, desc='The morph must keep the existing textarea')
-    utest_val(0, len(response.query('textarea')), desc='Settings responses do not carry the text')
+    utest(0, len, response.query('textarea'), _utest_label=repr('Settings responses do not carry the text'))
   utest_exc(BadRequestError, post, '/markdown/settings.htmx', {}) # Bool fields are required.
   utest_exc(BadRequestError, post, '/markdown/settings.htmx', {'auto_resize': 'true', 'markdown': ''})
 
@@ -102,7 +102,8 @@ def _() -> None:
   document = JustHTML(body, sanitize=False)
   source = document.query_one('pre#markdown-source')
   assert source is not None
-  utest_val(markdown.replace('\r\n', '\n'), source.to_text(separator='', strip=False), desc='The source is shown as received')
+  utest(markdown.replace('\r\n', '\n'), source.to_text, separator='', strip=False,
+    _utest_label=repr('The source is shown as received'))
   srcs = [str((el.attrs or {}).get('src')) for el in source.query('img')]
   embedded = [(src.partition(',')[0], b64decode(src.partition(',')[2])) for src in srcs]
   utest_val([('data:image/png;base64', png), ('data:image/jpeg;base64', jpg), ('data:image/png;base64', png)], embedded,
@@ -110,7 +111,7 @@ def _() -> None:
   listing = document.query_one('ul#markdown-attachments')
   assert listing is not None
   items = [item.to_text() for item in listing.query('li')]
-  utest_val(4, len(items))
+  utest(4, len, items)
   utest_val(True, sha256(png).hexdigest() in items[0] and f'{len(png)} bytes' in items[0])
   utest_val(True, 'type not embedded' in items[2])
   utest_val(True, 'not referenced' in items[3])
@@ -121,7 +122,7 @@ def _() -> None:
   body = post_multipart('/markdown/render', (text_headers, b'No images.')).body
   assert isinstance(body, bytes)
   document = JustHTML(body, sanitize=False)
-  utest_val(0, len(document.query('img, ul#markdown-attachments, p#markdown-missing')))
+  utest(0, len, document.query('img, ul#markdown-attachments, p#markdown-missing'))
   utest_exc(BadRequestError, post_multipart, '/markdown/render', file_part('image-1.png', 'image/png', png))
   utest_exc(BadRequestError, post_multipart, '/markdown/render', (text_headers, b''),
     (b'Content-Disposition: form-data; name="attachments"', b'not a file'))

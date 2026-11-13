@@ -11,7 +11,7 @@ from pithy.json import Json, JsonDict
 from pithy.secrets import SecretStr
 from tap_backblaze.api.client import B2Client
 from tap_backblaze.api.errors import B2Error, B2IntegrityError, B2TooManyRequests
-from utest import utest_exc, utest_seq, utest_val
+from utest import utest, utest_exc, utest_seq, utest_val
 
 
 class FakeResponse:
@@ -95,7 +95,7 @@ client, fake, sleeps = mk_client([auth_response()])
 auth = client.auth
 utest_val('acct', auth.account_id, 'account_id')
 utest_val('tok1', client.auth.auth_token.val, 'cached auth token') # Second access.
-utest_val(1, len(fake.calls), 'authorize request count')
+utest(1, len, fake.calls, _utest_label='authorize request count')
 utest_val(('kid', 'ksecret'), fake.calls[0]['auth'], 'authorize basic auth')
 utest_val('https://api.backblazeb2.com/b2api/v4/b2_authorize_account', fake.calls[0]['url'], 'authorize url')
 
@@ -108,7 +108,7 @@ client, fake, sleeps = mk_client([
   auth_response(token='tok2'),
   FakeResponse(json_body={'buckets': []}),
 ])
-utest_val({'buckets': []}, client.post_json('b2_list_buckets', {'accountId': 'acct'}), 'post_json after refresh')
+utest({'buckets': []}, client.post_json, 'b2_list_buckets', {'accountId': 'acct'}, _utest_label='post_json after refresh')
 utest_seq(['b2_authorize_account', 'b2_list_buckets', 'b2_authorize_account', 'b2_list_buckets'], fake.endpoints)
 utest_val('tok2', fake.calls[3]['headers']['Authorization'], 'refreshed token used')
 utest_val([], sleeps, 'no sleeps for token refresh')
@@ -130,7 +130,7 @@ client, fake, sleeps = mk_client([
   error_response(503, 'service_unavailable'),
   FakeResponse(json_body={'ok': True}),
 ])
-utest_val({'ok': True}, client.post_json('b2_x', {}), '503 then success')
+utest({'ok': True}, client.post_json, 'b2_x', {}, _utest_label='503 then success')
 utest_val([1.0], sleeps, '503 delay')
 
 
@@ -255,7 +255,7 @@ with TemporaryDirectory() as tmp:
   dst = path.join(tmp, 'dst.bin')
   client, fake, sleeps = mk_client([auth_response(), download_response()])
   client.download_file_by_id('4_fid', dst)
-  with open(dst, 'rb') as rf: utest_val(download_content, rf.read(), 'downloaded bytes')
+  with open(dst, 'rb') as rf: utest(download_content, rf.read, _utest_label='downloaded bytes')
   utest_val('https://f001.test/b2api/v4/b2_download_file_by_id?fileId=4_fid', fake.calls[1]['url'], 'download url')
 
   client, fake, sleeps = mk_client([auth_response(), download_response(sha='f'*40)])
@@ -267,4 +267,4 @@ with TemporaryDirectory() as tmp:
   # A 404 raises B2Error without writing the file.
   client, fake, sleeps = mk_client([auth_response(), error_response(404, 'not_found')])
   utest_exc(B2Error, client.download_file_by_id, 'nope', path.join(tmp, 'missing.bin'))
-  utest_val(False, path.exists(path.join(tmp, 'missing.bin')), 'no file written on 404')
+  utest(False, path.exists, path.join(tmp, 'missing.bin'), _utest_label='no file written on 404')

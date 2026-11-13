@@ -6,7 +6,7 @@ from subprocess import CompletedProcess, run
 from sys import executable
 
 from pithy.signals import HoldSignals
-from utest import utest_exc, utest_val
+from utest import utest, utest_exc, utest_val
 
 
 # Construction rejects signal sets that the design cannot honor.
@@ -21,22 +21,22 @@ utest_exc(ValueError, HoldSignals, [SIGCHLD]) # Ignored by default, so deliverin
 previous_handler = getsignal(SIGTERM)
 
 with HoldSignals() as hold_signals:
-  utest_val(False, hold_signals.is_signal_on_hold(), 'no signal yet')
+  utest(False, hold_signals.is_signal_on_hold, _utest_label='no signal yet')
   os.kill(os.getpid(), SIGTERM)
-  utest_val(True, hold_signals.is_signal_on_hold(), 'the signal is held')
+  utest(True, hold_signals.is_signal_on_hold, _utest_label='the signal is held')
   utest_val(SIGTERM, hold_signals.held, 'the held signal')
   utest_exc(ValueError, hold_signals.__enter__) # An active instance cannot be reentered.
-  utest_val(SIGTERM, hold_signals.discard_held_signal(), 'discarding returns the held signal')
-  utest_val(False, hold_signals.is_signal_on_hold(), 'the hold is released')
+  utest(SIGTERM, hold_signals.discard_held_signal, _utest_label='discarding returns the held signal')
+  utest(False, hold_signals.is_signal_on_hold, _utest_label='the hold is released')
 
-utest_val(previous_handler, getsignal(SIGTERM), 'the previous handler is restored on exit')
+utest(previous_handler, getsignal, SIGTERM, _utest_label='the previous handler is restored on exit')
 
 
 # Entering resets the hold, so that a leftover from a previous use does not stop the new body immediately.
 reused = HoldSignals()
 reused.held = SIGTERM
 with reused:
-  utest_val(False, reused.is_signal_on_hold(), 'entering resets the hold')
+  utest(False, reused.is_signal_on_hold, _utest_label='entering resets the hold')
 
 
 # The remaining behaviors terminate the process, so they are tested in children.
@@ -151,4 +151,4 @@ with HoldSignals([SIGINT]) as h:
 ''')
 utest_val(True, 'ValueError: the original failure' in child.stderr, 'the original exception is reported')
 utest_val(True, 'KeyboardInterrupt' in child.stderr, 'the delivered signal is reported')
-utest_val(1, child.stderr.count('ValueError: the original failure'), 'the exception is reported exactly once')
+utest(1, child.stderr.count, 'ValueError: the original failure', _utest_label='the exception is reported exactly once')

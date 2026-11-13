@@ -13,7 +13,7 @@ from pithy.web.request import Request
 from pithy.web.requestconn import BytesConn
 from pithy.web.response import Response
 from pithy.web.router import Router
-from utest import utest_exc, utest_run, utest_val
+from utest import utest, utest_exc, utest_run, utest_val
 
 
 router = Router(routes, default_public=True)
@@ -45,8 +45,8 @@ def _() -> None:
   try:
     page = request_text('/htmx/modals')
     edit_url = '/htmx/modals/users/1/edit_modal.htmx'
-    utest_val(2, page.count(edit_url), desc='Both contexts open the same editor')
-    utest_val(2, page.count(f'{DomainEvent.user_updated} from:body'), desc='Both views listen for updates')
+    utest(2, page.count, edit_url, _utest_label=repr('Both contexts open the same editor'))
+    utest(2, page.count, f'{DomainEvent.user_updated} from:body', _utest_label=repr('Both views listen for updates'))
     modal = request_text(edit_url)
     utest_val(True, "dialog class='modal' data-transient-modal" in modal, desc='Uses the standard dismissible modal')
     utest_val(True, "value='Alex Morgan'" in modal, desc='Editor contains current name')
@@ -69,7 +69,7 @@ def _() -> None:
     for data, changes in updates:
       expected = replace(expected, **changes)
       response = request('/htmx/modals/users/1/update.htmx', data)
-      utest_val({DomainEvent.user_updated: {'target': 'body'}}, loads(str(response.headers['hx-trigger'])))
+      utest({DomainEvent.user_updated: {'target': 'body'}}, loads, str(response.headers['hx-trigger']))
       utest_val(b'', response.body, desc='Update endpoint has no view-specific fragment')
       utest_val(expected, users[1], desc=f'{data} is saved')
       # Check the complete rendered row and detail lines, so that a stale field or another user's row cannot satisfy the check.

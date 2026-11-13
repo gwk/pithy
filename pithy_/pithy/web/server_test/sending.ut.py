@@ -20,7 +20,7 @@ from pithy.web.auth import allow_public
 from pithy.web.request import Request
 from pithy.web.response import Response
 from pithy.web.server import _ResponseSend, max_handed_off_files, ServerConfig, WebServer
-from utest import utest_exc, utest_run, utest_val
+from utest import utest, utest_exc, utest_run, utest_val
 
 
 big_size = 1 << 25 # Far larger than the socket buffers, so that a client that does not read blocks the send.
@@ -58,7 +58,7 @@ def running_server(app:WebApp, **config:Any) -> Iterator[tuple[WebServer,list[di
     finally:
       server.shutdown()
       thread.join(10)
-  utest_val(False, thread.is_alive())
+  utest(False, thread.is_alive)
 
 
 def get_small(server:WebServer) -> bytes:
@@ -102,16 +102,16 @@ def test_slow_download_does_not_occupy_worker() -> None:
       with running_server(app, conn_timeout=5.0) as (server, records):
         with create_connection((server.host, server.port), timeout=5) as socket:
           socket.sendall(request_big)
-          utest_val(b'small', get_small(server))
+          utest(b'small', get_small, server)
           head, body = read_response(socket)
-          utest_val(True, head.startswith(b'HTTP/1.1 200'), head)
-          utest_val(big_size, len(body))
+          utest(True, head.startswith, b'HTTP/1.1 200', _utest_label=repr(head))
+          utest(big_size, len, body)
           utest_val(True, set(body[:1024]) == {byte[0]})
           socket.sendall(b'GET /small HTTP/1.1\r\nHost: localhost\r\n\r\n') # The connection is reused.
           utest_val(b'small', read_response(socket)[1])
       if app.files: utest_val(True, app.files[0].closed)
-      utest_val([200, 200, 200], sorted(r['s'] for r in records))
-      utest_val(True, all(r['p'] in ('/big', '/small') for r in records))
+      utest([200, 200, 200], sorted, (r['s'] for r in records))
+      utest(True, all, (r['p'] in ('/big', '/small') for r in records))
 
 
 @utest_run
@@ -122,7 +122,7 @@ def test_stalled_client_is_dropped() -> None:
       socket.sendall(request_big)
       start = monotonic()
       while not records and monotonic() - start < 3: sleep(0.01)
-  utest_val(1, len(records))
+  utest(1, len, records)
   utest_val(200, records[0]['s'])
   utest_val(0, server._reserved_send_bytes)
 
@@ -154,13 +154,13 @@ def test_capacity_limits() -> None:
       send.charge = 0
       return send
 
-    utest_val(True, server._reserve_send(make(600)))
-    utest_val(False, server._reserve_send(make(600)))
+    utest(True, server._reserve_send, make(600))
+    utest(False, server._reserve_send, make(600))
     utest_val(600, server._reserved_send_bytes)
     server._reserved_send_bytes = 0
     server._reserved_send_files = max_handed_off_files
-    utest_val(True, server._reserve_send(make(1)))
-    utest_val(False, server._reserve_send(make(1, file=True)))
+    utest(True, server._reserve_send, make(1))
+    utest(False, server._reserve_send, make(1, file=True))
   finally: server.shutdown()
 
 
@@ -169,7 +169,7 @@ def test_response_over_limit_is_sent_by_worker() -> None:
   with running_server(App(), send_buffer_limit=0, conn_timeout=5.0) as (server, _):
     with create_connection((server.host, server.port), timeout=5) as socket:
       socket.sendall(request_big)
-      utest_val(big_size, len(read_response(socket)[1]))
+      utest(big_size, len, read_response(socket)[1])
 
 
 @utest_run
@@ -183,11 +183,11 @@ def test_shutdown_abandons_slow_downloads() -> None:
     with running_server(app, conn_timeout=0.2, min_send_rate=1e9) as (server, _):
       with create_connection((server.host, server.port), timeout=5) as socket:
         socket.sendall(request_big)
-        utest_val(b'small', get_small(server))
+        utest(b'small', get_small, server)
         server.shutdown()
     utest_val(True, monotonic() - start < 3)
     utest_val(True, app.files[0].closed)
-    utest_val(server.max_connections, free_slots(server))
+    utest(server.max_connections, free_slots, server)
 
 
 @utest_run

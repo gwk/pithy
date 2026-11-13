@@ -27,7 +27,7 @@ with TemporaryDirectory() as tmp_a, TemporaryDirectory() as tmp_b:
   utest({pkg: path_join(tmp_a, pkg, '__init__.py'), f'{pkg}.mod': path_join(tmp_a, pkg, 'mod.py')}, loaded_module_paths, pkg)
 
   hash_a = program_source_hash(pkg)
-  utest_val(64, len(hash_a), 'SHA-256 hex digest')
+  utest(64, len, hash_a, _utest_label='SHA-256 hex digest')
   utest(hash_a, program_source_hash, pkg)
 
   # The hash follows the file contents, including comments.
@@ -47,7 +47,7 @@ with TemporaryDirectory() as tmp_a, TemporaryDirectory() as tmp_b:
   # Without arguments, every loaded module outside of the standard library is selected.
   paths = loaded_module_paths()
   utest_val(True, pkg in paths and 'utest' in paths and 'pithy.python.source_hash' in paths, 'non-stdlib modules')
-  utest_val(False, any(name.partition('.')[0] in sys.stdlib_module_names for name in paths), 'stdlib modules')
+  utest(False, any, ((name.partition('.')[0] in sys.stdlib_module_names for name in paths)), _utest_label='stdlib modules')
   utest_val_ne(hash_a, program_source_hash(), 'all modules')
 
   for name in (pkg, f'{pkg}.mod'): del sys.modules[name]

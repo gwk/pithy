@@ -8,7 +8,7 @@ from datetime import date as Date, datetime as DateTime, time as Time
 from pithy.sqlite import forbid_default_adapters_and_converters
 from pithy.sqlite.conn import Conn
 from pithy.sqlite.util import CURRENT_TIMESTAMP, CURRENT_TIMESTAMP_Z, SqlExpr
-from utest import utest_exc, utest_run, utest_seq, utest_val
+from utest import utest, utest_exc, utest_run, utest_seq, utest_val
 
 
 forbid_default_adapters_and_converters()
@@ -48,7 +48,7 @@ def _test_execute_positional_conversion() -> None:
     args = [DateTime(2026, 7, 16, 12, 30, 45)]
     conn.execute('INSERT INTO t (v) VALUES (?)', args).close()
     utest_val([DateTime(2026, 7, 16, 12, 30, 45)], args, 'caller args list is not mutated')
-    utest_val('2026-07-16 12:30:45', conn.execute('SELECT v FROM t').one_col(), 'datetime stored as ISO text')
+    utest('2026-07-16 12:30:45', conn.execute('SELECT v FROM t').one_col, _utest_label='datetime stored as ISO text')
 
 
 # execute converts named arguments and does not mutate the caller's dict.
@@ -58,7 +58,7 @@ def _test_execute_named_conversion() -> None:
     args = {'v': Date(2026, 7, 16)}
     conn.execute('INSERT INTO t (v) VALUES (:v)', args).close()
     utest_val({'v': Date(2026, 7, 16)}, args, 'caller args dict is not mutated')
-    utest_val('2026-07-16', conn.execute('SELECT v FROM t').one_col(), 'date stored as ISO text')
+    utest('2026-07-16', conn.execute('SELECT v FROM t').one_col, _utest_label='date stored as ISO text')
 
 
 # executemany converts each argument set.
@@ -74,7 +74,7 @@ def _test_executemany_conversion() -> None:
 def _test_run_conversion() -> None:
   with closing(make_conn()) as conn:
     conn.run_effect('INSERT INTO t (v) VALUES (:v)', v={'b': 2, 'a': 1})
-    utest_val('{"a":1,"b":2}', conn.execute('SELECT v FROM t').one_col(), 'dict stored as JSON text')
+    utest('{"a":1,"b":2}', conn.execute('SELECT v FROM t').one_col, _utest_label='dict stored as JSON text')
 
 
 # insert, insert_dict and insert_seq all convert values identically.
@@ -156,7 +156,8 @@ def _test_current_timestamp() -> None:
     with closing(conn.cursor()) as cursor:
       cursor.insert(into='r', id=1, v='a', ts=CURRENT_TIMESTAMP)
     ts = conn.execute('SELECT ts FROM r').one_col()
-    utest_val(True, bool(re.fullmatch(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}', ts)), f'CURRENT_TIMESTAMP format: {ts!r}')
+    utest(True, bool, re.fullmatch(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}', ts),
+      _utest_label=f'CURRENT_TIMESTAMP format: {ts!r}')
 
 
 # The CURRENT_TIMESTAMP_Z constant appends a 'Z' suffix, marking the stored UTC timestamp explicitly.
@@ -166,15 +167,16 @@ def _test_current_timestamp_z() -> None:
     with closing(conn.cursor()) as cursor:
       cursor.insert(into='r', id=1, v='a', ts=CURRENT_TIMESTAMP_Z)
     ts = conn.execute('SELECT ts FROM r').one_col()
-    utest_val(True, bool(re.fullmatch(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}Z', ts)), f'CURRENT_TIMESTAMP_Z format: {ts!r}')
+    utest(True, bool, re.fullmatch(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}Z', ts),
+      _utest_label=f'CURRENT_TIMESTAMP_Z format: {ts!r}')
 
 
 # run and execute substitute named SqlExpr arguments into the query text; the rest are bound as usual.
 @utest_run
 def _test_run_execute_exprs() -> None:
   with closing(make_conn()) as conn:
-    utest_val('X!', conn.run("SELECT :e || :s", e=SqlExpr("upper('x')"), s='!').one_col(), 'run substitutes SqlExpr')
-    utest_val(5, conn.execute('SELECT :e + :n', {'e': SqlExpr('2'), 'n': 3}).one_col(), 'execute substitutes SqlExpr')
+    utest('X!', conn.run("SELECT :e || :s", e=SqlExpr("upper('x')"), s='!').one_col, _utest_label='run substitutes SqlExpr')
+    utest(5, conn.execute('SELECT :e + :n', {'e': SqlExpr('2'), 'n': 3}).one_col, _utest_label='execute substitutes SqlExpr')
 
 
 # Positional SqlExpr arguments cannot be substituted and raise.

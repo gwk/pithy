@@ -842,8 +842,8 @@ def _() -> None:
 @utest_run
 def _() -> None:
   'Endpoint: a multi-value field converter receives the whole list; a single value arrives as a one-element list.'
-  utest_val(dict(tags=['a', 'b']), endpoint_body_fields(ListConverterEndpoint, 'tags=b&tags=a&tags=b'))
-  utest_val(dict(tags=['x']), endpoint_body_fields(ListConverterEndpoint, 'tags=x'))
+  utest(dict(tags=['a', 'b']), endpoint_body_fields, ListConverterEndpoint, 'tags=b&tags=a&tags=b')
+  utest(dict(tags=['x']), endpoint_body_fields, ListConverterEndpoint, 'tags=x')
 
 
 @utest_run
@@ -898,9 +898,9 @@ def _() -> None:
 @utest_run
 def _() -> None:
   'Endpoint: a single NUL fills a list field as the empty list, as pithy.js sends for an unchecked checkbox set.'
-  utest_val(dict(tags=[], counts=[]), endpoint_body_fields(ListEndpoint, 'tags=%00&counts=%00'))
-  utest_val(dict(tags=[]), endpoint_body_fields(OptionalListEndpoint, 'tags=%00'))
-  utest_val(dict(tags=[]), endpoint_body_fields(ListConverterEndpoint, 'tags=%00'))
+  utest(dict(tags=[], counts=[]), endpoint_body_fields, ListEndpoint, 'tags=%00&counts=%00')
+  utest(dict(tags=[]), endpoint_body_fields, OptionalListEndpoint, 'tags=%00')
+  utest(dict(tags=[]), endpoint_body_fields, ListConverterEndpoint, 'tags=%00')
   req = _make_request(query=dict(tags='\x00', counts='\x00'))
   ep = ListEndpoint(req, path_params={})
   ep.prepare_for_request(req)
@@ -911,8 +911,8 @@ def _() -> None:
 @utest_run
 def _() -> None:
   'Endpoint: empty strings remain list elements, including a single empty string.'
-  utest_val(dict(tags=['']), endpoint_body_fields(OptionalListEndpoint, 'tags='))
-  utest_val(dict(tags=['a', '']), endpoint_body_fields(OptionalListEndpoint, 'tags=a&tags='))
+  utest(dict(tags=['']), endpoint_body_fields, OptionalListEndpoint, 'tags=')
+  utest(dict(tags=['a', '']), endpoint_body_fields, OptionalListEndpoint, 'tags=a&tags=')
 
 
 @utest_run
@@ -1543,10 +1543,10 @@ def dispatch(cls:type[Endpoint], req:Request) -> object:
 @utest_run
 def _() -> None:
   'Endpoint: each method fills its own fields class and dispatches to its handler.'
-  utest_val(b'get:None', dispatch(MultiMethodEndpoint, _method_request('GET')))
-  utest_val(b'get:x', dispatch(MultiMethodEndpoint, _method_request('GET', dict(tag='x'))))
-  utest_val(b'post:alice,None',
-    dispatch(MultiMethodEndpoint, _method_request('POST', media_type='application/json', body=b'{"name":"alice"}')))
+  utest(b'get:None', dispatch, MultiMethodEndpoint, _method_request('GET'))
+  utest(b'get:x', dispatch, MultiMethodEndpoint, _method_request('GET', dict(tag='x')))
+  utest(b'post:alice,None', dispatch, MultiMethodEndpoint,
+    _method_request('POST', media_type='application/json', body=b'{"name":"alice"}'))
   # `name` is required by Post but unknown to Get.
   utest_exc(ResponseError, dispatch, MultiMethodEndpoint, _method_request('POST', media_type='application/json', body=b'{}'))
   utest_exc(ResponseError, dispatch, MultiMethodEndpoint, _method_request('GET', dict(name='alice')))
@@ -1570,7 +1570,7 @@ def _() -> None:
     req = replace(_method_request(method), headers={'transfer-encoding': 'chunked'})
     utest_exc(ResponseError, MultiMethodEndpoint, req, {})
   utest_exc(ResponseError, DeleteEndpoint, _method_request('DELETE', media_type='application/json', body=body), {})
-  utest_val(b'deleted', dispatch(DeleteEndpoint, _method_request('DELETE', dict(id='1'))))
+  utest(b'deleted', dispatch, DeleteEndpoint, _method_request('DELETE', dict(id='1')))
 
 
 def _make_bodiless_max_body_endpoint() -> type[Endpoint]:
@@ -1586,7 +1586,7 @@ utest_exc(TypeError, _make_bodiless_max_body_endpoint)
 @utest_run
 def _() -> None:
   'Endpoint: HEAD dispatches to get; other unhandled methods raise MethodNotAllowedError at construction.'
-  utest_val(b'get:x', dispatch(MultiMethodEndpoint, _method_request('HEAD', dict(tag='x'))))
+  utest(b'get:x', dispatch, MultiMethodEndpoint, _method_request('HEAD', dict(tag='x')))
   utest_exc(MethodNotAllowedError, PostEndpoint, _method_request('GET'), {})
   utest_exc(MethodNotAllowedError, PostEndpoint, _method_request('HEAD'), {})
   utest_exc(MethodNotAllowedError, MultiMethodEndpoint, _method_request('DELETE'), {})
@@ -1605,7 +1605,7 @@ def _() -> None:
       Router({'/' : cls}, default_public=True).resolve_route(_method_request(method))
     except MethodNotAllowedError as exc:
       assert exc.headers is not None
-      utest_val(allow, exc.headers.get('allow'))
+      utest(allow, exc.headers.get, 'allow')
     else:
       raise AssertionError('expected MethodNotAllowedError')
 
@@ -1779,7 +1779,7 @@ def _() -> None:
   handler.prepare_for_request(req)
   response = handler.handle_request(req)
   utest_val(b'3', response.body)
-  utest_val('1', response.headers.get('x-traced'))
+  utest('1', response.headers.get, 'x-traced')
 
 
 @utest_run

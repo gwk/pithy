@@ -22,7 +22,7 @@ from pithy.web.response import Response
 from pithy.web.server import deadline_scan_interval, ServerConfig, WebServer
 from pithy.web.server_test.testsocket import handle_connection, TestSocket
 from pithy.web.sse import SseChannel, SseEvent, SseResponse
-from utest import utest_exc, utest_run, utest_val
+from utest import utest, utest_exc, utest_run, utest_val
 
 
 class Body(Iterator[bytes]):
@@ -97,10 +97,10 @@ def running_server(app:App, **config:Any) -> Iterator[tuple[WebServer,list[dict[
     finally:
       server.shutdown()
       thread.join(3)
-  utest_val(False, thread.is_alive())
+  utest(False, thread.is_alive)
   utest_val([], errors)
   utest_val({}, server._active_workers)
-  utest_val(True, all(not worker.is_alive() for worker in server._stream_workers))
+  utest(True, all, (not worker.is_alive() for worker in server._stream_workers))
 
 
 def get(server:WebServer, path:str, *, method:str='GET') -> tuple[int,bytes]:
@@ -117,17 +117,17 @@ def test_finite_stream_chunking_keep_alive_and_access() -> None:
     with closing(HTTPConnection(server.host, server.port, timeout=2)) as client:
       client.request('GET', '/finite')
       response = client.getresponse()
-      utest_val('chunked', response.getheader('transfer-encoding'))
-      utest_val(None, response.getheader('content-length'))
-      utest_val(b'firstsecond', response.read())
+      utest('chunked', response.getheader, 'transfer-encoding')
+      utest(None, response.getheader, 'content-length')
+      utest(b'firstsecond', response.read)
       original_socket = client.sock
       client.request('GET', '/small')
-      utest_val(b'small', client.getresponse().read())
+      utest(b'small', client.getresponse().read)
       utest_val(original_socket, client.sock)
-    utest_val(True, app.bodies[0].closed.wait(1))
+    utest(True, app.bodies[0].closed.wait, 1)
     utest_val(1, app.bodies[0].close_count)
     utest_val(True, '-stream-' in app.bodies[0].thread)
-  utest_val(['/finite', '/small'], sorted(record['p'] for record in records))
+  utest(['/finite', '/small'], sorted, (record['p'] for record in records))
   utest_val([200, 200], [record['s'] for record in records])
 
 
@@ -139,16 +139,16 @@ def test_sse_admission_preserves_normal_workers() -> None:
     with closing(HTTPConnection(server.host, server.port, timeout=2)) as client:
       client.request('GET', '/events', headers={'Last-Event-ID': 'previous'})
       response = client.getresponse()
-      utest_val('text/event-stream;charset=utf-8', response.getheader('content-type'))
-      utest_val(b'id: 1\ndata: ready\n\n', response.read(19))
+      utest('text/event-stream;charset=utf-8', response.getheader, 'content-type')
+      utest(b'id: 1\ndata: ready\n\n', response.read, 19)
       utest_val('previous', app.last_event_id)
-      utest_val((503, b'Service Unavailable'), get(server, '/events'))
-      utest_val(True, app.channels[1].closed.wait(1))
-      utest_val((200, b'small'), get(server, '/small'))
-      utest_val(b': heartbeat\n\n', response.read(13))
+      utest((503, b'Service Unavailable'), get, server, '/events')
+      utest(True, app.channels[1].closed.wait, 1)
+      utest((200, b'small'), get, server, '/small')
+      utest(b': heartbeat\n\n', response.read, 13)
       app.channels[0].finish()
-      utest_val(b'', response.read())
-      utest_val(True, app.channels[0].closed.wait(1))
+      utest(b'', response.read)
+      utest(True, app.channels[0].closed.wait, 1)
       # The released stream slot admits another stream.
       client.request('GET', '/events')
       response = client.getresponse()
@@ -157,20 +157,20 @@ def test_sse_admission_preserves_normal_workers() -> None:
       response.read()
     # Ordinary workers can exceed the short threshold on a loaded machine; only stream workers are under test.
     utest_val([], [call for call in warning.call_args_list if '-stream-' in call.kwargs.get('worker', '')])
-  utest_val(4, len(records))
-  utest_val([200, 200, 200, 503], sorted(record['s'] for record in records))
+  utest(4, len, records)
+  utest([200, 200, 200, 503], sorted, (record['s'] for record in records))
 
 
 @utest_run
 def test_head_replacement_and_disabled_streams_close_without_iteration() -> None:
   app = App()
   with running_server(app, max_streams=0) as (server, _):
-    utest_val((200, b''), get(server, '/events', method='HEAD'))
-    utest_val(True, app.channels[0].closed.wait(1))
-    utest_val((200, b'replaced'), get(server, '/replace'))
-    utest_val(True, app.channels[1].closed.wait(1))
-    utest_val((503, b'Service Unavailable'), get(server, '/finite'))
-    utest_val(True, app.bodies[0].closed.wait(1))
+    utest((200, b''), get, server, '/events', method='HEAD')
+    utest(True, app.channels[0].closed.wait, 1)
+    utest((200, b'replaced'), get, server, '/replace')
+    utest(True, app.channels[1].closed.wait, 1)
+    utest((503, b'Service Unavailable'), get, server, '/finite')
+    utest(True, app.bodies[0].closed.wait, 1)
     utest_val('', app.bodies[0].thread)
     utest_val([], server._stream_workers)
 
@@ -186,7 +186,7 @@ def test_lifetime_and_shutdown_close_quiet_channels() -> None:
         response = client.getresponse()
         if shutting_down: server.shutdown()
         response.read()
-        utest_val(True, app.channels[0].closed.wait(1))
+        utest(True, app.channels[0].closed.wait, 1)
     utest_val(True, monotonic() - start < 2)
     utest_val([200], [record['s'] for record in records])
 
@@ -229,7 +229,7 @@ def test_iterator_finishing_after_lifetime_is_complete() -> None:
 
   app = GeneratorApp(late_finish)
   with running_server(app, stream_max_duration=0.1) as (server, _):
-    utest_val((200, b'all'), get(server, '/'))
+    utest((200, b'all'), get, server, '/')
 
 
 @utest_run
@@ -252,8 +252,8 @@ def test_disconnect_closes_source_and_releases_capacity() -> None:
       socket.sendall(b'GET /events HTTP/1.1\r\nHost: localhost\r\n\r\n')
       assert socket.recv(4096)
       socket.shutdown(SHUT_RDWR)
-    utest_val(True, app.channels[0].closed.wait(2))
-    utest_val((200, b'firstsecond'), get(server, '/finite'))
+    utest(True, app.channels[0].closed.wait, 2)
+    utest((200, b'firstsecond'), get, server, '/finite')
 
 
 @utest_run
@@ -266,9 +266,9 @@ def test_iterator_failures_close_connection_without_second_response() -> None:
         response = client.getresponse()
         utest_val(200, response.status)
         utest_exc(IncompleteRead, response.read)
-      utest_val(True, app.bodies[0].closed.wait(1))
+      utest(True, app.bodies[0].closed.wait, 1)
       utest_val(1, app.bodies[0].close_count)
-      utest_val((200, b'small'), get(server, '/small'))
+      utest((200, b'small'), get, server, '/small')
       error.assert_called_once()
     utest_val([200, 200], [record['s'] for record in records])
 
@@ -280,7 +280,7 @@ def test_header_and_chunk_send_failures_close_source() -> None:
     socket = TestSocket(b'GET /finite HTTP/1.1\r\nHost: localhost\r\n\r\n', fail_send=fail_send)
     with patch('pithy.web.server.logI'):
       handle_connection(app, socket, log_access=True)
-    utest_val(True, app.bodies[0].closed.is_set())
+    utest(True, app.bodies[0].closed.is_set)
     utest_val(1, app.bodies[0].close_count)
 
 
@@ -298,9 +298,9 @@ def test_stalled_stream_does_not_occupy_ordinary_worker() -> None:
     with create_connection((server.host, server.port), timeout=2) as socket:
       socket.sendall(b'GET /large HTTP/1.1\r\nHost: localhost\r\n\r\n')
       assert socket.recv(4096) # Headers are sent before the producer is run.
-      utest_val((200, b'small'), get(server, '/small'))
-      utest_val(True, app.bodies[0].closed.wait(2))
-      utest_val((200, b'firstsecond'), get(server, '/finite'))
+      utest((200, b'small'), get, server, '/small')
+      utest(True, app.bodies[0].closed.wait, 2)
+      utest((200, b'firstsecond'), get, server, '/finite')
   utest_val([200, 200, 200], [record['s'] for record in records])
 
 
@@ -322,9 +322,9 @@ def test_idle_pool_does_not_retain_completed_request() -> None:
 
   app = LifetimeApp()
   with running_server(app, max_streams=1) as (server, _):
-    utest_val((200, b'firstsecond'), get(server, '/finite'))
-    utest_val(True, released.wait(1))
-    utest_val(None, app.request_ref())
+    utest((200, b'firstsecond'), get, server, '/finite')
+    utest(True, released.wait, 1)
+    utest(None, app.request_ref)
 
 
 @utest_run

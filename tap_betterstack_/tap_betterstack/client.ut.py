@@ -14,7 +14,7 @@ from tap_betterstack.explorations import push_exploration_alert
 from tap_betterstack.metrics import push_metrics
 from tap_betterstack.models import (Chart, ChartSpec, Dashboard, DashboardDefinition, DashboardSpec, MetricSpec, Query,
   SectionSpec, Variable)
-from utest import utest_exc, utest_run, utest_val
+from utest import utest, utest_exc, utest_run, utest_seq, utest_val
 
 
 dashboard_data:JsonDict = {
@@ -52,15 +52,15 @@ def models() -> None:
   utest_val(None, dashboard.attributes.dashboard_group_id)
   chart = Chart.from_json(chart_data)
   utest_val(890, chart.attributes.queries[0].id)
-  utest_val({'query_type': 'sql_expression', 'source_variable': 'source',
-    'sql_query': 'SELECT 1'}, chart.attributes.queries[0].as_json())
+  utest({'query_type': 'sql_expression', 'source_variable': 'source', 'sql_query': 'SELECT 1'},
+    chart.attributes.queries[0].as_json)
   utest_val({'nested': {'null_value': None}}, chart.attributes.as_json()['settings'])
-  utest_val({'name': 'source', 'variable_type': 'source', 'values': [], 'default_values': [],
-    'allow_multiple_values': False}, Variable(name='source', variable_type='source', allow_multiple_values=False).as_json())
+  utest({'name': 'source', 'variable_type': 'source', 'values': [], 'default_values': [], 'allow_multiple_values': False},
+    Variable(name='source', variable_type='source', allow_multiple_values=False).as_json)
   utest_val(0, DashboardSpec(name='Empty').as_json()['refresh_interval'])
   # Fetched attributes serialize as a request spec: response-only fields are omitted.
-  utest_val({'name': 'Overview', 'refresh_interval': 60, 'date_range_from': 'now-3h', 'date_range_to': 'now'},
-    dashboard.attributes.as_json())
+  utest({'name': 'Overview', 'refresh_interval': 60, 'date_range_from': 'now-3h', 'date_range_to': 'now'},
+    dashboard.attributes.as_json)
   malformed = deepcopy(dashboard_data)
   del malformed['attributes']
   utest_exc(Exception, Dashboard.from_json, malformed)
@@ -71,7 +71,7 @@ def pagination() -> None:
   client, request = fake_client(
     response({'data': [dashboard_data], 'pagination': {'next': 'https://untrusted.example/page2'}}),
     response({'data': [dashboard_data], 'pagination': {'next': None}}))
-  utest_val(2, len(list(client.iter_dashboards(query='Overview'))))
+  utest(2, len, list(client.iter_dashboards(query='Overview')))
   utest_val([1, 2], [call.kwargs['params']['page'] for call in request.call_args_list])
   for call in request.call_args_list:
     utest_val(('GET', api_url + '/dashboards'), call.args)
@@ -204,7 +204,7 @@ def resume_partial_push() -> None:
     response({'data': detailed}), response({'data': chart_data}), response({'data': detailed}))
   utest_exc(BetterStackError, push_dashboard, client, definition)
   push_dashboard(client, definition)
-  utest_val(1, sum(c.args == ('POST', api_url + '/dashboards') for c in request.call_args_list))
+  utest(1, sum, (c.args == ('POST', api_url + '/dashboards') for c in request.call_args_list))
 
 
 @utest_run
@@ -243,7 +243,7 @@ def source_pagination() -> None:
   utest_exc(ValueError, client.list_sources, per_page=51)
   utest_exc(ValueError, client.list_sources, page=0)
   client, request = fake_client(response({'data': [], 'pagination': {'next': None}}))
-  utest_val([], list(client.iter_sources()))
+  utest_seq([], client.iter_sources)
 
 
 @utest_run
@@ -325,7 +325,7 @@ def exploration_alert_resume_preserves_routing() -> None:
   push_exploration_alert(client, spec, alert)
   push_exploration_alert(client, spec, alert)
   writes = [c for c in request.call_args_list if c.args[0] != 'GET']
-  utest_val(1, sum(c.args == ('POST', api_url + '/explorations') for c in writes))
+  utest(1, sum, (c.args == ('POST', api_url + '/explorations') for c in writes))
   for call in writes:
     if call.args == ('POST', api_url + '/explorations/10/alerts'): utest_val(True, call.kwargs['json']['paused'])
   utest_val(('PATCH', api_url + '/explorations/10/alerts/20'), writes[-1].args)
@@ -347,7 +347,7 @@ def exploration_duplicates_and_pagination() -> None:
   client, request = fake_client(
     response({'data': [saved], 'pagination': {'next': 'https://untrusted.example/'}}),
     response({'data': [], 'pagination': {}}))
-  utest_val([saved], list(client.iter_explorations()))
+  utest_seq([saved], client.iter_explorations)
   utest_val([1, 2], [c.kwargs['params']['page'] for c in request.call_args_list])
   for c in request.call_args_list: utest_val(('GET', api_url + '/explorations'), c.args)
   client, request = fake_client()

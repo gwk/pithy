@@ -13,7 +13,7 @@ from pithy.fs import list_dir, make_dir, make_link, real_path, remove_empty_dir,
 from pithy.io import read_from_path, write_to_path
 from pithy.path import Path
 from tap_ops.deploy import DeployError, read_manifest, reconcile, Reconciliation, unit_name, write_manifest
-from utest import utest_exc, utest_run, utest_val
+from utest import utest, utest_exc, utest_run, utest_val
 
 
 class Systemd:
@@ -73,11 +73,11 @@ def test_install_update_unchanged() -> None:
     write_to_path(units / 'unrelated.service', 'Unmanaged.')
     result = reconcile(source, manifest, units, control=control)
     utest_val(Reconciliation(installed=['web.service'], changed=[], unchanged=[], removed=[]), result)
-    utest_val({'web.service'}, read_manifest(manifest, units))
+    utest({'web.service'}, read_manifest, manifest, units)
     utest_val(0o644, file_stat(units / 'web.service', follow=True).st_mode & 0o777)
     utest_val(0o600, file_stat(manifest, follow=True).st_mode & 0o777)
     utest_val({'web.service': 'V1.', 'unrelated.service': 'Unmanaged.'}, control.reload_files, 'files present at reload')
-    utest_val(False, path_exists(units / 'notes.txt', follow=True))
+    utest(False, path_exists, units / 'notes.txt', follow=True)
 
     # An unchanged unit is not rewritten, but systemd is still reloaded in case a prior run failed before its reload.
     inode = file_stat(units / 'web.service', follow=True).st_ino
@@ -85,15 +85,15 @@ def test_install_update_unchanged() -> None:
     result = reconcile(source, manifest, units, control=control)
     utest_val(Reconciliation(installed=[], changed=[], unchanged=['web.service'], removed=[]), result)
     utest_val(inode, file_stat(units / 'web.service', follow=True).st_ino)
-    utest_val([['daemon-reload']], control.take_calls())
+    utest([['daemon-reload']], control.take_calls)
 
     write_to_path(source / 'web.service', 'V2.')
     utest_val(['web.service'], reconcile(source, manifest, units, control=control).changed)
-    utest_val('V2.', read_from_path(units / 'web.service'))
+    utest('V2.', read_from_path, units / 'web.service')
     chmod(units / 'web.service', 0o600)
     utest_val(['web.service'], reconcile(source, manifest, units, control=control).changed, 'mode repair')
     utest_val(0o644, file_stat(units / 'web.service', follow=True).st_mode & 0o777)
-    utest_val('Unmanaged.', read_from_path(units / 'unrelated.service'))
+    utest('Unmanaged.', read_from_path, units / 'unrelated.service')
 
 
 @utest_run
@@ -107,18 +107,18 @@ def test_remove_obsolete_and_retry() -> None:
     control.active = {'jobs.service': 'active', 'jobs.timer': 'active'}
     control.fail = 'daemon-reload'
     utest_exc(CalledProcessError, reconcile, source, manifest, units, control=control)
-    utest_val({'web.service', 'jobs.service', 'jobs.timer'}, read_manifest(manifest, units), 'pending ownership')
+    utest({'web.service', 'jobs.service', 'jobs.timer'}, read_manifest, manifest, units, _utest_label='pending ownership')
     # The fake rejects a disable that follows deletion, so this sequence also establishes that ordering.
-    utest_val([['stop', 'jobs.timer'], ['disable', '--no-reload', 'jobs.timer'], ['stop', 'jobs.service'],
-      ['disable', '--no-reload', 'jobs.service'], ['daemon-reload']], control.take_calls())
-    utest_val(['web.service'], list_dir(units, hidden=True))
+    utest([['stop', 'jobs.timer'], ['disable', '--no-reload', 'jobs.timer'], ['stop', 'jobs.service'],
+      ['disable', '--no-reload', 'jobs.service'], ['daemon-reload']], control.take_calls)
+    utest(['web.service'], list_dir, units, hidden=True)
 
     # Retry after systemd has forgotten the deleted units.
     control.fail = ''
     result = reconcile(source, manifest, units, control=control)
     utest_val(['jobs.timer', 'jobs.service'], result.removed)
-    utest_val([['daemon-reload']], control.take_calls())
-    utest_val({'web.service'}, read_manifest(manifest, units))
+    utest([['daemon-reload']], control.take_calls)
+    utest({'web.service'}, read_manifest, manifest, units)
 
 
 @utest_run
@@ -132,16 +132,15 @@ def test_obsolete_unit_states() -> None:
     control.active = {'broken.service': 'failed', 'crashy.service': 'active'}
     control.fail_on_stop = {'crashy.service'}
     reconcile(source, manifest, units, adopt=names, control=control)
-    utest_val([
+    utest([
       ['reset-failed', 'broken.service'], ['disable', '--no-reload', 'broken.service'],
       ['stop', 'crashy.service'], ['reset-failed', 'crashy.service'], ['disable', '--no-reload', 'crashy.service'],
-      ['disable', '--no-reload', 'idle.service'],
-      ['daemon-reload']], control.take_calls())
-    utest_val(['web.service'], list_dir(units, hidden=True))
+      ['disable', '--no-reload', 'idle.service'], ['daemon-reload']], control.take_calls)
+    utest(['web.service'], list_dir, units, hidden=True)
 
     # Repeating the adoption of removed names is harmless.
     reconcile(source, manifest, units, adopt=names, control=control)
-    utest_val([['daemon-reload']], control.take_calls())
+    utest([['daemon-reload']], control.take_calls)
 
 
 @utest_run
@@ -156,8 +155,8 @@ def test_stop_failure_retains_ownership() -> None:
       on_plan=plans.append)
     utest_val([Reconciliation(installed=['web.service'], changed=[], unchanged=[], removed=['jobs.service'])], plans,
       'plan delivered before the failure')
-    utest_val(True, path_exists(units / 'jobs.service', follow=True))
-    utest_val({'web.service', 'jobs.service'}, read_manifest(manifest, units))
+    utest(True, path_exists, units / 'jobs.service', follow=True)
+    utest({'web.service', 'jobs.service'}, read_manifest, manifest, units)
 
 
 @utest_run
@@ -168,20 +167,20 @@ def test_adoption_and_dry_run() -> None:
     dest = units / 'web.service'
     utest_exc(DeployError(f'Unmanaged unit exists: {dest}; use -adopt web.service to claim it.'),
       reconcile, source, manifest, units, control=control)
-    utest_val(False, path_exists(manifest, follow=True))
+    utest(False, path_exists, manifest, follow=True)
 
     write_to_path(units / 'jobs.service', 'Retired.')
     plan = reconcile(source, manifest, units, adopt_existing=True, adopt=['jobs.service'], dry_run=True, control=control)
     utest_val(Reconciliation(installed=[], changed=['web.service'], unchanged=[], removed=['jobs.service']), plan)
-    utest_val(['Remove: jobs.service', 'Update: web.service'], plan.lines())
+    utest(['Remove: jobs.service', 'Update: web.service'], plan.lines)
     utest_val([], control.calls)
-    utest_val(False, path_exists(manifest, follow=True))
-    utest_val('Old.', read_from_path(dest))
+    utest(False, path_exists, manifest, follow=True)
+    utest('Old.', read_from_path, dest)
 
     result = reconcile(source, manifest, units, adopt_existing=True, adopt=['jobs.service'], control=control)
     utest_val(plan, result)
-    utest_val(False, path_exists(units / 'jobs.service', follow=True))
-    utest_val('New.', read_from_path(dest))
+    utest(False, path_exists, units / 'jobs.service', follow=True)
+    utest('New.', read_from_path, dest)
 
 
 @utest_run
@@ -192,10 +191,10 @@ def test_empty_source() -> None:
     make_dir(manifest.parent)
     write_manifest(manifest, units, {'web.service'})
     utest_exc(DeployError, reconcile, source, manifest, units, control=control)
-    utest_val(True, path_exists(units / 'web.service', follow=True))
+    utest(True, path_exists, units / 'web.service', follow=True)
     reconcile(source, manifest, units, allow_empty=True, control=control)
-    utest_val(set(), read_manifest(manifest, units))
-    utest_val(['unrelated.service'], list_dir(units, hidden=True))
+    utest(set(), read_manifest, manifest, units)
+    utest(['unrelated.service'], list_dir, units, hidden=True)
 
 
 @utest_run
@@ -221,7 +220,7 @@ def test_source_validation() -> None:
     make_link(source / 'web.service', link=path)
     check(path, DeployError(f'Expected a regular source file: {path}.'))
     utest_val([], control.calls)
-    utest_val(False, path_exists(manifest.parent, follow=True))
+    utest(False, path_exists, manifest.parent, follow=True)
 
 
 @utest_run
@@ -268,10 +267,10 @@ def test_lock_held_by_another_process() -> None:
       holder.stdout.readline() # Wait for the holder to acquire the lock.
       utest_exc(DeployError(f'Another reconciliation holds the lock: {lock_path}.'),
         reconcile, source, manifest, units, control=control)
-      utest_val(False, path_exists(units / 'web.service', follow=True))
+      utest(False, path_exists, units / 'web.service', follow=True)
       holder.communicate() # Close stdin so that the holder exits and releases the lock.
     reconcile(source, manifest, units, control=control)
-    utest_val(True, path_exists(units / 'web.service', follow=True))
+    utest(True, path_exists, units / 'web.service', follow=True)
 
 
 for name in ('../jobs.service', '-jobs.service', '*.service', 'jobs.socket', 'jobs@.service', 'jobs@worker.service',

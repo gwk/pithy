@@ -36,7 +36,7 @@ NRestarts=3
 InactiveExitTimestamp=Tue 2026-08-25 10:00:02 PDT
 '''
 show = parse_show_output(show_text)
-utest_val(['webapp', 'keap-apiary'], list(show), 'parsed unit names')
+utest(['webapp', 'keap-apiary'], list, show, _utest_label='parsed unit names')
 utest_val('auto-restart', show['keap-apiary']['SubState'], 'parsed property')
 
 utest(datetime(2026, 8, 25, 10, 0, 5), parse_systemd_timestamp, 'Tue 2026-08-25 10:00:05 PDT')
@@ -91,12 +91,17 @@ utest_val('hi', e.msg, 'byte array message')
 # Unit status from polled properties.
 
 u = UnitStatus(name='webapp')
-utest_val([], u.update_from_show({'ActiveState': 'activating', 'SubState': 'start', 'Result': 'success', 'NRestarts': '0'}), 'not yet')
+utest([], u.update_from_show, {'ActiveState': 'activating', 'SubState': 'start', 'Result': 'success', 'NRestarts': '0'},
+  _utest_label='not yet')
 utest_val(False, u.is_ready, 'not ready while activating')
-utest_val([], u.update_from_show({'ActiveState': 'active', 'SubState': 'running', 'Result': 'success', 'NRestarts': '0'}), 'active')
+utest([], u.update_from_show, {'ActiveState': 'active', 'SubState': 'running', 'Result': 'success', 'NRestarts': '0'},
+  _utest_label='active')
 utest_val(True, u.is_ready, 'ready when active without a pattern')
-utest_val(['result: exit-code'], u.update_from_show({'ActiveState': 'activating', 'SubState': 'auto-restart', 'Result': 'exit-code', 'NRestarts': '1'}), 'crash')
-utest_val([], u.update_from_show({'ActiveState': 'activating', 'SubState': 'auto-restart', 'Result': 'exit-code', 'NRestarts': '1'}), 'crash reported once')
+utest(['result: exit-code'], u.update_from_show,
+  {'ActiveState': 'activating', 'SubState': 'auto-restart', 'Result': 'exit-code', 'NRestarts': '1'}, _utest_label='crash')
+utest([], u.update_from_show,
+  {'ActiveState': 'activating', 'SubState': 'auto-restart', 'Result': 'exit-code', 'NRestarts': '1'},
+  _utest_label='crash reported once')
 utest_val(True, u.is_failed, 'failed')
 
 

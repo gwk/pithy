@@ -59,7 +59,7 @@ def test_accept_descriptor_exhaustion() -> None:
       socket.sendall(b'GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n')
       received = b''
       while chunk := socket.recv(65536): received += chunk
-    utest_val(True, received.endswith(b'\r\n\r\nok'), 'first response')
+    utest(True, received.endswith, b'\r\n\r\nok', _utest_label=repr('first response'))
     soft, hard = getrlimit(RLIMIT_NOFILE)
     fillers:list[int] = []
     try:
@@ -70,12 +70,12 @@ def test_accept_descriptor_exhaustion() -> None:
         utest_val(EMFILE, exc.errno)
       close(fillers.pop()) # Leave exactly one descriptor for the client; the server's accept then fails.
       with create_connection((server.host, server.port), timeout=2):
-        utest_val(True, logged.wait(timeout=2), 'accept failure logged')
+        utest(True, logged.wait, timeout=2, _utest_label=repr('accept failure logged'))
     finally:
       for fd in fillers: close(fd)
       setrlimit(RLIMIT_NOFILE, (soft, hard))
     utest_val('Accept failed for lack of resources; pausing.', logE.call_args.args[0])
-    utest_val(b'ok', get(server))
+    utest(b'ok', get, server)
 
 
 def resolve(soft:int, hard:int, max_connections:int|None=None, *, raise_fd_limit:bool=False

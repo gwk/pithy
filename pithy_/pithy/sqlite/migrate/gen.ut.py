@@ -29,8 +29,8 @@ def _test_unmanaged_trigger_is_skipped() -> None:
     stmts = gen_migration(conn=conn, schema=schema)
     utest_val(['DROP INDEX main."stale_idx"', 'CREATE INDEX main."keep_idx"\n  ON "t" (id)'], stmts)
     run_migration(conn, stmts)
-    utest_val(['tr'], trigger_names(conn))
-    utest_val([], gen_migration(conn=conn, schema=schema))
+    utest(['tr'], trigger_names, conn)
+    utest([], gen_migration, conn=conn, schema=schema)
 
 
 @utest_run
@@ -71,7 +71,7 @@ def _test_table_level_changes_rebuild() -> None:
     conn.execute('INSERT INTO t VALUES (1, 2)')
     for table_args in variants:
       stmts = gen_migration(conn=conn, schema=schema(**table_args))
-      utest_val(True, any(s.startswith('-- Rebuilding') for s in stmts), f'rebuild for {table_args}')
+      utest(True, any, ((s.startswith('-- Rebuilding') for s in stmts)), _utest_label=f'rebuild for {table_args}')
       run_migration(conn, stmts)
       utest([], gen_migration, conn=conn, schema=schema(**table_args), _utest_label=f'stable for {table_args}')
     utest_val([(1, 2)], [tuple(r) for r in conn.execute('SELECT a, b FROM t')])
@@ -125,7 +125,7 @@ def _test_drop_constrained_column_rebuilds() -> None:
       run_migration(conn, gen_migration(conn=conn, schema=old))
       conn.execute('INSERT INTO t VALUES (1, 2, 3)')
       stmts = gen_migration(conn=conn, schema=schema())
-      utest_val(True, stmts[0].startswith('-- Rebuilding'), f'rebuild without DROP COLUMN for {label}')
+      utest(True, stmts[0].startswith, '-- Rebuilding', _utest_label=f'rebuild without DROP COLUMN for {label}')
       run_migration(conn, stmts)
       utest([], gen_migration, conn=conn, schema=schema(), _utest_label=f'stable for {label}')
       utest_val([(2, 3)], [tuple(r) for r in conn.execute('SELECT * FROM t')], f'rows for {label}')
@@ -143,7 +143,7 @@ def _test_drop_column_with_changed_generated_column_rebuilds() -> None:
     run_migration(conn, gen_migration(conn=conn, schema=schema(Column('a', int), virtual='a + b')))
     conn.execute('INSERT INTO t VALUES (1, 2)')
     stmts = gen_migration(conn=conn, schema=schema(virtual='b + 1'))
-    utest_val(True, stmts[0].startswith('-- Rebuilding'), 'rebuild without DROP COLUMN')
+    utest(True, stmts[0].startswith, '-- Rebuilding', _utest_label='rebuild without DROP COLUMN')
     run_migration(conn, stmts)
     utest([], gen_migration, conn=conn, schema=schema(virtual='b + 1'))
     utest_val([(2, 3)], [tuple(r) for r in conn.execute('SELECT b, v FROM t')])
@@ -170,12 +170,12 @@ def _test_drop_indexed_column() -> None:
     run_migration(conn, gen_migration(conn=conn, schema=old))
     conn.execute('INSERT INTO t VALUES (1, 2, 3)')
     stmts = gen_migration(conn=conn, schema=new)
-    utest_val([
+    utest([
       'DROP INDEX main."changed_idx"',
       'DROP INDEX main."expr_idx"',
       'DROP INDEX main."partial_idx"',
       'DROP INDEX main."plain_idx"',
-    ], sorted(stmts[:4]), 'index drops come first')
+    ], sorted, stmts[:4], _utest_label='index drops come first')
     utest_val(['-- Dropping column "a".', 'ALTER TABLE main."t" DROP COLUMN "a"', 'CREATE INDEX main."changed_idx"\n  ON "t" (b)'],
       stmts[4:])
     run_migration(conn, stmts)
@@ -230,14 +230,14 @@ def _test_find_undeclared() -> None:
       Table('keep', columns=(Column('id', int, is_primary=True, is_unique=True), Column('n', int, is_opt=True, is_unique=True))),
       Index('keep_idx', table='keep', columns=('n',))])
 
-    utest_val([
+    utest([
       ('view', 'a_view', 'a_view'),
       ('index', 'keep_stale_idx', 'keep'),
       ('table', 'removed', 'removed'),
       ('index', 'removed_idx', 'removed'),
       ('trigger', 'removed_tr', 'removed'),
       ('virtual', 'search', 'search'),
-    ], find_undeclared(conn=conn, schema=schema))
-    utest_val([('table', 'other', 'other')], find_undeclared(conn=conn, schema=Schema('aux')))
+    ], find_undeclared, conn=conn, schema=schema)
+    utest([('table', 'other', 'other')], find_undeclared, conn=conn, schema=Schema('aux'))
     utest_exc(GenMigrationError, find_undeclared, conn=conn, schema=Schema('missing'))
     utest_exc(GenMigrationError, gen_migration, conn=conn, schema=Schema('missing'))

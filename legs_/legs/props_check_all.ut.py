@@ -7,7 +7,7 @@ Run the property checks of `legs.props` with generated inputs, and test that the
 from legs.build import build_lexer_class, build_mode_automata
 from legs.parse import Grammar, parse_legs
 from legs.props import GrammarChecker, PropertyError, PropsStats
-from utest import utest_exc, utest_val
+from utest import utest, utest_exc, utest_val
 
 
 grammar_text = '''
@@ -78,4 +78,4 @@ utest_exc(PropertyError("mode 'main': input b'A_': token word:0-2: NFA longest m
   check_extra_transition)
 
 # The automata can be provided to avoid building them twice.
-utest_val(['main', 'inner'], list(GrammarChecker(grammar, list(build_mode_automata(grammar))).automata), 'modes')
+utest(['main', 'inner'], list, GrammarChecker(grammar, list(build_mode_automata(grammar))).automata, _utest_label='modes')

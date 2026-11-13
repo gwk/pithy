@@ -5,14 +5,14 @@ from json import loads
 
 from pithy.html import Div, Span
 from pithy.web.response import CsvResponse, HtmlResponse, HtmxResponse, JsonResponse, RedirectResponse, Response
-from utest import utest_exc, utest_run, utest_val
+from utest import utest, utest_exc, utest_run, utest_val
 
 
 @utest_run
 def test_json_response() -> None:
   r = JsonResponse({'error':{'status':400, 'tags':['a']}}, status=HTTPStatus.BAD_REQUEST)
   assert isinstance(r.body, bytes)
-  utest_val({'error':{'status':400, 'tags':['a']}}, loads(r.body), desc='JsonResponse body')
+  utest({'error':{'status':400, 'tags':['a']}}, loads, r.body, _utest_label=repr('JsonResponse body'))
   utest_val('application/json', r.headers['content-type'], desc='JsonResponse content-type')
   utest_val(b'[1]', JsonResponse('[1]', prerendered=True).body, desc='JsonResponse prerendered body')
   utest_exc(ValueError, JsonResponse, [1], prerendered=True)
@@ -37,7 +37,7 @@ def test_htmx_response() -> None:
   utest_val('no-store', r.headers['cache-control'], desc='HtmxResponse cache-control')
 
   cached = HtmxResponse(Div('a'), cache=True)
-  utest_val(None, cached.headers.get('cache-control'), desc='HtmxResponse cached cache-control')
+  utest(None, cached.headers.get, 'cache-control', _utest_label=repr('HtmxResponse cached cache-control'))
 
   hx = HtmxResponse(hx_push='/p', hx_refresh=True, hx_redirect='/r', hx_location='/l', hx_trigger='t')
   utest_val('/p', hx.headers['hx-push-url'], desc='HtmxResponse hx-push-url')
@@ -72,8 +72,8 @@ def test_bodyless_responses() -> None:
    HTTPStatus.RESET_CONTENT, HTTPStatus.NOT_MODIFIED):
     response = Response(status)
     utest_val(None, response.body, desc=f'{status} body')
-    utest_val(0 if status == HTTPStatus.RESET_CONTENT else None, response.headers.get('content-length'),
-      desc=f'{status} content-length')
+    utest(0 if status == HTTPStatus.RESET_CONTENT else None, response.headers.get, 'content-length',
+      _utest_label=repr(f'{status} content-length'))
     utest_val(None, HtmlResponse(None, status=status).body)
     # The base class still requires an explicit absent body, even for empty strings and bytes.
     for body in ('', b'', 'content'):
@@ -82,12 +82,12 @@ def test_bodyless_responses() -> None:
     for content in ((), ('',)):
       response = HtmxResponse(*content, status=status, hx_trigger={'appt_changed': {'target': 'body', 'id': 123}})
       utest_val(None, response.body, desc=f'HTMX {status} body')
-      utest_val({'appt_changed': {'target': 'body', 'id': 123}}, loads(str(response.headers['hx-trigger'])))
+      utest({'appt_changed': {'target': 'body', 'id': 123}}, loads, str(response.headers['hx-trigger']))
       utest_val('no-store', response.headers['cache-control'])
-      utest_val(0 if status == HTTPStatus.RESET_CONTENT else None, response.headers.get('content-length'))
+      utest(0 if status == HTTPStatus.RESET_CONTENT else None, response.headers.get, 'content-length')
       wire_headers = dict(response.headers_bytes_list())
       utest_val(status == HTTPStatus.RESET_CONTENT, b'content-length' in wire_headers)
-      utest_val({'appt_changed': {'target': 'body', 'id': 123}}, loads(wire_headers[b'hx-trigger']))
+      utest({'appt_changed': {'target': 'body', 'id': 123}}, loads, wire_headers[b'hx-trigger'])
     for nonempty_content in ('content', Div(), ' '):
       utest_exc(ValueError, HtmxResponse, nonempty_content, status=status)
 

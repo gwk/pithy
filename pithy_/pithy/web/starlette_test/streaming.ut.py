@@ -7,7 +7,7 @@ from pithy.web.response import Response
 from pithy.web.sse import SseChannel, SseEvent, SseResponse
 from pithy.web.starlette import convert_response
 from starlette.types import Message, Scope
-from utest import utest_exc, utest_run, utest_val
+from utest import utest, utest_exc, utest_run, utest_val
 
 
 @utest_run
@@ -25,7 +25,7 @@ def test_iterator_response_and_cleanup() -> None:
     source = chunks()
     # A generator closed before it starts does not enter its finally block; use a channel for that case below.
     response = convert_response(Response(body=source))
-    utest_val(False, any(key == b'content-length' for key, _ in response.raw_headers))
+    utest(False, any, (key == b'content-length' for key, _ in response.raw_headers))
     messages:list[Message] = []
 
     async def receive() -> Message: raise AssertionError('receive should not be called')
@@ -38,7 +38,7 @@ def test_iterator_response_and_cleanup() -> None:
     if fail: utest_exc(RuntimeError, asyncio.run, response(scope, receive, send))
     else:
       asyncio.run(response(scope, receive, send))
-      utest_val(b'firstsecond', b''.join(message.get('body', b'') for message in messages))
+      utest(b'firstsecond', b''.join, (message.get('body', b'') for message in messages))
     utest_val([] if fail == 'head' else [True], closed)
     utest_exc(StopIteration, next, source)
 
@@ -64,6 +64,6 @@ def test_sse_conversion_and_unstarted_cleanup() -> None:
     if fail: utest_exc(RuntimeError, asyncio.run, response(scope, receive, send))
     else:
       asyncio.run(response(scope, receive, send))
-      utest_val(b'' if method == 'HEAD' else b'id: 7\ndata: hello\n\n',
-        b''.join(message.get('body', b'') for message in messages))
-    utest_val(True, channel.closed.is_set())
+      utest(b'' if method == 'HEAD' else b'id: 7\ndata: hello\n\n', b''.join,
+        (message.get('body', b'') for message in messages))
+    utest(True, channel.closed.is_set)

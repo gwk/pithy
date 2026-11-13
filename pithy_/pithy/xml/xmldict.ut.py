@@ -3,7 +3,7 @@
 from xml.etree.ElementTree import Comment, Element, ParseError, QName, SubElement
 
 from pithy.xml.xmldict import convert_etree_tag_to_str, XmlDictParser, XmlError
-from utest import utest, utest_exc, utest_run, utest_val
+from utest import utest, utest_exc, utest_run
 
 
 parser = XmlDictParser(children_key='-')
@@ -49,5 +49,5 @@ def _() -> None:
   'Preserve the parser error as the cause of XmlError.'
   try: parser.parse('<root>')
   except XmlError as e:
-    utest_val(True, isinstance(e.__cause__, ParseError))
+    utest(True, isinstance, e.__cause__, ParseError)
   else: raise AssertionError('Expected XmlError.')

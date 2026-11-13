@@ -5,7 +5,7 @@ from http import HTTPStatus
 from pithy.web.errors import BadRequestError, ResponseError
 from pithy.web.request import _add_to_param_dict, Request, UploadedFile
 from pithy.web.requestconn import BodyTooLargeError, BytesConn
-from utest import utest_exc, utest_run, utest_val
+from utest import utest, utest_exc, utest_run, utest_val
 
 
 def _make_request(media_type:str='', body:bytes=b'', query_str:str='') -> Request:
@@ -35,9 +35,9 @@ def _() -> None:
   def segments(path:str) -> list[str]:
     return Request(method='GET', scheme='http', host='localhost', port=80, raw_path=path, query_str='',
       headers={}, client_addr=('127.0.0.1', 0), content_length=None).path_segments
-  utest_val([''], segments('/'))
-  utest_val(['a', ''], segments('/a/'))
-  utest_val(['a b', 'caf\u00e9'], segments('/a%20b/caf%C3%A9'))
+  utest([''], segments, '/')
+  utest(['a', ''], segments, '/a/')
+  utest(['a b', 'caf\u00e9'], segments, '/a%20b/caf%C3%A9')
   utest_exc(BadRequestError, segments, '/%FF')
   utest_exc(BadRequestError, segments, '/a%00')
   utest_exc(BadRequestError, segments, '/c%2Fd')
@@ -51,10 +51,10 @@ def _() -> None:
   def path(raw_path:str) -> str:
     return Request(method='GET', scheme='http', host='localhost', port=80, raw_path=raw_path, query_str='',
       headers={}, client_addr=('127.0.0.1', 0), content_length=None).path
-  utest_val('/a b/c', path('/a%20b/c'))
-  utest_val('/100%25', path('/100%25'))
-  utest_val('/a/', path('/a/'))
-  utest_val('/', path('/'))
+  utest('/a b/c', path, '/a%20b/c')
+  utest('/100%25', path, '/100%25')
+  utest('/a/', path, '/a/')
+  utest('/', path, '/')
   utest_exc(BadRequestError, path, '/bad%ff')
 
 
@@ -104,14 +104,14 @@ def _() -> None:
 def _() -> None:
   'parse_urlencoded: simple key/value pairs parse correctly.'
   req = _make_request('application/x-www-form-urlencoded', b'name=alice&count=3')
-  utest_val({'name': 'alice', 'count': '3'}, req.parse_urlencoded(max_bytes=1024))
+  utest({'name': 'alice', 'count': '3'}, req.parse_urlencoded, max_bytes=1024)
 
 
 @utest_run
 def _() -> None:
   'parse_urlencoded: multi-value same key produces a list.'
   req = _make_request('application/x-www-form-urlencoded', b'tag=a&tag=b&tag=c')
-  utest_val({'tag': ['a', 'b', 'c']}, req.parse_urlencoded(max_bytes=1024))
+  utest({'tag': ['a', 'b', 'c']}, req.parse_urlencoded, max_bytes=1024)
 
 
 @utest_run
@@ -127,7 +127,7 @@ def _() -> None:
 def _() -> None:
   'body_params: valid JSON object with string values parses correctly.'
   req = _make_request('application/json', b'{"name":"alice","tag":"admin"}')
-  utest_val({'name': 'alice', 'tag': 'admin'}, req.body_params(max_bytes=1024))
+  utest({'name': 'alice', 'tag': 'admin'}, req.body_params, max_bytes=1024)
 
 
 @utest_run
@@ -169,7 +169,7 @@ def _() -> None:
   part = b'Content-Disposition: form-data; name="name"\r\n\r\nalice'
   body = _make_multipart(boundary, part)
   req = _make_request(f'multipart/form-data; boundary={boundary}', body)
-  utest_val({'name': 'alice'}, req.parse_multipart(max_bytes=4096))
+  utest({'name': 'alice'}, req.parse_multipart, max_bytes=4096)
 
 
 @utest_run
@@ -194,7 +194,7 @@ def _() -> None:
   part = b'Content-Disposition: form-data; name="upload"; filename=""\r\nContent-Type: application/octet-stream\r\n\r\nhello'
   body = _make_multipart(boundary, part)
   req = _make_request(f'multipart/form-data; boundary={boundary}', body)
-  utest_val({}, req.parse_multipart(max_bytes=4096))
+  utest({}, req.parse_multipart, max_bytes=4096)
 
 
 @utest_run
@@ -205,7 +205,7 @@ def _() -> None:
   part_b = b'Content-Disposition: form-data; name="tag"\r\n\r\nbeta'
   body = _make_multipart(boundary, part_a, part_b)
   req = _make_request(f'multipart/form-data; boundary={boundary}', body)
-  utest_val({'tag': ['alpha', 'beta']}, req.parse_multipart(max_bytes=4096))
+  utest({'tag': ['alpha', 'beta']}, req.parse_multipart, max_bytes=4096)
 
 
 # body_params dispatch
@@ -232,7 +232,7 @@ def _() -> None:
 def _() -> None:
   'read_body: body equal to max_bytes is allowed.'
   req = _make_request('text/plain', b'01234')
-  utest_val(b'01234', req.read_body(max_bytes=5))
+  utest(b'01234', req.read_body, max_bytes=5)
 
 
 # ctx

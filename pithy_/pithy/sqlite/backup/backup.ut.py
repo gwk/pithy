@@ -76,20 +76,20 @@ def slots_from(dt_str:str, *, count:int, step:TimeDelta, interval:float, use_utc
 
 
 # Slots tile the timeline: instants less than one interval apart share a slot, and the next interval is the next slot.
-utest_val(slot('2026-03-01T13:00:00+00:00', interval=hour), slot('2026-03-01T13:59:59+00:00', interval=hour),
-  'one hour is one slot')
-utest_val(slot('2026-03-01T13:00:00+00:00', interval=hour) + 1, slot('2026-03-01T14:00:00+00:00', interval=hour),
-  'the next hour is the next slot')
-utest_val(slot('2026-03-01T13:30:00+00:00', interval=day, use_utc=True), slot('2026-03-01T23:59:59+00:00', interval=day,
-  use_utc=True), 'one UTC day is one slot')
-utest_val(slot('2026-03-01T13:30:00+00:00', interval=day, use_utc=True) + 1,
-  slot('2026-03-02T00:00:00+00:00', interval=day, use_utc=True), 'UTC daily slots begin at UTC midnight')
+utest(slot('2026-03-01T13:00:00+00:00', interval=hour), slot, '2026-03-01T13:59:59+00:00', interval=hour,
+  _utest_label='one hour is one slot')
+utest(slot('2026-03-01T13:00:00+00:00', interval=hour) + 1, slot, '2026-03-01T14:00:00+00:00', interval=hour,
+  _utest_label='the next hour is the next slot')
+utest(slot('2026-03-01T13:30:00+00:00', interval=day, use_utc=True), slot, '2026-03-01T23:59:59+00:00', interval=day,
+  use_utc=True, _utest_label='one UTC day is one slot')
+utest(slot('2026-03-01T13:30:00+00:00', interval=day, use_utc=True) + 1, slot, '2026-03-02T00:00:00+00:00', interval=day,
+  use_utc=True, _utest_label='UTC daily slots begin at UTC midnight')
 
 # The time grid is offset by the system timezone's notion of standard-time.
 # The phase does not move under daylight saving, so it holds on both transition days and in between.
 for date_str in ('2026-03-08', '2026-07-01', '2026-11-01'):
-  utest_val(slot(f'{date_str}T07:59:59+00:00', interval=day) + 1, slot(f'{date_str}T08:00:00+00:00', interval=day),
-    f'{date_str}: the daily slot begins at 00:00 PST (08:00 UTC)')
+  utest(slot(f'{date_str}T07:59:59+00:00', interval=day) + 1, slot, f'{date_str}T08:00:00+00:00', interval=day,
+    _utest_label=f'{date_str}: the daily slot begins at 00:00 PST (08:00 UTC)')
 
 # Every elapsed hour is its own slot across both daylight saving transitions:
 # the spring forward skips none of the 23 hours of its local day, and the fall back merges none of the 25 of its own.
@@ -110,14 +110,14 @@ for transition_date, offset in (('2026-03-08', '-08:00'), ('2026-11-01', '-07:00
 # An interval longer than a day is equally periodic; the grid is anchored to the Sunday preceding the epoch,
 # so Pacific weekly slots begin at 00:00 PST on Sundays. The anchor offset is a whole number of days,
 # so it does not disturb the daily and hourly positions asserted above.
-utest_val(slot('2026-01-03T23:59:59-08:00', interval=7*day) + 1, slot('2026-01-04T00:00:00-08:00', interval=7*day),
-  'weekly slots begin at 00:00 PST on Sunday')
+utest(slot('2026-01-03T23:59:59-08:00', interval=7*day) + 1, slot, '2026-01-04T00:00:00-08:00', interval=7*day,
+  _utest_label='weekly slots begin at 00:00 PST on Sunday')
 weekly = slots_from('2026-01-04T00:00:00-08:00', count=4, step=TimeDelta(days=7), interval=7*day)
 utest_val(list(range(weekly[0], weekly[0]+4)), weekly, 'weekly slots advance by one per 7 elapsed days')
 
 # The standard-time phase holds for multi-day intervals too, so under daylight saving the boundary is 01:00 local.
-utest_val(slot('2026-03-15T00:59:59-07:00', interval=7*day) + 1, slot('2026-03-15T01:00:00-07:00', interval=7*day),
-  'a weekly slot under daylight saving begins at 01:00 PDT (00:00 PST)')
+utest(slot('2026-03-15T00:59:59-07:00', interval=7*day) + 1, slot, '2026-03-15T01:00:00-07:00', interval=7*day,
+  _utest_label='a weekly slot under daylight saving begins at 01:00 PDT (00:00 PST)')
 
 # An interval must be positive.
 utest_exc(ValueError, slot, '2026-03-01T00:00:00+00:00', interval=0.0)
@@ -167,15 +167,15 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
     return upload_interval_for(config, 'main')
 
   # The configured interval must be non-negative; None disables uploads; 0 uploads on every run.
-  utest_val(hour, config_interval_s(hour), 'float interval')
-  utest_val(None, config_interval_s(None), 'None interval')
-  utest_val(0.0, config_interval_s(0.0), 'zero interval uploads every run')
+  utest(hour, config_interval_s, hour, _utest_label='float interval')
+  utest(None, config_interval_s, None, _utest_label='None interval')
+  utest(0.0, config_interval_s, 0.0, _utest_label='zero interval uploads every run')
   utest_exc(ValueError, config_interval_s, -hour)
 
   # A configured interval string is parsed to seconds as a timespan.
-  utest_val(1800.0, config_interval_s('30m'), 'timespan string interval')
+  utest(1800.0, config_interval_s, '30m', _utest_label='timespan string interval')
   utest_exc(ValueError, config_interval_s, 'bogus')
-  utest_val(0.0, config_interval_s('0s'), 'zero timespan string uploads every run')
+  utest(0.0, config_interval_s, '0s', _utest_label='zero timespan string uploads every run')
   utest_exc(ValueError, config_interval_s, '-1h')
   utest_exc(ValueError, config_interval_s, 'never')
 
@@ -212,31 +212,32 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
 
   vacuum_path = create_local_backup(backup_config, 'main', method='vacuum')
   utest_val(f'{backups_dir}/main.db', vacuum_path, 'vacuum artifact path')
-  utest_val(['original'], read_rows(vacuum_path), 'vacuum artifact rows')
+  utest(['original'], read_rows, vacuum_path, _utest_label='vacuum artifact rows')
 
 
   # Upload intervals: the first upload writes the uploadts sidecar file, and the next timestamp in the same slot skips.
-  utest_val(True, maybe_upload(store, vacuum_path, 'main.db', interval=hour), 'initial upload')
-  utest_val(True, is_file(vacuum_path + uploadts_suffix, follow=True), 'uploadts written')
-  utest_val(False, maybe_upload(store, vacuum_path, 'main.db', interval=hour), 'gated upload skipped')
-  utest_val(False, maybe_upload(store, vacuum_path, 'main.db', interval=None), 'interval None never uploads')
-  utest_val(1, len(store.versions['main.db']), 'store version count')
+  utest(True, maybe_upload, store, vacuum_path, 'main.db', interval=hour, _utest_label='initial upload')
+  utest(True, is_file, vacuum_path + uploadts_suffix, follow=True, _utest_label='uploadts written')
+  utest(False, maybe_upload, store, vacuum_path, 'main.db', interval=hour, _utest_label='gated upload skipped')
+  utest(False, maybe_upload, store, vacuum_path, 'main.db', interval=None, _utest_label='interval None never uploads')
+  utest(1, len, store.versions['main.db'], _utest_label='store version count')
 
   # An interval of zero uploads on every call, ignoring the sidecar file.
-  utest_val(True, maybe_upload(store, vacuum_path, 'main.db', interval=0.0), 'zero interval uploads')
-  utest_val(True, maybe_upload(store, vacuum_path, 'main.db', interval=0.0), 'zero interval uploads again')
-  utest_val(3, len(store.versions['main.db']), 'store version count after zero-interval uploads')
+  utest(True, maybe_upload, store, vacuum_path, 'main.db', interval=0.0, _utest_label='zero interval uploads')
+  utest(True, maybe_upload, store, vacuum_path, 'main.db', interval=0.0, _utest_label='zero interval uploads again')
+  utest(3, len, store.versions['main.db'], _utest_label='store version count after zero-interval uploads')
 
   # `force` uploads regardless of the interval and the sidecar file.
-  utest_val(True, maybe_upload(store, vacuum_path, 'main.db', interval=hour, force=True), 'force uploads within the slot')
-  utest_val(True, maybe_upload(store, vacuum_path, 'main.db', interval=None, force=True), 'force uploads despite None')
-  utest_val(5, len(store.versions['main.db']), 'store version count after the forced uploads')
+  utest(True, maybe_upload, store, vacuum_path, 'main.db', interval=hour, force=True,
+    _utest_label='force uploads within the slot')
+  utest(True, maybe_upload, store, vacuum_path, 'main.db', interval=None, force=True, _utest_label='force uploads despite None')
+  utest(5, len, store.versions['main.db'], _utest_label='store version count after the forced uploads')
 
 
   # Sync intervals gate the production of the local artifact, recorded by the adjacent syncts sidecar file.
   # Each vacuum backup writes a new file, so the inode identifies the artifact that a call produced.
-  utest_val(vacuum_path, maybe_create_local_backup(backup_config, 'main', method='vacuum', interval=hour), 'sync path')
-  utest_val(True, is_file(vacuum_path + syncts_suffix, follow=True), 'syncts written')
+  utest(vacuum_path, maybe_create_local_backup, backup_config, 'main', method='vacuum', interval=hour, _utest_label='sync path')
+  utest(True, is_file, vacuum_path + syncts_suffix, follow=True, _utest_label='syncts written')
   synced_ino = file_stat(vacuum_path, follow=True).st_ino
 
   maybe_create_local_backup(backup_config, 'main', method='vacuum', interval=hour)
@@ -254,10 +255,11 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
 
   # A None interval never produces, even when the artifact is missing; a positive interval always produces a missing artifact.
   remove_file_if_exists(vacuum_path)
-  utest_val(vacuum_path, maybe_create_local_backup(backup_config, 'main', method='vacuum', interval=None), 'path returned')
-  utest_val(False, path_exists(vacuum_path, follow=False), 'a None interval does not produce a missing artifact')
+  utest(vacuum_path, maybe_create_local_backup, backup_config, 'main', method='vacuum', interval=None,
+    _utest_label='path returned')
+  utest(False, path_exists, vacuum_path, follow=False, _utest_label='a None interval does not produce a missing artifact')
   maybe_create_local_backup(backup_config, 'main', method='vacuum', interval=hour)
-  utest_val(True, path_exists(vacuum_path, follow=False), 'a missing artifact is produced despite a fresh syncts')
+  utest(True, path_exists, vacuum_path, follow=False, _utest_label='a missing artifact is produced despite a fresh syncts')
 
 
   # The two intervals are independent: a run whose sync is gated still uploads the existing artifact.
@@ -267,7 +269,7 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
   version_count = len(store.versions['main.db'])
   backup_and_upload(gated_sync_config, ['main'], method='vacuum')
   utest_val(gated_ino, file_stat(vacuum_path, follow=True).st_ino, 'the gated sync does not reproduce the artifact')
-  utest_val(version_count + 1, len(store.versions['main.db']), 'the existing artifact is uploaded')
+  utest(version_count + 1, len, store.versions['main.db'], _utest_label='the existing artifact is uploaded')
 
 
   # Upload intervals resolve per database; the `_` entry is the default and None means never.
@@ -316,16 +318,16 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
 
   trigger_file = write_trigger_file(trigger_config, 'main')
   utest_val(f'{backups_dir}/main.backuptrigger', trigger_file, 'trigger path')
-  utest_val(True, is_file(trigger_file, follow=True), 'trigger written')
+  utest(True, is_file, trigger_file, follow=True, _utest_label='trigger written')
 
   version_count = len(store.versions['main.db'])
   backup_and_upload(trigger_config, ['main'], method='vacuum')
-  utest_val(version_count + 1, len(store.versions['main.db']), 'trigger uploads despite uploads being disabled')
-  utest_val(False, path_exists(trigger_file, follow=False), 'trigger cleared after a successful upload')
+  utest(version_count + 1, len, store.versions['main.db'], _utest_label='trigger uploads despite uploads being disabled')
+  utest(False, path_exists, trigger_file, follow=False, _utest_label='trigger cleared after a successful upload')
 
   # Without a trigger, the same config uploads nothing.
   backup_and_upload(trigger_config, ['main'], method='vacuum')
-  utest_val(version_count + 1, len(store.versions['main.db']), 'no trigger, no upload')
+  utest(version_count + 1, len, store.versions['main.db'], _utest_label='no trigger, no upload')
 
   # A trigger rewritten after it was claimed is a second request; it must survive the run that was already in flight.
   write_trigger_file(trigger_config, 'main')
@@ -334,19 +336,19 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
   sleep(0.01) # So that the rewrite differs in mtime, even if it happens to reuse the freed inode.
   write_trigger_file(trigger_config, 'main')
   clear_trigger_file(trigger_config, 'main', claimed)
-  utest_val(True, is_file(trigger_file, follow=True), 'a trigger rewritten during the run is not cleared')
+  utest(True, is_file, trigger_file, follow=True, _utest_label='a trigger rewritten during the run is not cleared')
 
   # The next run consumes it.
   backup_and_upload(trigger_config, ['main'], method='vacuum')
-  utest_val(version_count + 2, len(store.versions['main.db']), 'the surviving trigger uploads on the next run')
-  utest_val(False, path_exists(trigger_file, follow=False), 'the surviving trigger is then cleared')
+  utest(version_count + 2, len, store.versions['main.db'], _utest_label='the surviving trigger uploads on the next run')
+  utest(False, path_exists, trigger_file, follow=False, _utest_label='the surviving trigger is then cleared')
 
   # A failed upload leaves the trigger in place for the next run.
   write_trigger_file(trigger_config, 'main')
   failing_store = FakeStore()
   failing_store.upload = lambda path, obj_key: False # type: ignore[method-assign]
   backup_and_upload(replace(trigger_config, make_save_store=lambda: failing_store), ['main'], method='vacuum')
-  utest_val(True, is_file(trigger_file, follow=True), 'a failed upload leaves the trigger in place')
+  utest(True, is_file, trigger_file, follow=True, _utest_label='a failed upload leaves the trigger in place')
   remove_file_if_exists(trigger_file)
 
 
@@ -356,21 +358,21 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
     c.run("INSERT INTO T VALUES ('post-backup')") # A local change that the restore must discard.
 
   with db_config.exclusive_lock():
-    utest_val(True, restore_db(backup_config, store, 'main'), 'restore succeeds')
+    utest(True, restore_db, backup_config, store, 'main', _utest_label='restore succeeds')
 
-  utest_val(['mutated', 'original'], read_rows(db_config.path('main')), 'restored rows')
+  utest(['mutated', 'original'], read_rows, db_config.path('main'), _utest_label='restored rows')
   utest_val(['main'], mutated_names, 'mutation hook called')
   utest_val(1, store.download_count, 'download count')
   utest_val(True, db_config.path('main') in fixed_up_paths, 'canonical path fixed up')
 
   downloaded_paths = [p for p in fixed_up_paths if p.endswith(downloaded_suffix)]
-  utest_val(1, len(downloaded_paths), 'one .downloaded artifact fixed up')
-  utest_val(True, path_exists(downloaded_paths[0], follow=False), '.downloaded cache file exists')
+  utest(1, len, downloaded_paths, _utest_label='one .downloaded artifact fixed up')
+  utest(True, path_exists, downloaded_paths[0], follow=False, _utest_label='.downloaded cache file exists')
 
 
   # A second restore of the same version reuses the verified .downloaded cache without downloading.
   with db_config.exclusive_lock():
-    utest_val(True, restore_db(backup_config, store, 'main'), 'cached restore succeeds')
+    utest(True, restore_db, backup_config, store, 'main', _utest_label='cached restore succeeds')
   utest_val(1, store.download_count, 'cached restore does not download')
 
 
@@ -397,7 +399,7 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
   copyfile(cached_path, hidden_path)
   remove_file_if_exists(cached_path)
   utest_exc(SystemExit(1), restore_all, local_config, ['main'], local=True, store_name='fake')
-  utest_val(['mutated', 'original'], read_rows(db_config.path('main')), 'missing download leaves database intact')
+  utest(['mutated', 'original'], read_rows, db_config.path('main'), _utest_label='missing download leaves database intact')
   copyfile(hidden_path, cached_path)
   remove_file_if_exists(hidden_path)
 
@@ -411,27 +413,27 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
   with patch('pithy.cmdparse.sys_argv', ['backup', 'restore', '-local', '-store', 'prod', 'main']):
     main_entry(local_config)
   utest_val(['fake', 'prod'], selected_labels, 'CLI passes the store label to the factory')
-  utest_val(['mutated', 'newer', 'original'], read_rows(db_config.path('main')), 'CLI restores newest local backup')
-  utest_val(['newer', 'original'], read_rows(newer_path), 'local cache stays pristine')
+  utest(['mutated', 'newer', 'original'], read_rows, db_config.path('main'), _utest_label='CLI restores newest local backup')
+  utest(['newer', 'original'], read_rows, newer_path, _utest_label='local cache stays pristine')
   utest_val(1, store.download_count, 'local restore does not download')
-  utest_val(True, is_file(db_config.manifest_path, follow=True), 'local restore writes manifest')
+  utest(True, is_file, db_config.manifest_path, follow=True, _utest_label='local restore writes manifest')
   # Switching stores repeatedly preserves each pristine cache and never selects another store's newer backup.
   for selected_store, expected in [('fake', ['mutated', 'original']), ('prod', ['mutated', 'newer', 'original']),
    ('fake', ['mutated', 'original'])]:
     restore_all(local_config, ['main'], local=True, store_name=selected_store)
-    utest_val(expected, read_rows(db_config.path('main')), f'restore from {selected_store}')
+    utest(expected, read_rows, db_config.path('main'), _utest_label=f'restore from {selected_store}')
   # Omitting the label uses the factory default, just as a remote restore does.
   with patch('pithy.cmdparse.sys_argv', ['backup', 'restore', '-local', 'main']):
     main_entry(local_config)
   utest_val(None, selected_labels[-1], 'factory receives the default label')
-  utest_val(['mutated', 'original'], read_rows(db_config.path('main')), 'default store restored')
+  utest(['mutated', 'original'], read_rows, db_config.path('main'), _utest_label='default store restored')
   utest_exc(ValueError('Restore forbidden by configuration.'), restore_all, local_config, ['main'],
     local=True, store_name='forbidden')
   utest_exc(SystemExit('error: backup config has no restore store factory; cannot restore.'), restore_all,
     replace(local_config, make_restore_store=None), ['main'], local=True, store_name='prod')
   utest_exc(SystemExit(1), restore_all, local_config, ['main'], local=True, store_name='missing')
   utest_exc(SystemExit(1), restore_all, local_config, ['main'], local=True, store_name='pro')
-  utest_val(['mutated', 'original'], read_rows(db_config.path('main')), 'failed selection leaves database intact')
+  utest(['mutated', 'original'], read_rows, db_config.path('main'), _utest_label='failed selection leaves database intact')
 
   # Only save and trigger use the backups dir; restore works without it.
   # This comes last in the section because the restore replaces the database contents.
@@ -461,7 +463,7 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
     finally:
       chmod(perms_dir, 0o700)
   utest(None, restore_all, no_backups_config, ['main'], local=True, store_name='prod')
-  utest_val(['mutated', 'newer', 'original'], read_rows(db_config.path('main')), 'restore without a backups dir')
+  utest(['mutated', 'newer', 'original'], read_rows, db_config.path('main'), _utest_label='restore without a backups dir')
 
   remove_file_if_exists(newer_path)
   remove_file_if_exists(older_path)
@@ -471,19 +473,19 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
   with open(downloaded_paths[0], 'ab') as f:
     f.write(b'garbage')
   with db_config.exclusive_lock():
-    utest_val(False, restore_db(backup_config, store, 'main'), 'corrupt cache refused')
+    utest(False, restore_db, backup_config, store, 'main', _utest_label='corrupt cache refused')
 
 
   # A version without a SHA1 cannot be verified.
   sha1less_store = FakeStore()
   sha1less_store.versions['main.db'] = [StoredVersion(key='k0', obj_key='main.db', size=0, sha1=None, uploaded_at=now_utc())]
   with db_config.exclusive_lock():
-    utest_val(False, restore_db(backup_config, sha1less_store, 'main'), 'sha1-less version refused')
+    utest(False, restore_db, backup_config, sha1less_store, 'main', _utest_label='sha1-less version refused')
 
 
   # An empty store has nothing to restore.
   with db_config.exclusive_lock():
-    utest_val(False, restore_db(backup_config, FakeStore(), 'main'), 'empty store refused')
+    utest(False, restore_db, backup_config, FakeStore(), 'main', _utest_label='empty store refused')
 
 
   # Sync backup, if sqlite3_rsync is available.
@@ -504,7 +506,8 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
     files=dict(_=BackupFileConfig(sync_interval=hour, upload_interval=hour)), make_save_store=lambda: stop_store)
 
   backup_and_upload(stop_config, ['main','aux'], method='vacuum', should_stop=lambda: True)
-  utest_val(False, path_exists(f'{stop_backups_dir}/main.db', follow=False), 'a stop before the first database does nothing')
+  utest(False, path_exists, f'{stop_backups_dir}/main.db', follow=False,
+    _utest_label='a stop before the first database does nothing')
 
   stopped = [False]
   def stop_after_first() -> bool:
@@ -514,9 +517,9 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
     return was_stopped
 
   backup_and_upload(stop_config, ['main','aux'], method='vacuum', should_stop=stop_after_first)
-  utest_val(True, path_exists(f'{stop_backups_dir}/main.db', follow=False), 'the database in flight completed')
-  utest_val(False, path_exists(f'{stop_backups_dir}/aux.db', follow=False), 'the rest were left for the next run')
-  utest_val(['main.db'], sorted(stop_store.versions), 'only the completed database uploaded')
+  utest(True, path_exists, f'{stop_backups_dir}/main.db', follow=False, _utest_label='the database in flight completed')
+  utest(False, path_exists, f'{stop_backups_dir}/aux.db', follow=False, _utest_label='the rest were left for the next run')
+  utest(['main.db'], sorted, stop_store.versions, _utest_label='only the completed database uploaded')
 
   backup_and_upload(stop_config, ['main','aux'], method='vacuum')
-  utest_val(True, path_exists(f'{stop_backups_dir}/aux.db', follow=False), 'the next run picks up where it left off')
+  utest(True, path_exists, f'{stop_backups_dir}/aux.db', follow=False, _utest_label='the next run picks up where it left off')

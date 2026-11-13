@@ -20,7 +20,7 @@ err = b2_error_for_response(400, '{"status": 400, "code": "bad_request", "messag
 utest_val(400, err.status, 'status')
 utest_val('bad_request', err.code, 'code')
 utest_val('no such bucket', err.message, 'message')
-utest_val("B2 API error: status 400; code 'bad_request'; no such bucket", str(err), 'str')
+utest("B2 API error: status 400; code 'bad_request'; no such bucket", str, err, _utest_label='str')
 
 # A non-JSON body is tolerated; the raw body becomes the message.
 err = b2_error_for_response(503, '<html>Service Unavailable</html>')

@@ -89,7 +89,7 @@ stty -ixon
       before = termios.tcgetattr(slave)
       result = subprocess.run([sys.executable, str(program)], stdin=slave, stdout=subprocess.PIPE,
         stderr=subprocess.PIPE, text=True, check=True, start_new_session=True, env={**os.environ, 'ZDOTDIR': directory})
-      utest_val(before, termios.tcgetattr(slave))
+      utest(before, termios.tcgetattr, slave)
       output = result.stdout
       assert 'configured-widget' in output
       assert '⌃ S' in output and 'tty:stop' in output and 'Pause output' in output
@@ -101,7 +101,7 @@ stty -ixon
       result = subprocess.run([sys.executable, str(program)], stdin=slave, capture_output=True,
         text=True, start_new_session=True, env={**os.environ, 'ZDOTDIR': directory})
       utest_val(1, result.returncode)
-      utest_val(before, termios.tcgetattr(slave))
+      utest(before, termios.tcgetattr, slave)
       assert 'keybindings:' in result.stderr and 'Traceback' not in result.stderr
     finally:
       os.close(slave)
@@ -171,7 +171,7 @@ def test_format_and_sort() -> None:
     '^[[A':'↑', '^[OA':'↑', '^[[1;6D':'⌃ ⇧ ←', '^[[Z':'⇧ ⇥', '^?':'⌫', '^I':'⇥', '^M':'↩',
     r'\M-r':'Meta[0xF2]', r'\\':'\\', r'\^':'^', r'\033r':'⌥ R'}
   for raw, expected in cases.items():
-    utest_val(expected, ' '.join(map(str, keystrokes(decode_key(raw)))))
+    utest(expected, ' '.join, map(str, keystrokes(decode_key(raw))))
   bindings = [Binding(decode_key(key), key, 'test') for key in ('^[b', '^[A', '^B', 'a', '^A', '^[a')]
   utest_val(['A', '⌃ A', '⌥ A', '⌥ ⇧ A', '⌃ B', '⌥ B'], [row[0] for row in table_rows(bindings)])
   utest_val('main', Keybindings.parse([]).mode)
@@ -208,7 +208,7 @@ def test_zsh_quoting() -> None:
       'bindkey -N probe; bindkey -M probe "$1" probe-widget; bindkey -M probe', 'probe',
       key.replace('\\', '\\\\').replace('^', '\\^')], capture_output=True, text=True, check=True)
     bindings = parse_bindings(result.stdout, 'probe')
-    utest_val(1, len(bindings))
+    utest(1, len, bindings)
     expected = key.encode('utf8').decode('latin1')
     utest_val(expected, bindings[0].raw)
     if key == 'é': utest_val('é', bindings[0].label)

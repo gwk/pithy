@@ -6,7 +6,7 @@ from sys import stderr
 from tempfile import TemporaryDirectory
 
 from pithy.systemd import is_journal_stream, sd_notify, sd_notify_ready
-from utest import utest, utest_val
+from utest import utest
 
 
 with TemporaryDirectory() as tmp_dir:
@@ -37,7 +37,7 @@ with TemporaryDirectory() as tmp_dir:
     server.settimeout(2)
     environ['NOTIFY_SOCKET'] = path
     utest(True, sd_notify_ready)
-    utest_val(b'READY=1', server.recv(64), 'ready datagram')
+    utest(b'READY=1', server.recv, 64, _utest_label='ready datagram')
     utest(True, sd_notify, 'STATUS=working\nWATCHDOG=1')
-    utest_val(b'STATUS=working\nWATCHDOG=1', server.recv(64), 'multi-line datagram')
+    utest(b'STATUS=working\nWATCHDOG=1', server.recv, 64, _utest_label='multi-line datagram')
     del environ['NOTIFY_SOCKET']

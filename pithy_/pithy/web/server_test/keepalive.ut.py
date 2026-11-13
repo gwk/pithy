@@ -13,7 +13,7 @@ from pithy.web.auth import allow_public
 from pithy.web.request import Request
 from pithy.web.response import Response
 from pithy.web.server import ServerConfig, WebServer
-from utest import utest_run, utest_val
+from utest import utest, utest_run, utest_val
 
 
 class App(WebApp):
@@ -61,19 +61,19 @@ def test_idle_connections_release_workers() -> None:
       clients.callback(conn.close)
       conn.request('GET', '/')
       response = conn.getresponse()
-      utest_val(b'ok', response.read())
-      utest_val(None, response.getheader('connection'))
+      utest(b'ok', response.read)
+      utest(None, response.getheader, 'connection')
       connections.append((conn, conn.sock))
     # Browsers can also connect before sending any request bytes.
     clients.enter_context(create_connection((server.host, server.port), timeout=1))
     for conn, socket in reversed(connections):
       conn.request('GET', '/')
-      utest_val(b'ok', conn.getresponse().read())
+      utest(b'ok', conn.getresponse().read)
       utest_val(socket, conn.sock)
     # Shutdown must close parked sockets without waiting for the ten-second idle timeout.
     server.shutdown()
     thread.join(timeout=1)
-    utest_val(False, thread.is_alive())
+    utest(False, thread.is_alive)
 
 
 @utest_run
@@ -84,8 +84,8 @@ def test_pipelined_requests() -> None:
       b'GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n')
     received = b''
     while chunk := socket.recv(65536): received += chunk
-    utest_val(4, received.count(b'HTTP/1.1 200 '))
-    utest_val(4, received.count(b'\r\n\r\nok'))
+    utest(4, received.count, b'HTTP/1.1 200 ')
+    utest(4, received.count, b'\r\n\r\nok')
 
 
 @utest_run
@@ -94,13 +94,13 @@ def test_idle_timeouts() -> None:
   with running_server(idle_timeout=0.05, max_connections=2) as (server, _):
     for _ in range(4):
       with create_connection((server.host, server.port), timeout=1) as socket:
-        utest_val(b'', socket.recv(1))
+        utest(b'', socket.recv, 1)
     conn = HTTPConnection(server.host, server.port, timeout=1)
     try:
       conn.request('GET', '/')
-      utest_val(b'ok', conn.getresponse().read())
+      utest(b'ok', conn.getresponse().read)
       assert conn.sock is not None
-      utest_val(b'', conn.sock.recv(1))
+      utest(b'', conn.sock.recv, 1)
     finally:
       conn.close()
 
@@ -114,15 +114,15 @@ def test_connection_capacity() -> None:
       conn = HTTPConnection(server.host, server.port, timeout=1)
       clients.callback(conn.close)
       conn.request('GET', '/')
-      utest_val(b'ok', conn.getresponse().read())
+      utest(b'ok', conn.getresponse().read)
       conns.append(conn)
     oldest, middle, newest = conns
     assert oldest.sock is not None
-    utest_val(b'', oldest.sock.recv(1))
+    utest(b'', oldest.sock.recv, 1)
     for conn in (newest, middle):
       sock = conn.sock
       conn.request('GET', '/')
-      utest_val(b'ok', conn.getresponse().read())
+      utest(b'ok', conn.getresponse().read)
       utest_val(sock, conn.sock) # Still the original connection.
 
 
@@ -133,11 +133,11 @@ def test_connection_capacity_without_idle() -> None:
     conn = HTTPConnection(server.host, server.port, timeout=2)
     clients.callback(conn.close)
     conn.request('GET', '/block')
-    utest_val(True, App.started.wait(timeout=2), 'blocking request started')
+    utest(True, App.started.wait, timeout=2, _utest_label=repr('blocking request started'))
     with create_connection((server.host, server.port), timeout=1) as socket:
-      utest_val(b'', socket.recv(1))
+      utest(b'', socket.recv, 1)
     App.unblock.set()
-    utest_val(b'ok', conn.getresponse().read())
+    utest(b'ok', conn.getresponse().read)
 
 
 def read_to_close(socket:Socket) -> bytes:
@@ -181,14 +181,14 @@ def test_readable_idle_connection_not_replaced() -> None:
     listener.append(thread)
     with create_connection((server.host, server.port), timeout=2) as idle:
       idle.sendall(b'GET / HTTP/1.1\r\nHost: localhost\r\n\r\n')
-      utest_val(True, read_response(idle).endswith(b'\r\n\r\nok'), 'first response')
+      utest(True, read_response(idle).endswith, b'\r\n\r\nok', _utest_label=repr('first response'))
       hold.set()
       server._wake_listener()
-      utest_val(True, held.wait(timeout=2), 'listener held')
+      utest(True, held.wait, timeout=2, _utest_label=repr('listener held'))
       idle.sendall(request) # The idle connection becomes readable.
       with create_connection((server.host, server.port), timeout=2) as new: # A new connection arrives at capacity.
         new.sendall(request)
         release.set()
         outcomes = [read_to_close(idle).endswith(b'\r\n\r\nok'), read_to_close(new).endswith(b'\r\n\r\nok')]
       utest_val(True, outcomes[0], f'readable idle connection served: {outcomes}')
-    utest_val(True, thread.is_alive(), 'listener alive')
+    utest(True, thread.is_alive, _utest_label=repr('listener alive'))

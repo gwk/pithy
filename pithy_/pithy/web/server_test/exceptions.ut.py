@@ -251,7 +251,7 @@ def test_server_exceptions() -> None:
 
     # An unhandled exception produces a bare 500 that bypasses both hooks.
     # Outside of debug mode the body names only the error ID, not the exception.
-    utest_val('', utest_internal_error(server_proc, base_url, '/raise'), desc='/raise details')
+    utest('', utest_internal_error, server_proc, base_url, '/raise', _utest_label=repr('/raise details'))
     head_response = requests.head(f'{base_url}/raise', timeout=2)
     utest_val((500, ''), (head_response.status_code, head_response.text), desc='HEAD /raise')
     utest((500, None, None), get_status_hooks, base_url, '/raise')
@@ -313,7 +313,8 @@ def test_server_exceptions() -> None:
     utest((200, 'replacement'), get_status_body, base_url, '/finish-text')
     count += 1
     utest((200, ','.join(['True'] * count)), get_status_body, base_url, '/file-state')
-    utest_val('', utest_internal_error(server_proc, base_url, '/finish-mutated-failed-file'), desc='finish failure details')
+    utest('', utest_internal_error, server_proc, base_url, '/finish-mutated-failed-file',
+      _utest_label=repr('finish failure details'))
     count += 2
     utest((200, ','.join(['True'] * count)), get_status_body, base_url, '/file-state')
 
@@ -325,8 +326,8 @@ def test_server_exceptions_debug() -> None:
   with TestProcess([executable, __file__, 'serve-debug'], merge_stderr=True) as server_proc:
     base_url = server_proc.wait_for_pattern(r'"url":"(http://localhost:\d+)"').group(1)
     details = utest_internal_error(server_proc, base_url, '/raise')
-    utest_val(True, details.startswith('\nTraceback (most recent call last):\n'), desc=f'traceback: {details!r}')
-    utest_val(True, details.endswith('\nRuntimeError: handler failed\n'), desc=f'exception: {details!r}')
+    utest(True, details.startswith, '\nTraceback (most recent call last):\n', _utest_label=repr(f'traceback: {details!r}'))
+    utest(True, details.endswith, '\nRuntimeError: handler failed\n', _utest_label=repr(f'exception: {details!r}'))
     _ = server_proc.flush_merged()
 
 

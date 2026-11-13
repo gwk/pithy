@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from pithy.buffer import Buffer
-from utest import utest, utest_exc, utest_seq, utest_val
+from utest import utest, utest_exc, utest_seq
 
 
 utest_seq([], Buffer, [])
@@ -10,7 +10,7 @@ utest_seq([0, 1, 2], Buffer, range(3))
 
 b = Buffer(range(4))
 
-utest_val(True, bool(b))
+utest(True, bool, b)
 utest(0, next, b)
 
 b.push(-1)
@@ -18,15 +18,15 @@ utest(-1, b.peek)
 b.push(-2)
 utest(-2, b.peek)
 utest(-2, next, b)
-utest_val(True, bool(b))
+utest(True, bool, b)
 utest(-1, next, b)
 
-utest_val(True, bool(b))
+utest(True, bool, b)
 utest(1, b.peek)
 utest(1, next, b)
 
 utest([2, 3], list, b)
-utest_val(False, bool(b))
+utest(False, bool, b)
 utest(None, b.peek, default=None)
 utest_exc(StopIteration(), next, b)
 

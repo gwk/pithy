@@ -48,12 +48,12 @@ def test_html() -> None:
 def test_problem_json() -> None:
   response = render_error_problem_json(_request(), NotFoundError())
   assert isinstance(response.body, bytes)
-  utest_val({'status': 404, 'title': 'Not Found'}, loads(response.body))
+  utest({'status': 404, 'title': 'Not Found'}, loads, response.body)
   utest_val('application/problem+json', response.headers['content-type'])
 
   detailed = render_error_problem_json(_request(), BadRequestError('bad input'))
   assert isinstance(detailed.body, bytes)
-  utest_val({'detail': 'bad input', 'status': 400, 'title': 'Bad Request'}, loads(detailed.body))
+  utest({'detail': 'bad input', 'status': 400, 'title': 'Bad Request'}, loads, detailed.body)
 
 
 @utest_run
@@ -65,7 +65,7 @@ def test_error_headers_and_head() -> None:
     utest_val('GET, POST', response.headers['allow'], desc=f'{renderer.__name__} allow header')
     head = renderer(_request('HEAD'), error)
     utest_val(None, head.body, desc=f'{renderer.__name__} HEAD body')
-    utest_val(None, head.headers.get('content-type'), desc=f'{renderer.__name__} HEAD content-type')
+    utest(None, head.headers.get, 'content-type', _utest_label=repr(f'{renderer.__name__} HEAD content-type'))
     utest_val('GET, POST', head.headers['allow'], desc=f'{renderer.__name__} HEAD allow header')
 
 

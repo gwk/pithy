@@ -3,11 +3,11 @@
 from operator import add, sub
 
 from pithy.date import Date, DateDelta, DateRange, DateTime, dt_BdY, is_leap_year, Time, time_add, TimeDelta
-from utest import utest, utest_exc, utest_seq, utest_symmetric, utest_val
+from utest import utest, utest_exc, utest_seq, utest_symmetric
 
 
 y2k = Date(2000, 1, 1)
-utest_val(True, is_leap_year(y2k.year))
+utest(True, is_leap_year, y2k.year)
 
 utest_symmetric(utest, Date(2000, 2, 1), add, DateDelta(months=1), Date(2000, 1, 1))
 utest_symmetric(utest, Date(2002, 2, 28), add, DateDelta(months=1), Date(2002, 1, 31))

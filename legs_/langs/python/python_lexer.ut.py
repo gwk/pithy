@@ -13,7 +13,7 @@ from legs.langs.python.py_lexer_samples import python_samples
 from legs.langs.python.py_preprocess import LexIssue, PythonPreprocessor
 from legs.langs.python.py_tokenize import python_tokens
 from tolkien import Source, Token
-from utest import utest_run, utest_val
+from utest import utest, utest_run, utest_val
 
 
 root = Path(__file__).resolve().parents[3]
@@ -124,7 +124,8 @@ def invalid_and_incomplete() -> None:
     utest_val(error_tokens, [(t.mode, t.kind, t.pos, t.end) for t in tokens if t.kind in ('invalid', 'incomplete')],
       f'error tokens: {text!r}')
   scanner, tokens = scan("'bad\nx = 1\n")
-  utest_val(True, any(t.kind == 'name' and scanner.source.text[t.slc] == b'x' for t in tokens), 'recovery after newline')
+  utest(True, any, (t.kind == 'name' and scanner.source.text[t.slc] == b'x' for t in tokens),
+    _utest_label='recovery after newline')
 
 
 @utest_run

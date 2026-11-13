@@ -15,7 +15,7 @@ from starlette.exceptions import HTTPException
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import Response as StarletteResponse, StreamingResponse
 from starlette.types import Message, Scope
-from utest import utest_exc, utest_run, utest_val
+from utest import utest, utest_exc, utest_run, utest_val
 
 
 def _run(endpoint_cls:type[Endpoint], *, method:str='GET', path:str='/', query:str='', headers:Mapping[str,str]|None=None,
@@ -112,7 +112,7 @@ def _() -> None:
     file = open(path, 'rb')
     assert isinstance(file, BufferedReader)
     response = convert_response(PithyResponse(body=file))
-    utest_val(True, isinstance(response, StreamingResponse))
+    utest(True, isinstance, response, StreamingResponse)
     utest_val(False, file.closed)
     utest_val((b'content-length', str(len(content)).encode()), response.raw_headers[0])
 
@@ -121,7 +121,7 @@ def _() -> None:
     async def send(message:Message) -> None: messages.append(message)
     scope:Scope = {'type':'http', 'asgi':{'spec_version':'2.4'}}
     asyncio.run(response(scope, receive, send))
-    utest_val(content, b''.join(message.get('body', b'') for message in messages[1:]))
+    utest(content, b''.join, (message.get('body', b'') for message in messages[1:]))
     utest_val([64 * 1024, 3, 0], [len(message.get('body', b'')) for message in messages[1:]])
     utest_val(True, file.closed)
 
@@ -151,7 +151,7 @@ def _() -> None:
     async def send(message:Message) -> None: raise RuntimeError('send failed')
     scope:Scope = {'type':'http', 'asgi':{'spec_version':'2.4'}}
     try: asyncio.run(response(scope, receive, send))
-    except RuntimeError as exc: utest_val('send failed', str(exc))
+    except RuntimeError as exc: utest('send failed', str, exc)
     else: raise AssertionError('expected send failure')
     utest_val(True, file.closed)
 
@@ -189,8 +189,8 @@ def _() -> None:
 @utest_run
 def _() -> None:
   'Adapter: without a scope raw_path, the decoded path is re-quoted.'
-  utest_val('/a%20b/caf%C3%A9', _raw_path_from_scope({'type': 'http'}, '/a b/caf\u00e9'))
-  utest_val('/a%20b', _raw_path_from_scope({'type': 'http', 'raw_path': b'/a%20b'}, '/ignored'))
+  utest('/a%20b/caf%C3%A9', _raw_path_from_scope, {'type': 'http'}, '/a b/caf\u00e9')
+  utest('/a%20b', _raw_path_from_scope, {'type': 'http', 'raw_path': b'/a%20b'}, '/ignored')
 
 
 @utest_run
@@ -237,7 +237,7 @@ def _() -> None:
 def _() -> None:
   'endpoint_route: methods come from the Endpoint and the route is named for the Endpoint class.'
   route = endpoint_route('/x', FormEndpoint)
-  utest_val(['POST'], sorted(route.methods or ()))
+  utest(['POST'], sorted, route.methods or ())
   utest_val('FormEndpoint', route.name)
 
 
@@ -292,9 +292,9 @@ def _() -> None:
     @requires_privileges('Editor', 'Staff')
     def post(self, request:PithyRequest, fields:None) -> PithyResponse: return PithyResponse(body='post')
 
-  utest_val(True, hasattr(endpoint_adapter(Methods), '__wrapped__'))
-  utest_val(True, hasattr(endpoint_adapter(PrivilegedEndpoint), '__wrapped__'))
-  utest_val(False, hasattr(endpoint_adapter(HelloEndpoint), '__wrapped__'))
+  utest(True, hasattr, endpoint_adapter(Methods), '__wrapped__')
+  utest(True, hasattr, endpoint_adapter(PrivilegedEndpoint), '__wrapped__')
+  utest(False, hasattr, endpoint_adapter(HelloEndpoint), '__wrapped__')
   resp = _run(Methods, method='POST', scope_extra={'user': SimpleUser('dave'), 'auth': AuthCredentials(['Staff', 'Editor'])})
   utest_val(b'post', resp.body)
   try: _run(Methods, method='POST', scope_extra={'user': SimpleUser('dave'), 'auth': AuthCredentials(['Staff'])})
@@ -362,7 +362,7 @@ def _() -> None:
   scope:Scope = {'type': 'http', 'method': 'POST', 'scheme': 'http', 'path': '/', 'query_string': b'', 'headers': [],
     'server': ('localhost', 80), 'client': ('127.0.0.1', 1), 'path_params': {}}
   adapted = endpoint_adapter(Account)
-  utest_val(True, hasattr(adapted, '__wrapped__'))
+  utest(True, hasattr, adapted, '__wrapped__')
   for auth_scope in ({}, {'user': UnauthenticatedUser(), 'auth': AuthCredentials(['authenticated'])}):
     utest_exc(HTTPException(403), asyncio.run, adapted(StarletteRequest({**scope, **auth_scope}, receive)))
     utest_val([], events)

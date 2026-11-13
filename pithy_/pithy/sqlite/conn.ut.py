@@ -5,7 +5,7 @@ from contextlib import closing
 from typing import Any
 
 from pithy.sqlite.conn import _backoff_ceiling, _is_exc_sqlite_busy_family, Conn
-from utest import utest_exc, utest_run, utest_val
+from utest import utest, utest_exc, utest_run, utest_val
 
 
 def make_conn() -> Conn:
@@ -21,7 +21,7 @@ def _test_commit() -> None:
   with closing(make_conn()) as conn:
     with conn:
       conn.run_effect('INSERT INTO t (x) VALUES (1)')
-    utest_val(1, conn.execute('SELECT count() FROM t').one_col(), 'committed row count')
+    utest(1, conn.execute('SELECT count() FROM t').one_col, _utest_label='committed row count')
     utest_val(True, conn.transaction_time > 0, 'transaction_time recorded')
 
 
@@ -35,9 +35,10 @@ def _test_rollback() -> None:
         conn.run_effect('INSERT INTO t (x) VALUES (2)')
         raise Boom()
     except Boom as e:
-      utest_val(True, hasattr(e, 'transaction_time'), 'exception annotated with transaction_time attribute')
-      utest_val(True, any('transaction_time' in note for note in e.__notes__), 'exception annotated with timing note')
-    utest_val(0, conn.execute('SELECT count() FROM t').one_col(), 'rolled-back row count')
+      utest(True, hasattr, e, 'transaction_time', _utest_label='exception annotated with transaction_time attribute')
+      utest(True, any, ('transaction_time' in note for note in e.__notes__),
+        _utest_label='exception annotated with timing note')
+    utest(0, conn.execute('SELECT count() FROM t').one_col, _utest_label='rolled-back row count')
 
 
 # A Conn can be re-entered to run successive independent transactions.
@@ -48,7 +49,7 @@ def _test_successive_transactions() -> None:
       conn.run_effect('INSERT INTO t (x) VALUES (1)')
     with conn:
       conn.run_effect('INSERT INTO t (x) VALUES (2)')
-    utest_val(2, conn.execute('SELECT count() FROM t').one_col(), 'two committed rows')
+    utest(2, conn.execute('SELECT count() FROM t').one_col, _utest_label='two committed rows')
 
 
 # An explicit transaction is actually open inside the block: a nested BEGIN raises.
@@ -84,10 +85,10 @@ def _test_cursor_lifecycle() -> None:
     with conn:
       conn.run_effect('INSERT INTO t (x) VALUES (42)')
     cursor = conn.execute('SELECT x FROM t')
-    utest_val(42, cursor.one_col(), 'fetch from open cursor returned by execute')
+    utest(42, cursor.one_col, _utest_label='fetch from open cursor returned by execute')
     cursor.close()
     conn.run_effect('DELETE FROM t')
-    utest_val(0, conn.execute('SELECT count() FROM t').one_col(), 'run_effect applied the statement')
+    utest(0, conn.execute('SELECT count() FROM t').one_col, _utest_label='run_effect applied the statement')
 
 
 # Re-entering a Conn that already holds a transaction raises.
@@ -117,7 +118,7 @@ def _test_ro_path_uses_plain_begin() -> None:
     conn.mode = 'ro' # Force the read-only path; the in-memory db remains writable so BEGIN/COMMIT still succeed.
     with conn: pass
     utest_val(True, 'BEGIN' in statements, 'ro path issues plain BEGIN')
-    utest_val(False, any('IMMEDIATE' in s for s in statements), 'ro path does not issue BEGIN IMMEDIATE')
+    utest(False, any, (('IMMEDIATE' in s for s in statements)), _utest_label='ro path does not issue BEGIN IMMEDIATE')
 
 
 # _is_exc_sqlite_busy_family matches SQLITE_BUSY (5) and SQLITE_BUSY_SNAPSHOT (517), but not other or absent error codes.
@@ -127,11 +128,11 @@ def _test_is_exc_sqlite_busy_family() -> None:
     e = sqlite3.OperationalError('test')
     if code is not None: e.sqlite_errorcode = code
     return e
-  utest_val(True, _is_exc_sqlite_busy_family(exc_with_code(5)), 'SQLITE_BUSY is busy')
-  utest_val(True, _is_exc_sqlite_busy_family(exc_with_code(517)), 'SQLITE_BUSY_SNAPSHOT is busy')
-  utest_val(False, _is_exc_sqlite_busy_family(exc_with_code(1)), 'SQLITE_ERROR is not busy')
-  utest_val(False, _is_exc_sqlite_busy_family(exc_with_code(6)), 'SQLITE_LOCKED is not busy')
-  utest_val(False, _is_exc_sqlite_busy_family(exc_with_code(None)), 'no sqlite_errorcode is not busy')
+  utest(True, _is_exc_sqlite_busy_family, exc_with_code(5), _utest_label='SQLITE_BUSY is busy')
+  utest(True, _is_exc_sqlite_busy_family, exc_with_code(517), _utest_label='SQLITE_BUSY_SNAPSHOT is busy')
+  utest(False, _is_exc_sqlite_busy_family, exc_with_code(1), _utest_label='SQLITE_ERROR is not busy')
+  utest(False, _is_exc_sqlite_busy_family, exc_with_code(6), _utest_label='SQLITE_LOCKED is not busy')
+  utest(False, _is_exc_sqlite_busy_family, exc_with_code(None), _utest_label='no sqlite_errorcode is not busy')
 
 
 # _backoff_ceiling is the deterministic per-attempt cap (jitter is applied at the call site):
@@ -141,12 +142,12 @@ def _test_backoff_ceiling() -> None:
   cap = 0.050
   base = 0.001
   def ceiling(attempt:int) -> float: return _backoff_ceiling(retry_max_sec=cap, retry_base_sec=base, attempt=attempt)
-  utest_val(base, ceiling(0), 'ceiling starts at base')
-  utest_val(base * 2, ceiling(1), 'ceiling doubles')
-  utest_val(base * 16, ceiling(4), 'ceiling grows as base * 2**attempt below cap')
+  utest(base, ceiling, 0, _utest_label='ceiling starts at base')
+  utest(base * 2, ceiling, 1, _utest_label='ceiling doubles')
+  utest(base * 16, ceiling, 4, _utest_label='ceiling grows as base * 2**attempt below cap')
   utest_val(True, ceiling(5) > ceiling(4), 'ceiling grows while below cap')
-  utest_val(cap, ceiling(10), 'ceiling plateaus at cap')
-  utest_val(cap, ceiling(20), 'ceiling stays at cap')
+  utest(cap, ceiling, 10, _utest_label='ceiling plateaus at cap')
+  utest(cap, ceiling, 20, _utest_label='ceiling stays at cap')
 
 
 # __exit__ commits on clean exit, rolls back on exception, and does nothing when no transaction is active.
@@ -155,13 +156,13 @@ def _test_exit_transaction_handling() -> None:
   # No active transaction: __exit__ is a no-op for COMMIT/ROLLBACK and does not raise.
   with closing(make_conn()) as conn:
     utest_val(False, conn.in_transaction, 'no transaction before __exit__')
-    utest_val(False, conn.__exit__(None, None, None), '__exit__ returns False with no transaction')
+    utest(False, conn.__exit__, None, None, None, _utest_label='__exit__ returns False with no transaction')
 
   # Clean exit commits.
   with closing(make_conn()) as conn:
     with conn:
       conn.run_effect('INSERT INTO t (x) VALUES (1)')
-    utest_val(1, conn.execute('SELECT count() FROM t').one_col(), 'clean exit committed')
+    utest(1, conn.execute('SELECT count() FROM t').one_col, _utest_label='clean exit committed')
 
   # Exception rolls back.
   with closing(make_conn()) as conn:
@@ -171,4 +172,4 @@ def _test_exit_transaction_handling() -> None:
         conn.run_effect('INSERT INTO t (x) VALUES (1)')
         raise Boom()
     except Boom: pass
-    utest_val(0, conn.execute('SELECT count() FROM t').one_col(), 'No value committed.')
+    utest(0, conn.execute('SELECT count() FROM t').one_col, _utest_label='No value committed.')

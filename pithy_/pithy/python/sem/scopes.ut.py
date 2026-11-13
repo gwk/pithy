@@ -3,7 +3,7 @@
 from pithy.python.sem import sem_for_source, SemModule, SemName
 from pithy.python.sem.scopes import build_scope_info, ScopeInfo
 from tolkien import Source
-from utest import utest_run, utest_seq, utest_val
+from utest import utest, utest_run, utest_seq, utest_val
 
 
 def parse(code:str) -> SemModule:
@@ -33,10 +33,10 @@ def _() -> None:
   inner = outer.children[0]
   utest_val('def', outer.kind, desc='outer scope kind')
   utest_val(True, info.table is not None and outer.table is not None and inner.table is not None, desc='tables attached')
-  utest_val('free', inner.free_kind('a'), desc='`a` is free in inner scope')
+  utest('free', inner.free_kind, 'a', _utest_label='`a` is free in inner scope')
   outer_a = outer.symbol('a')
   assert outer_a is not None
-  utest_val(True, outer_a.is_local(), desc='`a` is local to outer scope')
+  utest(True, outer_a.is_local, _utest_label='`a` is local to outer scope')
 
 
 # free_kind at module scope distinguishes builtins from other unresolved names.
@@ -44,8 +44,8 @@ def _() -> None:
 @utest_run
 def _() -> None:
   info = scope_info_for('print(undefined_name)\n')
-  utest_val('builtin', info.free_kind('print'), desc='`print` classified as builtin')
-  utest_val('global', info.free_kind('undefined_name'), desc='unresolved module name classified as global')
+  utest('builtin', info.free_kind, 'print', _utest_label='`print` classified as builtin')
+  utest('global', info.free_kind, 'undefined_name', _utest_label='unresolved module name classified as global')
 
 
 # Comprehension scopes have no symtable of their own (PEP 709 inlines them); symbol lookup falls back to the parent.
@@ -58,7 +58,7 @@ def _() -> None:
   utest_val(None, comp.table, desc='comp scope table')
   sym_x = comp.symbol('x')
   assert sym_x is not None
-  utest_val(True, sym_x.is_local(), desc='`x` found via parent table')
+  utest(True, sym_x.is_local, _utest_label='`x` found via parent table')
   utest_val(True, 'x' in comp.local_names(), desc='`x` recorded as local usage of comp scope')
 
 
@@ -82,9 +82,9 @@ def _() -> None:
   utest_val('lambda', lam.kind, desc='lambda scope kind')
   utest_val('generator', gen.kind, desc='generator scope kind')
   assert lam.table is not None and gen.table is not None
-  utest_val('<lambda>', lam.table.get_name(), desc='lambda table name')
-  utest_val('<genexpr>', gen.table.get_name(), desc='generator table name')
-  utest_val('free', gen.free_kind('a'), desc='lambda param is free in generator scope')
+  utest('<lambda>', lam.table.get_name, _utest_label='lambda table name')
+  utest('<genexpr>', gen.table.get_name, _utest_label='generator table name')
+  utest('free', gen.free_kind, 'a', _utest_label='lambda param is free in generator scope')
 
 
 # Match statement pattern captures are recorded as stores.
@@ -94,4 +94,4 @@ def _() -> None:
   info = scope_info_for('match cmd:\n  case [first, *rest]:\n    pass\n  case {"k": v, **extra}:\n    pass\n  case Point(x=0) as pt:\n    pass\n')
   pattern_names = {n for n, u in info.usages.items() if u.kind == 'pattern'}
   utest_val({'first', 'rest', 'v', 'extra', 'pt'}, pattern_names, desc='match pattern capture names')
-  utest_val('global', info.free_kind('Point'), desc='`Point` is an unresolved load')
+  utest('global', info.free_kind, 'Point', _utest_label='`Point` is an unresolved load')

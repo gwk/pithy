@@ -46,7 +46,7 @@ utest_exc(ValueError, target_name, (lambda: (lambda: None))()) # A nested functi
 def _() -> None:
   'A function defined in a `python -m` main module is named via the main module spec.'
   with patch.dict(sys.modules, {'__main__': _patch_main('mypkg.__main__')}):
-    utest_val('mypkg.__main__._run', target_name(_run))
+    utest('mypkg.__main__._run', target_name, _run)
 
 
 @utest_run
@@ -70,7 +70,7 @@ def _() -> None:
     ('pkg/static/fixtures/page.html', False),
     ('pkg/static-src/app.py', True), # A sibling sharing the ignored directory's name prefix.
   ]:
-    utest_val(expected, watch_filter(watchfiles.Change.modified, path_join(root, path)), desc=path)
+    utest(expected, watch_filter, watchfiles.Change.modified, path_join(root, path), _utest_label=repr(path))
 
 
 @utest_run
@@ -96,4 +96,4 @@ def _() -> None:
     utest_val(True, config.port > 0)
     utest_val(True, config.prevent_client_caching)
     utest_val(str(config.port), environ['WEB_PORT'])
-    utest_val(False, call.kwargs['watch_filter'](watchfiles.Change.modified, path_join(static, 'app.js')))
+    utest(False, call.kwargs['watch_filter'], watchfiles.Change.modified, path_join(static, 'app.js'))

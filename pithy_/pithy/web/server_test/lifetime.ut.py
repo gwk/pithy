@@ -15,7 +15,7 @@ from pithy.web.request import Request
 from pithy.web.requestconn import RequestConn
 from pithy.web.response import Response
 from pithy.web.server_test.testsocket import handle_connection, TestSocket
-from utest import utest_run, utest_val
+from utest import utest, utest_run, utest_val
 
 
 class LifetimeApp(WebApp):
@@ -29,7 +29,7 @@ class LifetimeApp(WebApp):
 
 
   def check_released(self, when:str) -> None:
-    for previous in self.requests: utest_val(None, previous(), f'previous request at {when}')
+    for previous in self.requests: utest(None, previous, _utest_label=repr(f'previous request at {when}'))
 
 
   @allow_public
@@ -78,7 +78,7 @@ def test_request_lifetime() -> None:
       socket = LifetimeSocket(app, *chunks)
       with redirect_stdout(StringIO()):
         handle_connection(app, socket, log_access=enabled)
-      utest_val(count, len(app.requests))
+      utest(count, len, app.requests)
       utest_val(1, socket.closes)
 
 
@@ -94,7 +94,7 @@ def test_request_lifetime_access_log_failure() -> None:
   socket = LifetimeSocket(app, b'GET / HTTP/1.1\r\nHost: localhost\r\n\r\n')
   with redirect_stdout(StringIO()), patch('pithy.logs.render_log_fn', render_log):
     handle_connection(app, socket, log_access=True)
-  utest_val(1, len(app.requests))
+  utest(1, len, app.requests)
   utest_val(1, socket.closes)
 
 
@@ -115,5 +115,5 @@ def test_request_lifetime_failed_body_read() -> None:
             handle_connection(app, socket, log_access=True)
         finally:
           if gc_was_enabled: enable()
-        utest_val(1, len(app.requests))
+        utest(1, len, app.requests)
         utest_val(1, socket.closes)

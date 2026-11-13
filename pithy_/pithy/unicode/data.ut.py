@@ -14,7 +14,7 @@ code_space = (0, 0x110000)
 # The category ranges partition the code space: they cover it and their sizes sum to its size.
 all_category_ranges = sorted(chain(*category_ranges.values()))
 utest_seq([code_space], coalesce_sorted_ranges, all_category_ranges)
-utest_val(code_space[1], sum(end - low for low, end in all_category_ranges), 'total size of category ranges')
+utest(code_space[1], sum, ((end - low for low, end in all_category_ranges)), _utest_label='total size of category ranges')
 
 for cat, ranges in category_ranges.items():
   utest_val(tuple(coalesce_sorted_ranges(ranges)), ranges, f'coalesced ranges of category {cat}')

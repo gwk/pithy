@@ -18,7 +18,7 @@ from pithy.web.request import Request
 from pithy.web.response import Response
 from pithy.web.server import ServerConfig, WebServer
 from pithy.web.server_test.testsocket import handle_connection, TestSocket
-from utest import utest_exc, utest_run, utest_val
+from utest import utest, utest_exc, utest_run, utest_val
 
 
 post_head = b'POST / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\nContent-Length: %d\r\n\r\n'
@@ -89,7 +89,7 @@ def test_trickled_headers_time_out() -> None:
   data = b'GET / HTTP/1.1\r\nHost: localhost\r\nX-Long: ' + b'a' * 1000
   socket = ClockSocket(*one_byte_chunks(data), delay=1.0)
   run_scripted(socket, App())
-  utest_val(True, socket.sent.startswith(b'HTTP/1.1 408'), socket.sent)
+  utest(True, socket.sent.startswith, b'HTTP/1.1 408', _utest_label=repr(socket.sent))
   utest_val(True, socket.now <= 10.1, socket.now) # The initial budget plus the little that the received bytes earned.
 
 
@@ -97,7 +97,7 @@ def test_trickled_headers_time_out() -> None:
 def test_trickled_body_times_out() -> None:
   socket = ClockSocket(post_head % 1000, *one_byte_chunks(b'a' * 1000), delay=1.0)
   run_scripted(socket, App())
-  utest_val(True, socket.sent.startswith(b'HTTP/1.1 408'), socket.sent)
+  utest(True, socket.sent.startswith, b'HTTP/1.1 408', _utest_label=repr(socket.sent))
   utest_val(True, socket.now <= 10.1, socket.now)
 
 
@@ -116,7 +116,7 @@ def test_adequate_rate_outlasts_initial_budget() -> None:
   socket = ClockSocket(post_head % 40000, *[b'a' * 1000] * 40, delay=0.5)
   run_scripted(socket, App())
   utest_val(True, socket.now > ServerConfig().conn_timeout, socket.now)
-  utest_val(True, socket.sent.endswith(b'read 40000'), socket.sent)
+  utest(True, socket.sent.endswith, b'read 40000', _utest_label=repr(socket.sent))
 
 
 @utest_run
@@ -124,7 +124,7 @@ def test_slow_handler_is_not_charged() -> None:
   'Time that a handler spends before reading the body does not count against the read budget.'
   socket = ClockSocket(post_head % 2, b'ok', delay=0.01)
   run_scripted(socket, App(socket, handler_time=1000.0))
-  utest_val(True, socket.sent.endswith(b'read 2'), socket.sent)
+  utest(True, socket.sent.endswith, b'read 2', _utest_label=repr(socket.sent))
 
 
 @utest_run
@@ -150,8 +150,8 @@ def test_real_socket_timeout() -> None:
     finally:
       server.shutdown()
       thread.join(5)
-  utest_val(False, thread.is_alive())
-  utest_val(True, received.startswith(b'HTTP/1.1 408'), received)
+  utest(False, thread.is_alive)
+  utest(True, received.startswith, b'HTTP/1.1 408', _utest_label=repr(received))
 
 
 @utest_run
@@ -167,10 +167,10 @@ def test_trickled_head_does_not_occupy_worker() -> None:
         slow.sendall(b'GET /slow HTTP/1.1\r\nHost: loc')
         sleep(0.05) # Let the listener receive the partial head before the other request arrives.
         other.sendall(post_head % 2 + b'ok')
-        utest_val(True, read_all(other).endswith(b'read 2'))
+        utest(True, read_all(other).endswith, b'read 2')
         slow.sendall(b'alhost\r\nConnection: close\r\n\r\n') # The completed head is then handled normally.
-        utest_val(True, read_all(slow).startswith(b'HTTP/1.1 200'))
+        utest(True, read_all(slow).startswith, b'HTTP/1.1 200')
     finally:
       server.shutdown()
       thread.join(5)
-  utest_val(False, thread.is_alive())
+  utest(False, thread.is_alive)

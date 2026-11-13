@@ -13,7 +13,7 @@ from pithy.web.auth import allow_public
 from pithy.web.request import Request
 from pithy.web.response import Response
 from pithy.web.server import _WorkerState, ServerConfig, WebServer
-from utest import utest_exc, utest_run, utest_val
+from utest import utest, utest_exc, utest_run, utest_val
 
 
 def make_state(started:float, *, phase:Any='application', method:str='', path:str='') -> _WorkerState:
@@ -31,7 +31,7 @@ def test_threshold_validation() -> None:
       utest_exc(ValueError, configure, value)
     for valid_value in (None, 0.01, 60):
       config = configure(valid_value)
-      utest_val(valid_value, getattr(config, name))
+      utest(valid_value, getattr, config, name)
 
 
 @utest_run
@@ -54,7 +54,7 @@ def test_warning_threshold_and_assignment_reset() -> None:
       utest_val('application', fields['phase'])
       utest_val('/slow', fields['path'])
       utest_val(10, fields['elapsed'])
-      utest_val(True, any('test_warning_threshold_and_assignment_reset' in line for line in fields['stack']))
+      utest(True, any, ('test_warning_threshold_and_assignment_reset' in line for line in fields['stack']))
       server._active_workers[ident] = make_state(80)
       server._check_workers() # A later assignment on the same thread can warn again.
       utest_val(2, warning.call_count)
@@ -135,7 +135,7 @@ def test_warning_while_serving_and_shutting_down() -> None:
           utest_val('GET', fields['method'])
           utest_val('/slow', fields['path'])
           utest_val(False, 'hidden' in repr(fields))
-          utest_val(True, any('handle_request' in line for line in fields['stack']))
+          utest(True, any, ('handle_request' in line for line in fields['stack']))
           app.release.set()
           received = b''
           while b'\r\n\r\nok' not in received:
@@ -146,7 +146,7 @@ def test_warning_while_serving_and_shutting_down() -> None:
         app.release.set()
         server.shutdown()
         thread.join(3)
-      utest_val(False, thread.is_alive())
+      utest(False, thread.is_alive)
       utest_val([], errors)
       utest_val({}, server._active_workers)
       warning.assert_called_once()

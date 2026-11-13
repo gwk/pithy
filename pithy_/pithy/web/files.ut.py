@@ -105,7 +105,7 @@ def _() -> None:
     request = _request('/static/a.dat')
     response = Router({'/static/{subpath:path}': CustomHandler}, default_public=True).resolve_route(request).get_handler(request).handle_request(request)
     close_response_body(response.body)
-    utest_val('application/x-custom', response.headers.get('content-type'), desc='mounted handler uses the override')
+    utest('application/x-custom', response.headers.get, 'content-type', _utest_label=repr('mounted handler uses the override'))
 
 
 @utest_run
@@ -183,7 +183,7 @@ def _() -> None:
     r304 = _serve(app, '/a.txt', headers={'if-none-match': etag})
     utest_val(HTTPStatus.NOT_MODIFIED, r304.status, desc='matching etag yields 304')
     utest_val(None, r304.body, desc='304 has no body')
-    utest_val(etag, r304.headers.get('etag'), desc='304 echoes the etag')
+    utest(etag, r304.headers.get, 'etag', _utest_label=repr('304 echoes the etag'))
     utest_val(HTTPStatus.OK, _serve(app, '/a.txt', headers={'if-none-match': '"nope"'}).status,
       desc='non-matching etag yields 200')
 
@@ -217,7 +217,7 @@ def _() -> None:
     response = app.handle_request(request)
     close_response_body(response.body)
     utest_val(HTTPStatus.OK, response.status)
-    utest_val('no-cache, no-store, must-revalidate', response.headers.get('cache-control'))
+    utest('no-cache, no-store, must-revalidate', response.headers.get, 'cache-control')
     utest_val(False, 'etag' in response.headers)
 
 

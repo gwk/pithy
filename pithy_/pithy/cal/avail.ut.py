@@ -61,10 +61,10 @@ def test_against_slot_set_oracle() -> None:
     b = DaySlots(raw_b)
     sa = {i for s, e in raw_a for i in range(s, e)}
     sb = {i for s, e in raw_b for i in range(s, e)}
-    utest_val(sa, set(a))
-    utest_val(sa | sb, set(a | b))
-    utest_val(sa & sb, set(a & b))
-    utest_val(sa - sb, set(a - b))
+    utest(sa, set, a)
+    utest(sa | sb, set, a | b)
+    utest(sa & sb, set, a & b)
+    utest(sa - sb, set, a - b)
     duration = rng.randrange(1, 30)
     step = rng.choice((1, 3, 6))
     expected = [s * 5 for s in range(0, 289-duration, step) if set(range(s, s+duration)) <= sa-sb]

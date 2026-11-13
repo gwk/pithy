@@ -8,7 +8,7 @@ from pithy.web.request import Request
 from pithy.web.requestconn import BytesConn
 from pithy.web.response import Response
 from pithy.web.router import Router
-from utest import utest_run, utest_val
+from utest import utest, utest_run, utest_val
 
 
 router = Router(routes, default_public=True)
@@ -37,7 +37,7 @@ def _() -> None:
   page = request(url.path, query=url.query)
   assert isinstance(page.body, bytes)
   html = page.body.decode()
-  utest_val(2, html.count('<form'))
+  utest(2, html.count, '<form')
   utest_val(True, "method='post' action='/html/controls'" in html)
   utest_val(True, "method='post' action='/html/controls/image'" in html)
   utest_val(True, '<strong>x</strong>: 5' in html)

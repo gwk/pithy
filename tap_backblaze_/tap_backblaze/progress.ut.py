@@ -10,7 +10,7 @@ from utest import utest, utest_val
 
 counts:list[int] = []
 reader = ProgressReader(BytesIO(b'0123456789abcdef'), limit=10, on_bytes=counts.append)
-utest_val(10, len(reader), 'reader length is the limit')
+utest(10, len, reader, _utest_label='reader length is the limit')
 utest(b'0123', reader.read, 4)
 utest(b'4567', reader.read, 4)
 utest(b'89', reader.read, 4) # Truncated at the limit.
@@ -45,14 +45,14 @@ with ProgressListener('Upload', stream=stream, now=clock) as listener:
   listener.set_total_bytes(1000)
   clock.time = 0.05
   listener.bytes_completed(100) # Too soon; throttled.
-  utest_val('', stream.getvalue(), 'throttled')
+  utest('', stream.getvalue, _utest_label='throttled')
   clock.time = 0.2
   listener.bytes_completed(200)
-  utest_val('\rUpload: 20.0% of 1.000 kB…', stream.getvalue(), 'one progress line')
+  utest('\rUpload: 20.0% of 1.000 kB…', stream.getvalue, _utest_label='one progress line')
   clock.time = 0.25
   listener.bytes_completed(300) # Throttled again.
-  utest_val('\rUpload: 20.0% of 1.000 kB…', stream.getvalue(), 'still one progress line')
-utest_val('\rUpload: 20.0% of 1.000 kB…\rUpload: 100.0% of 1.000 kB.\n', stream.getvalue(), 'completion line on close')
+  utest('\rUpload: 20.0% of 1.000 kB…', stream.getvalue, _utest_label='still one progress line')
+utest('\rUpload: 20.0% of 1.000 kB…\rUpload: 100.0% of 1.000 kB.\n', stream.getvalue, _utest_label='completion line on close')
 
 # A failure prints a failed line.
 stream = FakeTty()
@@ -62,17 +62,17 @@ try:
     listener.set_total_bytes(1000)
     raise KeyboardInterrupt
 except KeyboardInterrupt: pass
-utest_val('\nUpload: failed.\n', stream.getvalue(), 'failure line on close')
+utest('\nUpload: failed.\n', stream.getvalue, _utest_label='failure line on close')
 
 # A non-tty stream prints nothing.
 plain_stream = StringIO()
 with ProgressListener('Upload', stream=plain_stream, now=Clock()) as listener:
   listener.set_total_bytes(1000)
   listener.bytes_completed(1000)
-utest_val('', plain_stream.getvalue(), 'non-tty prints nothing')
+utest('', plain_stream.getvalue, _utest_label='non-tty prints nothing')
 
 # With no total bytes set, nothing is printed even on a tty.
 stream = FakeTty()
 with ProgressListener('Upload', stream=stream, now=Clock()) as listener:
   pass
-utest_val('', stream.getvalue(), 'no total, no output')
+utest('', stream.getvalue, _utest_label='no total, no output')
