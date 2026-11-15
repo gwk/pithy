@@ -3,6 +3,9 @@
 from contextlib import redirect_stdout
 from difflib import unified_diff
 from io import StringIO
+from os import close, environ, pipe
+from subprocess import PIPE, run
+from sys import executable
 
 from pithy.ansi import strip_ctrl_seq
 from taptools.bin.same_same import C_ADD_MOVED, C_ADD_TOKEN, C_END, C_REM_MOVED, C_REM_SPACE, C_REM_TOKEN, highlight_diff
@@ -150,3 +153,22 @@ binary = 'diff --git example.txt example.txt\nindex 1234567..abcdef0 100644\nBin
 utest(True, str.endswith, highlight(binary), 'Binary files example.txt and example.txt differ\n',
   _utest_label='binary summary is retained')
 utest('', highlight, '')
+
+
+def closed_pager(text:str, mode:str, unbuffered:bool) -> tuple[int,str]:
+  'Run the CLI with a closed pager pipe, including interpreter shutdown.'
+  reader, writer = pipe()
+  close(reader)
+  try:
+    result = run([executable, *(['-u'] if unbuffered else []), '-m', 'taptools.bin.same_same'],
+      input=text, stdout=writer, stderr=PIPE, text=True, timeout=10, env={**environ, 'SAMESAME': mode})
+  finally:
+    close(writer)
+  return result.returncode, result.stderr
+
+
+# Cover writes during rendering, the final diff buffer, and the final stdout flush.
+for mode in ('0', '1'):
+  for unbuffered in (False, True):
+    for text in ('plain text\n', diff, diff + diff):
+      utest((0, ''), closed_pager, text, mode, unbuffered)

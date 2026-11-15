@@ -3,7 +3,7 @@
 import re
 from argparse import ArgumentParser
 from itertools import groupby
-from os import environ
+from os import devnull, dup2, environ
 from sys import stderr, stdout
 from typing import Any, Iterable, Match
 
@@ -78,16 +78,20 @@ def main() -> None:
     errL(f'error: bad (non-integer) SAMESAME environment variable: {env_mode_str!r}')
 
 
-  if env_mode == 0:
-    for line in stdin:
-      stdout.write(line)
-    exit(0)
-
-  dbg = (env_mode > 1)
-  if dbg:
-    errL("SAMESAME: DEBUG")
-
-  highlight_diff(stdin, interactive=args.interactive, dbg=dbg)
+  try:
+    if env_mode == 0:
+      for line in stdin:
+        stdout.write(line)
+    else:
+      dbg = (env_mode > 1)
+      if dbg:
+        errL('SAMESAME: DEBUG')
+      highlight_diff(stdin, interactive=args.interactive, dbg=dbg)
+    stdout.flush() # Catch buffered output failures before interpreter shutdown.
+  except BrokenPipeError:
+    # Quitting the pager is normal. Discard pending output without closing stderr.
+    with open(devnull, 'w') as sink:
+      dup2(sink.fileno(), stdout.fileno())
 
 
 def highlight_diff(lines:Iterable[str], interactive:bool=False, dbg:bool=False) -> None:
@@ -105,38 +109,34 @@ def highlight_diff(lines:Iterable[str], interactive:bool=False, dbg:bool=False) 
       buffer.clear()
     in_hunk = False
 
-  try:
-    for line in lines:
-      raw_text = line.rstrip('\n')
-      # Source lines can resemble file headers, such as removed SQL comments starting with '-- '.
-      match = source_pat.match(raw_text) if in_hunk else None
-      if match is None: match = diff_pat.match(raw_text)
-      assert match is not None
-      kind = match.lastgroup
-      assert kind is not None, match
-      if dbg:
-        errL(f'{kind}: {raw_text!r}')
-      # Interactive filters can receive a hunk without a file header.
-      if not buffer and kind != 'diff' and not (interactive and kind == 'loc'):
-        print(line, end='')
-        continue
-      # This marker belongs to the current hunk and must not end the diff.
-      if kind == 'other' and clip_reset(match['other']) == '\\ No newline at end of file':
-        buffer.append(DiffLine(kind, match))
-        continue
-      if kind in pass_kinds:
-        flush_buffer()
-        print(line, end='')
-        continue
-      if kind == 'diff':
-        flush_buffer()
-      elif kind == 'loc':
-        in_hunk = True
+  for line in lines:
+    raw_text = line.rstrip('\n')
+    # Source lines can resemble file headers, such as removed SQL comments starting with '-- '.
+    match = source_pat.match(raw_text) if in_hunk else None
+    if match is None: match = diff_pat.match(raw_text)
+    assert match is not None
+    kind = match.lastgroup
+    assert kind is not None, match
+    if dbg:
+      errL(f'{kind}: {raw_text!r}')
+    # Interactive filters can receive a hunk without a file header.
+    if not buffer and kind != 'diff' and not (interactive and kind == 'loc'):
+      print(line, end='')
+      continue
+    # This marker belongs to the current hunk and must not end the diff.
+    if kind == 'other' and clip_reset(match['other']) == '\\ No newline at end of file':
       buffer.append(DiffLine(kind, match))
-  except BrokenPipeError:
-    stderr.close() # Prevents warning message.
-  finally:
-    flush_buffer()
+      continue
+    if kind in pass_kinds:
+      flush_buffer()
+      print(line, end='')
+      continue
+    if kind == 'diff':
+      flush_buffer()
+    elif kind == 'loc':
+      in_hunk = True
+    buffer.append(DiffLine(kind, match))
+  flush_buffer()
 
 
 def handle_file_lines(lines:list[DiffLine], interactive:bool, dbg:bool) -> None:
