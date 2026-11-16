@@ -873,8 +873,11 @@ class WebServer:
                 conn_sock = conn.socket
                 if conn_sock not in idle and conn_sock not in partial: continue # Closed; not expected given the ordering above.
                 try: ready_for_worker = conn.read_head_nonblocking()
-                except OSError as exc: # The client has gone.
-                  logI('Connection read error.', exc=exc, client_addr=conn.client_addr)
+                except OSError as exc:
+                  if isinstance(exc, (BrokenPipeError, ConnectionResetError)):
+                    logI('Client disconnected.', client_addr=conn.client_addr)
+                  else:
+                    logI('Connection read error.', exc=exc, client_addr=conn.client_addr)
                   idle.pop(conn_sock, None)
                   partial.pop(conn_sock, None)
                   selector.unregister(conn_sock)
@@ -1127,6 +1130,8 @@ class WebServer:
         logI('Stream ended.', client_addr=conn.client_addr, reason=reason)
       else:
         logI('Stream aborted before completion.', client_addr=conn.client_addr, reason=reason)
+    except (BrokenPipeError, ConnectionResetError):
+      logI('Stream client disconnected.', client_addr=conn.client_addr)
     except OSError as exc:
       logI('Stream send failed.', exc=exc, client_addr=conn.client_addr)
     except Exception as exc:
@@ -1162,7 +1167,10 @@ class WebServer:
               if send.send_some(): continue
               ok = True
             except BlockingIOError: continue
-            except OSError as exc: # The client has gone.
+            except (BrokenPipeError, ConnectionResetError):
+              logI('Response client disconnected.', client_addr=send.conn.client_addr)
+              ok = False
+            except OSError as exc:
               logI('Response send failed.', exc=exc, client_addr=send.conn.client_addr)
               ok = False
             except Exception as exc:
