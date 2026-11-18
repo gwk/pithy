@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import watchfiles
 from pithy.cmdparse import opt
-from pithy.web.reload import DevServerCmd, reload_filter, serve_with_reload, target_name
+from pithy.web.reload import DevServerCmd, serve_with_reload, target_name
 from pithy.web.server import ServerConfig
 from utest import utest, utest_exc, utest_run, utest_val
 
@@ -54,23 +54,6 @@ def _() -> None:
   'A function defined in a main module without a spec cannot be named.'
   with patch.dict(sys.modules, {'__main__': _patch_main(None)}):
     utest_exc(ValueError, target_name, _run)
-
-
-@utest_run
-def _() -> None:
-  'The reload filter keeps source changes and skips bytecode, isort temporaries and ignored directories.'
-  root = realpath(gettempdir())
-  static = path_join(root, 'pkg', 'static')
-  watch_filter = reload_filter(ignore=[static])
-  for path, expected in [
-    ('pkg/app.py', True),
-    ('pkg/__pycache__/app.cpython-315.pyc', False),
-    ('pkg/app.py.isorted', False),
-    ('pkg/static/app.js', False),
-    ('pkg/static/fixtures/page.html', False),
-    ('pkg/static-src/app.py', True), # A sibling sharing the ignored directory's name prefix.
-  ]:
-    utest(expected, watch_filter, watchfiles.Change.modified, path_join(root, path), _utest_label=repr(path))
 
 
 @utest_run

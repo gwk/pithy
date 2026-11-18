@@ -3,19 +3,16 @@
 from collections.abc import Callable, Iterable
 from dataclasses import replace
 from importlib.resources import files as resource_files
-from os import environ, sep as path_sep
-from os.path import realpath
+from os import environ
 from socket import AF_INET, SOCK_STREAM, socket as Socket
 from sys import modules as sys_modules
 from types import ModuleType
-from typing import Any, cast, TYPE_CHECKING
+from typing import Any, cast
 
 from ..cmdparse import Cmd, flag, opt
 from ..io import errL
+from ..watch import watch_filter
 from .server import ServerConfig
-
-
-if TYPE_CHECKING: from watchfiles import DefaultFilter
 
 
 _context_keywords_ = ['development server', 'file watching', 'hot reload', 'multiprocessing spawn', 'port selection',
@@ -76,7 +73,7 @@ class DevServerCmd(Cmd):
     `run` must be a module-level function taking a ServerConfig.
     When watching is disabled it is called directly;
     otherwise it is spawned in a child process by its qualified name (see `target_name`).
-    `ignore` lists directories whose changes do not trigger a reload; see `reload_filter`.
+    `ignore` lists directories whose changes do not trigger a reload; see `serve_with_reload`.
     If `quiet` is true then suppress the reload startup message.
     '''
     config = self.server_config
@@ -92,7 +89,10 @@ def serve_with_reload(*, target:str, watch:Iterable[str|ModuleType], ignore:Iter
   Spawn a subprocess to run the function named by `target` (a dotted path string) using `watchfiles.run_process`.
   `watch` is an iterable of paths or modules to watch.
   If a module is given, its package path is located and watched.
-  The child is restarted whenever a file under any of `watch_paths` changes, except for files excluded by `reload_filter`.
+  The child is restarted whenever a file under any of the watched paths changes.
+  Changes are filtered by `pithy.watch.watch_filter`, which also skips every file under the `ignore` directories.
+  Ignore directories whose files the server reads on each request, such as static assets served by `FilesHandler`.
+  Do not ignore files that the server reads only at startup; the server would keep serving stale content.
 
   If `config` is None, a localhost ServerConfig is used.
   If the port is 0, a free port is picked and set in the config so that successive child processes reuse it.
@@ -114,24 +114,7 @@ def serve_with_reload(*, target:str, watch:Iterable[str|ModuleType], ignore:Iter
     errL(msg)
 
   run_process(*watch_paths, target=target, target_type='function', kwargs={'config': config},
-    watch_filter=reload_filter(ignore), callback=_watch_callback)
-
-
-def reload_filter(ignore:Iterable[str]=()) -> DefaultFilter:
-  '''
-  Return the watch filter used by `serve_with_reload`.
-
-  It extends the watchfiles `DefaultFilter`, which skips bytecode, version control and editor files,
-  to also skip isort's `.isorted` temporaries and every file under the `ignore` directories.
-  Ignore directories whose files the server reads on each request, such as static assets served by `FilesHandler`.
-  Do not ignore files that the server reads only at startup; the server would keep serving stale content.
-  '''
-  from watchfiles import DefaultFilter
-
-  # watchfiles matches ignore paths as string prefixes against the real paths it reports; the trailing separator
-  # prevents a directory from also matching its siblings with the same prefix.
-  return DefaultFilter(ignore_entity_patterns=(*DefaultFilter.ignore_entity_patterns, r'\.isorted$'),
-    ignore_paths=[realpath(path).rstrip(path_sep) + path_sep for path in ignore])
+    watch_filter=watch_filter(ignore), callback=_watch_callback)
 
 
 def target_name(fn:Callable[...,Any]) -> str:
