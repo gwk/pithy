@@ -720,14 +720,26 @@ class WebServer:
     The watchdog waits too, so a permanent stall requires an external liveness check.
   '''
 
-  def __init__(self, *, app:WebApp, config:ServerConfig=ServerConfig()) -> None:
+  def __init__(self, *, app:WebApp, config:ServerConfig=ServerConfig(), listener:Socket|None=None) -> None:
     '''
     Initialize the web server.
-    The server will bind to the host and port specified in the config.
-    If port 0 was specified then the dynamically assigned port is saved in `self.port`.
+    By default the server binds the host and port specified in the config, and listens with the config backlog.
+    The bound port is saved in `self.port`; for config port 0 it is the dynamically assigned port.
     The connection cap is resolved against the descriptor limit and saved in `self.max_connections`.
-    '''
 
+    Supply `listener`, a bound and listening TCP socket, to have the server accept on it instead.
+    The server takes ownership of the listener in all cases; if initialization fails then the listener is closed.
+    The server does not bind, listen or set SO_REUSEADDR on a supplied listener, so the config port and backlog are ignored.
+    `self.host` is always the config host, because a socket reports an address and not a name.
+    With a supplied listener the config host must therefore name the address that the listener is bound to.
+    '''
+    try: self._init(app=app, config=config, listener=listener)
+    except BaseException:
+      if listener is not None: listener.close()
+      raise
+
+
+  def _init(self, *, app:WebApp, config:ServerConfig, listener:Socket|None) -> None:
     self.app = app
     self.config = config
     self.max_connections = _resolve_max_connections(config.max_connections, raise_fd_limit=config.raise_fd_limit)
@@ -765,17 +777,18 @@ class WebServer:
     thresholds = [t for t in (config.worker_warn_after, config.worker_exit_after) if t is not None]
     self._worker_check_interval = min(1.0, *thresholds) if thresholds else None
 
-    socket = Socket(AF_INET, SOCK_STREAM)
-    self._socket = socket
-    socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-    socket.bind((config.host, config.port))
-    socket.listen(config.backlog)
+    if listener is None:
+      listener = Socket(AF_INET, SOCK_STREAM)
+      listener.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+      listener.bind((config.host, config.port))
+      listener.listen(config.backlog)
+    self._socket = socket = listener
     socket.setblocking(False)
     #^ On macOS accepted sockets inherit the non-blocking flag; the accept loop resets it with settimeout.
 
     self.scheme = 'http'
     self.host = config.host
-    self.port = (config.port or socket.getsockname()[1])
+    self.port = socket.getsockname()[1]
 
 
   @property
@@ -1393,8 +1406,8 @@ class WebServer:
       client_addr=conn.client_addr,
       method=method,
       scheme='http',
-      host=self.config.host,
-      port=self.config.port,
+      host=self.host,
+      port=self.port,
       raw_path=path,
       query_str=query,
       headers=headers,

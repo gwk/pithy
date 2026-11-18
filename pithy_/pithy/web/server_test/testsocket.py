@@ -56,6 +56,8 @@ def handle_connection(app:WebApp, socket:TestSocket, *, log_access:bool) -> None
   server = WebServer.__new__(WebServer)
   server.app = app
   server.config = ServerConfig(log_access=log_access)
+  server.host = server.config.host
+  server.port = server.config.port
   server._stop = Event()
   server._stream_slots = BoundedSemaphore(server.config.max_streams)
   server._monitoring_lock = Lock()
