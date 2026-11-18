@@ -169,7 +169,39 @@ runTestSuite(async check => {
   selection.removeAllRanges();
   highlightMarkdown(preview, 'Updated response');
   checkEqual('Updated response', preview.textContent, 'A new response replaces the previous highlighting');
+
+  const unaligned = 'name|n|mode\n:-|-:|:-:\nab|30|yes\nlonger|2|x';
+  const aligned = [
+    '| name   |    n | mode  |',
+    '| :----- | ---: | :---: |',
+    '| ab     |   30 |  yes  |',
+    '| longer |    2 |   x   |',
+  ].join('\n');
+  checkEqual(aligned, reformatMarkdown(unaligned).text, 'Formatting normalizes all three column alignments');
+  checkEqual(aligned, reformatMarkdown(aligned).text, 'Formatting is idempotent');
+  const fenced = `\r\n\r\n~~~\r\n${unaligned}\r\n~~~\r\n`;
+  const unalignedCrlf = unaligned.replace(/\n/g, '\r\n');
+  const alignedCrlf = aligned.replace(/\n/g, '\r\n');
+  checkEqual(alignedCrlf + fenced, reformatMarkdown(unalignedCrlf + fenced).text, 'Formatting keeps line endings and fences');
+  const irregular = 'name|n\n---|---\na\\|b|1|extra\n| only |';
+  checkEqual('| name | n   |\n| ---- | --- |\n| a\\|b | 1   | extra |\n| only |', reformatMarkdown(irregular).text,
+    'Formatting preserves escaped pipes and the contents of ragged rows');
+  highlightMarkdown(preview, unaligned, {alignTables: true});
+  checkEqual(aligned, preview.textContent, 'Read-only highlighting can opt in to table alignment');
+  highlightMarkdown(preview, unaligned);
+  checkEqual(unaligned, preview.textContent, 'Read-only highlighting preserves source by default');
   preview.remove();
+
+  editor.value = unaligned;
+  textarea.setSelectionRange(0, 4);
+  editor.reformat();
+  checkEqual(aligned, textarea.value, 'Reformat updates the textarea value');
+  const selectedText = textarea.value.slice(textarea.selectionStart, textarea.selectionEnd);
+  checkEqual('name', selectedText, 'Reformat retains selected cell text');
+  checkEqual(aligned, layerText(), 'Reformat refreshes the coloring layer');
+  checkEqual(aligned, new FormData(form).get('markdown'), 'Reformat is reflected in form data');
+  document.execCommand('undo');
+  checkEqual(unaligned, textarea.value, 'Reformat is undoable');
 
   // The textarea must never transform its text.
   for (const text of ['a\\nb\\tc\\r', 'tab\there', '<script>alert(1)</script> & &amp;', '\n\nleading and trailing\n\n', ' ']) {

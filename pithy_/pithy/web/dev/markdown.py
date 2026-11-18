@@ -4,7 +4,7 @@ import re
 from base64 import b64encode
 from hashlib import sha256
 
-from ...html import A, Code, Div, Form, H1, H2, HtmlNode, Img, Input, Label, Li, Main, P, TextArea, Ul
+from ...html import A, Button, Code, Div, Form, H1, H2, HtmlNode, Img, Input, Label, Li, Main, P, TextArea, Ul
 from ..endpoint import Endpoint
 from ..request import Request, UploadedFile
 from ..response import HtmlResponse, HtmxResponse
@@ -82,20 +82,23 @@ def dev_markdown(request:Request) -> HtmlResponse:
       Label(Input.bool_checkbox(name='auto_resize', is_checked=False), ' Auto-resize'),
     ])
   return dev_page(title='Markdown Editor', breadcrumbs=[('/', 'Home'), ('/markdown', 'Markdown Editor')],
-    css_paths=['/static/pithy/markdown.css'], js_paths=['/static/pithy/markdown.js'],
+    css_paths=['/static/pithy/markdown.css'], js_paths=['/static/pithy/markdown.js', '/static/dev/markdown.js'],
     main=Main(cl='markdown-page', _=[H1('Markdown Editor'),
       P('A plain textarea with Markdown syntax coloring. The syntax stays visible, '
         'so the text can be copied to and from issues and agent conversations unchanged.'),
       settings,
       Form(id='markdown-form', cl='flow', method='post', action='/markdown/render', enctype='multipart/form-data', _=[
         markdown_editor(markdown=sample_markdown),
-        Input(type='submit', value='Submit')]),
+        Div(id='markdown-actions', _=[
+          Input(type='submit', value='Submit'),
+          Button('Reformat', id='markdown-reformat', type='button')])]),
       Ul(cl='font-small', _=[
         Li('Paste an image to attach it. The editor inserts a reference such as ',
           Code('![Image 1](attachment:image-1.png)'), ' and lists the image below the text. ',
           'Deleting the reference detaches the image; undo attaches it again.'),
+        Li('Reformat aligns table columns in the source.'),
         Li('Submit posts the text and the referenced images as multipart form data. ',
-          'The response highlights the submitted text and embeds each image after its reference.'),
+          'The response highlights the text, aligns tables, and embeds each image after its reference.'),
         Li('The settings response morphs only the attributes of the editor element. '
           'The text, selection and undo history are not affected.'),
         Li('The editor is a form control: the textarea submits like any other, and no script is needed to read its value.'),
@@ -153,7 +156,12 @@ def render_submission(markdown:str, attachments:list[UploadedFile]) -> Main:
     pos = m.end()
   source.append(markdown[pos:])
 
-  main = Main(cl='markdown-rendering', _=[H1('Markdown Rendering'), source, H2('Attachments')])
+  main = Main(cl='markdown-rendering', _=[
+    H1('Markdown Rendering'),
+    Div(Label(Input(id='markdown-result-reformat', type='checkbox', checked=True, aria_controls='markdown-source'), ' Reformat')),
+    source,
+    H2('Attachments'),
+  ])
   if attachments:
     main.append(Ul(id='markdown-attachments', _=[
       Li(Code(f.filename), f': {f.content_type}, {len(f.data)} bytes, SHA-256 ', Code(sha256(f.data).hexdigest()),

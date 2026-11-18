@@ -2,30 +2,42 @@
 
 'use strict';
 
+const demoMarkdownEditor = document.getElementById('markdown-editor');
+if (demoMarkdownEditor instanceof MarkdownEditor) {
+  document.getElementById('markdown-reformat')?.addEventListener('click', () => demoMarkdownEditor.reformat());
+}
+
 const markdownSource = document.getElementById('markdown-source');
-if (markdownSource) highlightSubmission(markdownSource);
+const resultReformat = document.getElementById('markdown-result-reformat');
+if (markdownSource && resultReformat instanceof HTMLInputElement) setupSubmission(markdownSource, resultReformat);
 
 
-/** @param {HTMLElement} source */
-function highlightSubmission(source) {
-  // Highlight the complete text so an image inside a line or fence does not interrupt syntax coloring.
+/** @param {HTMLElement} source @param {HTMLInputElement} reformat */
+function setupSubmission(source, reformat) {
+  // Each view starts from the original source, with image positions indexed into that text.
+  const text = source.textContent ?? '';
   const images = [];
   let offset = 0;
   for (const child of source.childNodes) {
     if (child instanceof Text) offset += child.length;
     else if (child instanceof HTMLImageElement) images.push({image: child, offset});
   }
-  highlightMarkdown(source, source.textContent ?? '');
+  function render() {
+    const formatted = reformat.checked ? reformatMarkdown(text, source) : null;
+    highlightMarkdown(source, formatted?.text ?? text);
 
-  // Put the original images back at the same text offsets in the highlighted DOM.
-  const walker = document.createTreeWalker(source, NodeFilter.SHOW_TEXT);
-  let node = walker.nextNode();
-  let start = 0;
-  for (const {image, offset} of images) {
-    while (node instanceof Text && start + node.length < offset) {
-      start += node.length;
-      node = walker.nextNode();
+    const walker = document.createTreeWalker(source, NodeFilter.SHOW_TEXT);
+    let node = walker.nextNode();
+    let start = 0;
+    for (const {image, offset: originalOffset} of images) {
+      const offset = formatted?.mapOffset(originalOffset) ?? originalOffset;
+      while (node instanceof Text && start + node.length < offset) {
+        start += node.length;
+        node = walker.nextNode();
+      }
+      if (node instanceof Text) node.splitText(offset - start).before(image);
     }
-    if (node instanceof Text) node.splitText(offset - start).before(image);
   }
+  reformat.addEventListener('change', render);
+  render();
 }

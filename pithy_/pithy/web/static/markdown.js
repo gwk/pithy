@@ -7,6 +7,8 @@
  *   <markdown-editor><textarea name="body">Some *Markdown*.</textarea></markdown-editor>
  *
  * For read-only text, call `highlightMarkdown(element, text)` with a regular block element such as a div.
+ * Pass `{alignTables: true}` to align the displayed table source.
+ * Call `editor.reformat()` to apply formatting to the editor's value.
  *
  * The textarea is ordinary page content: it holds the text, takes all input, and submits with its form.
  * The element adds a coloring layer, drawn over the textarea, that repeats the text as styled spans.
@@ -78,9 +80,11 @@ const mdImageExts = {'image/gif': 'gif', 'image/jpeg': 'jpg', 'image/png': 'png'
  * Line endings are normalized to LF.
  * @param {HTMLElement} element
  * @param {string} text
+ * @param {{alignTables?:boolean}} [options]
  */
-function highlightMarkdown(element, text) {
+function highlightMarkdown(element, text, {alignTables = false} = {}) {
   element.classList.add('md-highlight');
+  if (alignTables) text = reformatMarkdown(text, element).text;
   const content = document.createDocumentFragment();
   // Keep line breaks in the text itself so blank lines survive selection and copying.
   for (const line of mdLines(text)) {
@@ -88,6 +92,38 @@ function highlightMarkdown(element, text) {
     content.append(mdLineElement(line, 'span'));
   }
   element.replaceChildren(content);
+}
+
+
+/**
+ * Reformat Markdown source and map offsets from the original text into the result.
+ * Currently aligns pipe tables. If provided, `element` supplies the font for measuring text in space columns.
+ * @param {string} text
+ * @param {HTMLElement} [element]
+ */
+function reformatMarkdown(text, element) {
+  const edits = [...mdTableFormatEdits(text, mdColumnMeasure(element))];
+  const parts = [];
+  let end = 0;
+  for (const edit of edits) {
+    parts.push(text.slice(end, edit.start), edit.text);
+    end = edit.end;
+  }
+  parts.push(text.slice(end));
+
+  return {
+    text: parts.join(''),
+    /** @param {number} offset @param {boolean} [afterInsertion] */
+    mapOffset(offset, afterInsertion = false) {
+      let delta = 0;
+      for (const edit of edits) {
+        if (offset < edit.start || (offset === edit.start && (edit.end > edit.start || !afterInsertion))) break;
+        if (offset < edit.end) return edit.start + delta + Math.min(offset - edit.start, edit.text.length);
+        delta += edit.text.length - (edit.end - edit.start);
+      }
+      return offset + delta;
+    },
+  };
 }
 
 
@@ -180,6 +216,20 @@ class MarkdownEditor extends HTMLElement {
     if (!textarea) return;
     textarea.value = text;
     this.refresh();
+  }
+
+
+  /** Apply automatic Markdown formatting as an edit, preserving the selection. */
+  reformat() {
+    const textarea = this.textarea;
+    if (!textarea) return;
+    const {text, mapOffset} = reformatMarkdown(textarea.value, textarea);
+    if (text === textarea.value) return;
+    const {selectionStart, selectionEnd, selectionDirection} = textarea;
+    textarea.select();
+    mdInsertText(textarea, text);
+    const start = mapOffset(selectionStart, selectionStart < selectionEnd);
+    textarea.setSelectionRange(start, mapOffset(selectionEnd), selectionDirection);
   }
 
 
@@ -296,7 +346,7 @@ class MarkdownEditor extends HTMLElement {
 }
 
 
-/** @typedef {{text:string, fence:string, table:''|'head'|'divider'|'row', pipes:number[]}} MdLine */
+/** @typedef {{text:string, offset:number, fence:string, table:''|'head'|'divider'|'row', pipes:number[]}} MdLine */
 
 
 /** Yield each line with its fence and table context.
@@ -304,11 +354,12 @@ class MarkdownEditor extends HTMLElement {
  * @returns {Generator<MdLine>}
  */
 function* mdLines(text) {
-  const lines = text.split(/\r\n?|\n/);
+  const lines = text.split(/(\r\n?|\n)/);
+  let offset = 0;
   let fence = '';
   /** @type {MdLine['table']} */
   let table = '';
-  for (let i = 0; i < lines.length; i++) {
+  for (let i = 0; i < lines.length; i += 2) {
     const line = mdNonNull(lines[i]);
     const nextFence = mdFenceAfter(line, fence);
     const pipes = fence || nextFence ? [] : mdTablePipes(line);
@@ -316,15 +367,16 @@ function* mdLines(text) {
     else if (table === 'head') table = 'divider';
     else if (table) table = 'row';
     else {
-      const next = lines[i + 1] ?? '';
+      const next = lines[i + 2] ?? '';
       const nextPipes = mdTablePipes(next);
       if (nextPipes.length) {
         const divider = mdTableCells(next, nextPipes);
-        if (divider.length && divider.every(cell => mdTableDividerCellRe.test(cell))
+        if (divider.length && divider.every(cell => mdTableDividerCellRe.test(cell.text))
           && divider.length === mdTableCells(line, pipes).length) table = 'head';
       }
     }
-    yield {text: line, fence, table, pipes};
+    yield {text: line, offset, fence, table, pipes};
+    offset += line.length + (lines[i + 1]?.length ?? 0);
     fence = nextFence;
   }
 }
@@ -344,21 +396,107 @@ function mdTablePipes(line) {
 }
 
 
-/** Return trimmed cells, omitting the text outside optional outer pipes.
+/** Return the text and offsets of each trimmed cell inside optional outer pipes.
  * @param {string} line
  * @param {number[]} pipes - At least one unescaped pipe.
  */
 function mdTableCells(line, pipes) {
+  const boundaries = [0, ...pipes.map(pipe => pipe + 1), line.length + 1];
   const cells = [];
-  let start = 0;
-  for (const pipe of pipes) {
-    const cell = line.slice(start, pipe).trim();
-    if (start || cell) cells.push(cell);
-    start = pipe + 1;
+  for (let i = 1; i < boundaries.length; i++) {
+    const from = mdNonNull(boundaries[i - 1]);
+    const segment = line.slice(from, mdNonNull(boundaries[i]) - 1);
+    const trimmed = segment.replace(/^[ \t]+/, '');
+    const text = trimmed.replace(/[ \t]+$/, '');
+    if (!text && (i === 1 || i === boundaries.length - 1)) continue;
+    const start = from + segment.length - trimmed.length;
+    cells.push({text, start, end: start + text.length});
   }
-  const last = line.slice(start).trim();
-  if (last) cells.push(last);
   return cells;
+}
+
+
+/** @typedef {{start:number, end:number, text:string}} MdFormatEdit */
+
+
+/**
+ * Locate table formatting edits in source order, leaving other blocks and line endings intact.
+ * @param {string} text
+ * @param {(text:string) => number} measure
+ * @returns {Generator<MdFormatEdit>}
+ */
+function* mdTableFormatEdits(text, measure) {
+  /** @type {MdLine[]} */
+  let table = [];
+  for (const line of mdLines(text)) {
+    if (line.table) table.push(line);
+    else if (table.length) {
+      yield* mdFormatTable(table, measure);
+      table = [];
+    }
+  }
+  if (table.length) yield* mdFormatTable(table, measure);
+}
+
+
+/**
+ * Align one table. Preserve the contents of every cell except the divider's hyphen runs.
+ * @param {MdLine[]} table
+ * @param {(text:string) => number} measure
+ * @returns {Generator<MdFormatEdit>}
+ */
+function* mdFormatTable(table, measure) {
+  const rows = table.map(line => mdTableCells(line.text, line.pipes).map(cell => ({...cell, width: measure(cell.text)})));
+  const divider = mdNonNull(rows[1]);
+  const alignments = divider.map(({text}) => ({left: text.startsWith(':'), right: text.endsWith(':')}));
+  const widths = alignments.map(({left, right}) => 3 + Number(left) + Number(right));
+  for (let row = 0; row < rows.length; row++) {
+    if (row === 1) continue;
+    mdNonNull(rows[row]).forEach(({width}, col) => { widths[col] = Math.max(widths[col] ?? 0, width); });
+  }
+
+  for (let row = 0; row < rows.length; row++) {
+    const cells = mdNonNull(rows[row]);
+    if (!cells.length) continue;
+    const line = mdNonNull(table[row]);
+    const edit = (/** @type {number} */ start, /** @type {number} */ end, /** @type {string} */ text) =>
+      ({start: line.offset + start, end: line.offset + end, text});
+    let end = 0;
+    let rightPad = '';
+    for (let col = 0; col < cells.length; col++) {
+      const cell = mdNonNull(cells[col]);
+      const width = mdNonNull(widths[col]);
+      const {left, right} = alignments[col] ?? {left: false, right: false};
+      const padding = row === 1 ? 0 : width - cell.width;
+      const leftPad = right ? (left ? Math.floor(padding / 2) : padding) : 0;
+      const gap = (col ? `${rightPad} | ` : '| ') + ' '.repeat(leftPad);
+      if (line.text.slice(end, cell.start) !== gap) yield edit(end, cell.start, gap);
+      if (row === 1) {
+        const dividerText = (left ? ':' : '') + '-'.repeat(width - Number(left) - Number(right)) + (right ? ':' : '');
+        if (cell.text !== dividerText) yield edit(cell.start, cell.end, dividerText);
+      }
+      end = cell.end;
+      rightPad = ' '.repeat(padding - leftPad);
+    }
+    const tail = `${rightPad} |`;
+    if (line.text.slice(end) !== tail) yield edit(end, line.text.length, tail);
+  }
+}
+
+
+/** Get a width function in whole spaces using the element's monospace font when available.
+ * @param {HTMLElement} [element]
+ * @returns {(text:string) => number}
+ */
+function mdColumnMeasure(element) {
+  const context = element?.ownerDocument.createElement('canvas').getContext('2d');
+  if (element && context) {
+    const {fontFamily, fontSize, fontStyle, fontWeight} = getComputedStyle(element);
+    context.font = `${fontStyle} ${fontWeight} ${fontSize} ${fontFamily}`;
+    const space = context.measureText(' ').width;
+    if (space) return text => Math.round(context.measureText(text).width / space);
+  }
+  return text => [...text].length;
 }
 
 
