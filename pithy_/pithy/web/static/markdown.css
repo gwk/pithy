@@ -1,7 +1,7 @@
 /* Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/. */
 
 /*
-Styles for the `markdown-editor` element defined by markdown.js.
+Styles for Markdown syntax coloring and the `markdown-editor` element defined by markdown.js.
 
 The editor is a textarea with a syntax coloring layer drawn over it.
 The textarea text is transparent; the layer shows the same characters in the same positions.
@@ -16,14 +16,22 @@ The attachment strip occupies an implicit second row and sticks to the bottom of
 Colors use the pithy.css variables when present.
 */
 
-markdown-editor {
+markdown-editor, .md-highlight:not(:where(markdown-editor > .md-highlight)) {
   --md-marker: var(--fg-muted, GrayText);
   --md-heading: var(--accent, LinkText);
   --md-link: var(--accent, LinkText);
   --md-code: light-dark(oklch(44% 0.12 150), oklch(82% 0.12 150));
   --md-em: light-dark(oklch(46% 0.13 55), oklch(82% 0.1 75));
   --md-tag: light-dark(oklch(45% 0.15 320), oklch(80% 0.11 320));
+  --md-table-marker: light-dark(oklch(44% 0.115 230), oklch(85% 0.12 230));
+}
 
+markdown-editor, .md-highlight {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  line-height: 1.5;
+}
+
+markdown-editor {
   display: grid;
   grid-template: 1fr / minmax(0, 1fr); /* A single cell as tall as the text, and at least as tall as the host. */
   overflow: auto;
@@ -32,8 +40,6 @@ markdown-editor {
   border: 1px solid var(--border, GrayText);
   border-radius: 3px;
   color: var(--fg, CanvasText);
-  font-family: var(--font-mono, ui-monospace, monospace);
-  line-height: 1.5;
 }
 
 markdown-editor[auto-resize] {
@@ -46,7 +52,7 @@ markdown-editor:focus-within {
   outline-offset: -1px;
 }
 
-/* Text layout shared by the textarea and the coloring layer. */
+/* Box layout for the two layers of the editor. */
 markdown-editor > :is(textarea, .md-highlight) {
   grid-area: 1 / 1;
   box-sizing: border-box;
@@ -56,6 +62,10 @@ markdown-editor > :is(textarea, .md-highlight) {
   border-radius: 0;
   padding: 0.5em;
   font: inherit;
+}
+
+/* Text metrics shared by the editor layers and the read-only view. */
+markdown-editor > textarea, .md-highlight {
   font-kerning: none;
   font-variant-ligatures: none;
   letter-spacing: normal;
@@ -125,16 +135,17 @@ markdown-editor > .md-attachments {
 }
 
 /* Bold faces can have different glyph widths, particularly in fallback fonts; a stroke emboldens without affecting layout. */
-.md-highlight :is(.md-heading, .md-strong) { -webkit-text-stroke: 0.035em currentColor; }
+.md-highlight :is(.md-heading, .md-table-head, .md-strong) { -webkit-text-stroke: 0.035em currentColor; }
 
 .md-highlight .md-heading { color: var(--md-heading); }
 .md-highlight .md-quote { color: var(--md-marker); }
 .md-highlight .md-code { color: var(--md-code); }
-.md-highlight div.md-code { background-color: var(--tint-subtle, transparent); }
+.md-highlight > .md-code { background-color: var(--tint-subtle, transparent); }
 .md-highlight .md-em { color: var(--md-em); }
 .md-highlight .md-strike { text-decoration: line-through; }
 .md-highlight .md-link { color: var(--md-link); }
 .md-highlight .md-url { color: var(--md-marker); text-decoration: underline; }
 .md-highlight .md-tag { color: var(--md-tag); }
 .md-highlight .md-list { color: var(--md-heading); }
+.md-highlight .md-table-marker { color: var(--md-table-marker); }
 .md-highlight :is(.md-marker, .md-comment) { color: var(--md-marker); }

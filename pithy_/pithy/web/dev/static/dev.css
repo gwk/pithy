@@ -38,9 +38,7 @@ body > nav a.current-nav-section-link {
   margin-bottom: 1em;
 }
 
-.markdown-rendering pre { white-space: pre-wrap; }
-
-.markdown-rendering pre img {
+#markdown-source img {
   display: block;
   max-width: 100%;
   margin: 0.5em 0;

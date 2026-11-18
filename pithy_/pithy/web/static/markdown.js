@@ -6,6 +6,8 @@
  *
  *   <markdown-editor><textarea name="body">Some *Markdown*.</textarea></markdown-editor>
  *
+ * For read-only text, call `highlightMarkdown(element, text)` with a regular block element such as a div.
+ *
  * The textarea is ordinary page content: it holds the text, takes all input, and submits with its form.
  * The element adds a coloring layer, drawn over the textarea, that repeats the text as styled spans.
  * The text is never transformed and no syntax is hidden; the editor shows exactly the characters that are submitted.
@@ -22,8 +24,9 @@
  * This file is compatible with a strict Content Security Policy, including Trusted Types.
  * It creates no style elements, sets no style attributes, parses no HTML strings, and evaluates no code.
  *
- * Coloring is computed per line. Fenced code blocks are the only construct tracked across lines;
- * emphasis and links that span a line break are not colored.
+ * Coloring is computed per line, with context for fenced code blocks and top-level pipe tables.
+ * A table starts with a header and matching divider. Its body continues through rows with unescaped pipes.
+ * Emphasis and links that span a line break are not colored.
  *
  * Scripts that assign `textarea.value` directly must call `refresh()`, because that assignment fires no event.
  * Assigning the element's own `value` property refreshes automatically.
@@ -33,11 +36,11 @@
 
 // Style bits for a character. A character can carry several, e.g. a marker inside strong text.
 const mdMarker = 1, mdEm = 2, mdStrong = 4, mdStrike = 8, mdCode = 16, mdLink = 32, mdUrl = 64, mdTag = 128, mdList = 256,
-  mdComment = 512;
+  mdComment = 512, mdTableMarker = 1024;
 
 // CSS class names, indexed by style bit position.
 const mdClasses = ['md-marker', 'md-em', 'md-strong', 'md-strike', 'md-code', 'md-link', 'md-url', 'md-tag', 'md-list',
-  'md-comment'];
+  'md-comment', 'md-table-marker'];
 
 // Block patterns. The sticky patterns are applied at an offset by `mdMatchAt`.
 const mdFenceOpenRe = /^[ \t]*(`{3,}|~{3,})(.*)$/;
@@ -48,6 +51,7 @@ const mdHeadingCloseRe = /[ \t]+#+[ \t]*$/;
 const mdRuleRe = / {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$/y;
 const mdListRe = /[ \t]*(?:[-*+]|\d{1,9}[.)])(?=[ \t]|$)/y;
 const mdTaskRe = /[ \t]+\[[ xX]\](?=[ \t]|$)/y;
+const mdTableDividerCellRe = /^:?-+:?$/;
 
 // Inline patterns.
 const mdCommentRe = /<!--.*?-->/y;
@@ -67,6 +71,24 @@ const mdAttachmentNumRe = /^image-(\d+)\./;
 // File name extensions for the common image types; other types use their subtype.
 /** @type {Record<string,string>} */
 const mdImageExts = {'image/gif': 'gif', 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp'};
+
+
+/**
+ * Replace the contents of a block element with selectable, syntax-colored Markdown source.
+ * Line endings are normalized to LF.
+ * @param {HTMLElement} element
+ * @param {string} text
+ */
+function highlightMarkdown(element, text) {
+  element.classList.add('md-highlight');
+  const content = document.createDocumentFragment();
+  // Keep line breaks in the text itself so blank lines survive selection and copying.
+  for (const line of mdLines(text)) {
+    if (content.hasChildNodes()) content.append('\n');
+    content.append(mdLineElement(line, 'span'));
+  }
+  element.replaceChildren(content);
+}
 
 
 class MarkdownEditor extends HTMLElement {
@@ -207,16 +229,8 @@ class MarkdownEditor extends HTMLElement {
       this.#keys = [];
     }
 
-    const lines = textarea.value.split('\n');
-    /** @type {string[]} */
-    const fences = []; // The open fence preceding each line.
-    let fence = '';
-    const keys = lines.map(line => {
-      fences.push(fence);
-      const key = fence + '\n' + line;
-      fence = mdFenceAfter(line, fence);
-      return key;
-    });
+    const lines = [...mdLines(textarea.value)];
+    const keys = lines.map(({text, fence, table}) => `${fence}\n${table}\n${text}`);
 
     // Replace only the lines between the common prefix and the common suffix of the old and new keys.
     const oldKeys = this.#keys;
@@ -227,7 +241,7 @@ class MarkdownEditor extends HTMLElement {
     while (oldEnd > start && end > start && oldKeys[oldEnd - 1] === keys[end - 1]) { oldEnd--; end--; }
     const following = layer.childNodes[oldEnd] ?? null;
     for (let i = start; i < oldEnd; i++) mdNonNull(layer.childNodes[start]).remove();
-    for (let i = start; i < end; i++) layer.insertBefore(mdLineElement(mdNonNull(lines[i]), mdNonNull(fences[i])), following);
+    for (let i = start; i < end; i++) layer.insertBefore(mdLineElement(mdNonNull(lines[i])), following);
     this.#keys = keys;
   }
 
@@ -282,6 +296,72 @@ class MarkdownEditor extends HTMLElement {
 }
 
 
+/** @typedef {{text:string, fence:string, table:''|'head'|'divider'|'row', pipes:number[]}} MdLine */
+
+
+/** Yield each line with its fence and table context.
+ * @param {string} text
+ * @returns {Generator<MdLine>}
+ */
+function* mdLines(text) {
+  const lines = text.split(/\r\n?|\n/);
+  let fence = '';
+  /** @type {MdLine['table']} */
+  let table = '';
+  for (let i = 0; i < lines.length; i++) {
+    const line = mdNonNull(lines[i]);
+    const nextFence = mdFenceAfter(line, fence);
+    const pipes = fence || nextFence ? [] : mdTablePipes(line);
+    if (!pipes.length) table = '';
+    else if (table === 'head') table = 'divider';
+    else if (table) table = 'row';
+    else {
+      const next = lines[i + 1] ?? '';
+      const nextPipes = mdTablePipes(next);
+      if (nextPipes.length) {
+        const divider = mdTableCells(next, nextPipes);
+        if (divider.length && divider.every(cell => mdTableDividerCellRe.test(cell))
+          && divider.length === mdTableCells(line, pipes).length) table = 'head';
+      }
+    }
+    yield {text: line, fence, table, pipes};
+    fence = nextFence;
+  }
+}
+
+
+/** Return the offsets of unescaped pipes in a potential top-level table row.
+ * @param {string} line
+ */
+function mdTablePipes(line) {
+  if (!line.includes('|') || /^(?: {4}| {0,3}\t)/.test(line) || mdMatchAt(mdQuoteRe, line, 0) >= 0
+    || mdMatchAt(mdHeadingRe, line, 0) >= 0 || mdMatchAt(mdListRe, line, 0) >= 0) return [];
+  const pipes = [];
+  for (const match of line.matchAll(/\\[\\|]|\|/g)) {
+    if (match[0] === '|') pipes.push(match.index);
+  }
+  return pipes;
+}
+
+
+/** Return trimmed cells, omitting the text outside optional outer pipes.
+ * @param {string} line
+ * @param {number[]} pipes - At least one unescaped pipe.
+ */
+function mdTableCells(line, pipes) {
+  const cells = [];
+  let start = 0;
+  for (const pipe of pipes) {
+    const cell = line.slice(start, pipe).trim();
+    if (start || cell) cells.push(cell);
+    start = pipe + 1;
+  }
+  const last = line.slice(start).trim();
+  if (last) cells.push(last);
+  return cells;
+}
+
+
 /**
  * Return the open fence following `line`, given the open fence preceding it.
  * A fence is represented by its opening run of backticks or tildes; the empty string means no fence is open.
@@ -313,12 +393,11 @@ function mdIsFenceClose(line, fence) {
 
 /**
  * Build the element for one line of text.
- * @param {string} line
- * @param {string} fence - The open fence preceding the line.
- * @returns {HTMLDivElement}
+ * @param {MdLine} source
+ * @param {'div'|'span'} [tag]
  */
-function mdLineElement(line, fence) {
-  const el = document.createElement('div');
+function mdLineElement({text: line, fence, table, pipes}, tag = 'div') {
+  const el = document.createElement(tag);
   const styles = new Uint16Array(line.length);
   let className = '';
   if (fence) { // Within a code block.
@@ -330,12 +409,24 @@ function mdLineElement(line, fence) {
     let runEnd = indent;
     while (line[runEnd] === line[indent]) runEnd++;
     styles.fill(mdMarker, indent, runEnd);
+  } else if (table === 'divider') {
+    className = 'md-table-divider';
+    styles.fill(mdTableMarker);
+  } else if (table) {
+    className = table === 'head' ? 'md-table-head' : 'md-table-row';
+    let start = 0;
+    for (const pipe of pipes) {
+      mdStyleInline(line.slice(start, pipe), 0, styles.subarray(start, pipe));
+      styles[pipe] = mdTableMarker;
+      start = pipe + 1;
+    }
+    mdStyleInline(line.slice(start), 0, styles.subarray(start));
   } else {
     className = mdStyleBlock(line, styles);
   }
   if (className) el.className = className;
 
-  if (!line) el.append(document.createElement('br')); // An empty block has no height.
+  if (!line && tag === 'div') el.append(document.createElement('br')); // An empty block has no height.
   for (let i = 0; i < line.length;) {
     const style = mdNonNull(styles[i]);
     let j = i + 1;

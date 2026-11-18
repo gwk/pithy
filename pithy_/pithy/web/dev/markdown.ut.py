@@ -93,15 +93,16 @@ def _() -> None:
   # Every byte value, with a sequence that resembles the multipart delimiter.
   png = bytes(range(256)) + b'\r\n--boundar\r\n\x00' + bytes(reversed(range(256)))
   jpg = b'\xff\xd8\xff second'
-  markdown = ('# <Title> & more\r\n\r\nFirst ![Image 1](attachment:image-1.png) then ![Image 2](attachment:image-2.jpg).\r\n'
+  markdown = ('\r\n# <Title> & more\r\n\r\nFirst ![Image 1](attachment:image-1.png) then ![Image 2](attachment:image-2.jpg).\r\n'
     '![Again](attachment:image-1.png) ![Missing](attachment:image-9.png) ![Vector](attachment:image-3.svg)\r\n')
   body = post_multipart('/markdown/render', (text_headers, markdown.encode()),
     file_part('image-1.png', 'image/png', png), file_part('image-2.jpg', 'image/jpeg', jpg),
     file_part('image-3.svg', 'image/svg+xml', b'<svg/>'), file_part('image-4.png', 'image/png', b'unreferenced')).body
   assert isinstance(body, bytes)
   document = JustHTML(body, sanitize=False)
-  source = document.query_one('pre#markdown-source')
+  source = document.query_one('div#markdown-source.md-highlight')
   assert source is not None
+  utest(1, len, document.query('script[src="/static/dev/markdown.js"]'))
   utest(markdown.replace('\r\n', '\n'), source.to_text, separator='', strip=False,
     _utest_label=repr('The source is shown as received'))
   srcs = [str((el.attrs or {}).get('src')) for el in source.query('img')]

@@ -116,6 +116,61 @@ runTestSuite(async check => {
     checkEqual(expected.join('\n'), describeLayer(layer), `Blocks: ${JSON.stringify(lines)}`);
   }
 
+  const preview = document.createElement('div');
+  editor.after(preview);
+  const tableHeader = 'Item | Count';
+  const tableDivider = ':--- | ---:';
+  const tableRow = '| **Draft** \\| review | `12` |';
+  const table = [tableHeader, tableDivider, tableRow].join('\n');
+  editor.value = [tableHeader, ':--- | ---: | ---', tableRow].join('\n');
+  checkEqual(0, layer.querySelectorAll('.md-table-head').length, 'A divider must match the number of header cells');
+  editor.value = table;
+  checkEqual([
+    'table-head|Item {table-marker:|} Count',
+    'table-divider|{table-marker::--- | ---:}',
+    'table-row|{table-marker:|} {marker:**}{strong:Draft}{marker:**} {marker:\\}| review '
+      + '{table-marker:|} {marker code:`}{code:12}{marker code:`} {table-marker:|}',
+  ].join('\n'), describeLayer(layer), 'Table pipes, header, alignment markers and inline spans are colored');
+  checkEqual(table, new FormData(form).get('markdown'), 'Table coloring preserves submitted source');
+  highlightMarkdown(preview, table);
+  checkEqual(describeLayer(layer), describeLayer(preview), 'Read-only tables use the editor coloring');
+  checkEqual(table, preview.textContent, 'Read-only table coloring preserves the source and spacing');
+  const tableMarker = /** @type {HTMLElement} */ (preview.querySelector('.md-table-marker'));
+  const inlineMarker = /** @type {HTMLElement} */ (preview.querySelector('.md-marker'));
+  for (const theme of ['light', 'dark']) {
+    preview.dataset.theme = theme;
+    check(getComputedStyle(tableMarker).color !== getComputedStyle(inlineMarker).color,
+      `Table punctuation has a distinct color in the ${theme} theme`);
+  }
+  delete preview.dataset.theme;
+  editor.value = [table, '', 'ordinary | pipe', '', '~~~', table, '~~~'].join('\n');
+  checkEqual(1, layer.querySelectorAll('.md-table-head').length, 'Table syntax inside a code fence stays literal');
+  checkEqual(1, layer.querySelectorAll('.md-table-row').length, 'A blank line ends table coloring');
+  editor.value = [tableHeader, '', tableRow].join('\n');
+  checkEqual(0, layer.querySelectorAll('.md-table-head, .md-table-row').length, 'Deleting the divider clears table coloring');
+
+  const response = '\n# Answer\n\n```html\n<img src="example.png">\n```\n\n*Done*';
+  editor.value = response;
+  highlightMarkdown(preview, (response + '\n').replace(/\n/g, '\r\n'));
+  checkEqual(response + '\n', preview.textContent, 'Read-only highlighting preserves text with normalized line breaks');
+  checkEqual(3, preview.querySelectorAll(':scope > .md-code').length, 'Read-only highlighting tracks fenced code');
+  checkEqual(0, preview.querySelectorAll('img, textarea').length, 'Read-only highlighting inserts literal text');
+  const previewHeading = /** @type {HTMLElement} */ (preview.querySelector('.md-heading'));
+  const editorHeading = /** @type {HTMLElement} */ (layer.querySelector('.md-heading'));
+  checkEqual(getComputedStyle(editorHeading).color, getComputedStyle(previewHeading).color, 'Read-only heading shares the palette');
+  highlightMarkdown(preview, response);
+  const range = document.createRange();
+  range.selectNodeContents(preview);
+  const selection = getSelection();
+  if (!selection) throw new Error('Expected a document selection');
+  selection.removeAllRanges();
+  selection.addRange(range);
+  checkEqual(response, selection.toString(), 'Read-only highlighting can be selected with its line breaks');
+  selection.removeAllRanges();
+  highlightMarkdown(preview, 'Updated response');
+  checkEqual('Updated response', preview.textContent, 'A new response replaces the previous highlighting');
+  preview.remove();
+
   // The textarea must never transform its text.
   for (const text of ['a\\nb\\tc\\r', 'tab\there', '<script>alert(1)</script> & &amp;', '\n\nleading and trailing\n\n', ' ']) {
     editor.value = text;
@@ -126,7 +181,7 @@ runTestSuite(async check => {
 
   // Geometry: the layer and the textarea must lay out the same text identically at any width.
   const paragraph = 'Wrapping **prose** with `code`, [links](https://example.com/a/long/path?query=value) and <tags> '.repeat(6);
-  const sample = `# Heading\n\n${paragraph}\n\n- item ${paragraph}\n\n\`\`\`\n${'x'.repeat(300)}\n\tindented\n\`\`\`\n\n日本語 emoji 🙂 **bold 🙂 text**\n`;
+  const sample = `# Heading\n\n${paragraph}\n\n- item ${paragraph}\n\n${table}\n\n\`\`\`\n${'x'.repeat(300)}\n\tindented\n\`\`\`\n\n日本語 emoji 🙂 **bold 🙂 text**\n`;
   editor.value = sample;
   for (const autoResize of [false, true]) {
     editor.toggleAttribute('auto-resize', autoResize);

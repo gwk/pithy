@@ -4,7 +4,7 @@ import re
 from base64 import b64encode
 from hashlib import sha256
 
-from ...html import A, Code, Form, H1, H2, HtmlNode, Img, Input, Label, Li, Main, P, Pre, TextArea, Ul
+from ...html import A, Code, Div, Form, H1, H2, HtmlNode, Img, Input, Label, Li, Main, P, TextArea, Ul
 from ..endpoint import Endpoint
 from ..request import Request, UploadedFile
 from ..response import HtmlResponse, HtmxResponse
@@ -12,7 +12,7 @@ from .pages import dev_page
 
 
 _context_keywords_ = ['attachments', 'clipboard images', 'demo', 'editor', 'htmx morph', 'image upload', 'multipart',
-  'syntax highlighting', 'textarea']
+  'syntax highlighting', 'tables', 'textarea']
 
 
 sample_markdown = r"""# Heading
@@ -26,6 +26,11 @@ A lightweight **Markdown syntax editor**.
 - [ ] A checkbox
 
 > Quoted text, with `inline code` and ~~struck~~ words.
+
+| Item | Status | Count |
+| :--- | :---: | ---: |
+| **Draft** | Ready | 3 |
+| `Review` | Start \| finish | 12 |
 
 <example name="greeting">
 Tags are colored, which helps when drafting prompts.
@@ -90,11 +95,11 @@ def dev_markdown(request:Request) -> HtmlResponse:
           Code('![Image 1](attachment:image-1.png)'), ' and lists the image below the text. ',
           'Deleting the reference detaches the image; undo attaches it again.'),
         Li('Submit posts the text and the referenced images as multipart form data. ',
-          'The response shows the text as received, with each image embedded after its reference.'),
+          'The response highlights the submitted text and embeds each image after its reference.'),
         Li('The settings response morphs only the attributes of the editor element. '
           'The text, selection and undo history are not affected.'),
         Li('The editor is a form control: the textarea submits like any other, and no script is needed to read its value.'),
-        Li('Coloring is computed per line. Fenced code blocks are tracked across lines; ',
+        Li('Coloring is computed per line, with context for fenced code blocks and pipe tables. ',
           'emphasis and links that span a line break are not colored.'),
         Li('The script and stylesheet work under a strict Content Security Policy; see ',
           A(href='/static/dev/tests/markdown-editor.html', _='the markdown editor fixture page'), '.')])]))
@@ -124,16 +129,14 @@ class MarkdownRender(Endpoint):
     markdown = fields.markdown.replace('\r\n', '\n') # Form submission encodes textarea line breaks as CRLF.
     return dev_page(title='Markdown Rendering',
       breadcrumbs=[('/', 'Home'), ('/markdown', 'Markdown Editor'), ('/markdown/render', 'Rendering')],
+      css_paths=['/static/pithy/markdown.css'], js_paths=['/static/pithy/markdown.js', '/static/dev/markdown.js'],
       main=render_submission(markdown, fields.attachments or []))
 
 
 def render_submission(markdown:str, attachments:list[UploadedFile]) -> Main:
-  '''
-  The rendering of a submission: the Markdown source as received, with each attached image embedded after its reference.
-  The Markdown is not parsed beyond locating the attachment references.
-  '''
+  'Build the submission page with each attached image embedded after its reference.'
   files = {f.filename: f for f in attachments}
-  source = Pre(id='markdown-source')
+  source = Div(id='markdown-source', cl='md-highlight')
   missing:list[str] = []
   referenced:set[str] = set()
   pos = 0
